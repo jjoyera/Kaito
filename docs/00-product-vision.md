@@ -59,6 +59,7 @@ El MVP se centra en validar si un corredor puede crear, seguir y reajustar un pl
 
 El alcance inicial incluye:
 
+- Registro y login con email y contraseña.
 - Onboarding pregunta a pregunta.
 - Generación de un plan inicial con IA.
 - Dashboard inicial.
@@ -114,7 +115,9 @@ El MVP será exitoso si permite demostrar que:
 
 ## Decisión de alcance inicial
 
-La primera versión de Kaito trabajará con un único usuario demo, un objetivo principal y un plan activo.
+La primera versión de Kaito trabajará con usuarios registrados mediante email y contraseña, un objetivo principal por usuario y un plan activo.
+
+Además, el proyecto podrá incluir un usuario demo para facilitar que los profesores prueben el TFM sin tener que crear datos desde cero. Este usuario demo no sustituye al flujo real de registro/login, sino que sirve como apoyo para evaluación y demostración.
 
 El objetivo de esta decisión es validar el flujo principal del producto: onboarding, generación del plan, visualización en dashboard, seguimiento de entrenamientos y recálculo básico ante desviaciones.
 
