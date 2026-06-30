@@ -190,6 +190,8 @@ El usuario necesita recuperar claridad sin tener que decidir por su cuenta cómo
 4. El usuario revisa el cambio sugerido.
 5. El plan actualizado queda disponible en el dashboard.
 
+Las reglas que definen cuándo una desviación se considera relevante están documentadas en [`03-plan-adjustment-policy.md`](03-plan-adjustment-policy.md).
+
 ### Resultado esperado
 
 El usuario mantiene una referencia clara para continuar entrenando, incluso cuando no cumple exactamente lo planificado.
@@ -212,13 +214,3 @@ Los journeys estarán correctamente cubiertos si el MVP permite demostrar que:
 - El usuario puede registrar entrenamientos completados, fallidos o mal realizados.
 - El usuario puede registrar métricas simples de entrenamiento, sensaciones y molestias.
 - Kaito puede adaptar de forma básica el plan ante desviaciones simples basadas en cumplimiento, tiempo, desnivel, sensaciones o molestias.
-
-## Decisiones abiertas
-
-Antes de pasar a requisitos funcionales conviene resolver:
-
-- Qué preguntas exactas tendrá el onboarding inicial.
-- Qué campos mínimos tendrá cada entrenamiento.
-- Qué reglas simples activarán un reajuste del plan a partir de cumplimiento, tiempo, desnivel, sensaciones y molestias.
-- Qué nivel de explicación debe ofrecer Kaito para que el usuario entienda una sesión sin sobrecargar la interfaz.
-- Cómo debería evolucionar en el futuro la interacción conversacional con Kaito para dudas concretas sobre entrenamientos.
