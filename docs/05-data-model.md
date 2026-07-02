@@ -54,9 +54,18 @@ Su objetivo es alinear producto, journeys y requisitos funcionales sobre **qué 
 ### `TrainingGoal`
 
 - **Propósito**: representar el objetivo deportivo principal sobre el que se construye el plan.
-- **Campos clave**: `id`, `userId`, `planId`, `raceType`, `targetDistanceKm`, `targetDate`, `priority` (MVP: `main`).
+- **Campos clave**: `id`, `userId`, `planId`, `goalType` (`distance_date|backyard`), `raceType`, `targetDistanceKm?`, `targetDate`, `targetLoops?`, `targetHours?`, `targetLoopDurationMin?`, `expectedRestMarginMin?`, `boxStrategyNotes?`, `priority` (MVP: `main`).
 - **Relaciones**: pertenece a `User` y `TrainingPlan`.
-- **Notas**: en MVP se permite solo **un objetivo principal por plan activo**.
+- **Notas**: en MVP se permite solo **un objetivo principal por plan activo** y se validan campos según modalidad.
+
+#### Mapeo modalidad → campos de `TrainingGoal` (MVP)
+
+| Modalidad (`raceType`) | `goalType` | Campos objetivo mínimos |
+| --- | --- | --- |
+| Trail / Ultra-trail / OCR | `distance_date` | `targetDistanceKm`, `targetDate` |
+| Backyard Ultra | `backyard` | `targetDate`, `targetLoops` o `targetHours`, `targetLoopDurationMin`, `expectedRestMarginMin` |
+
+`boxStrategyNotes` queda opcional para capturar la estrategia de transición/box cuando el usuario quiera detallarla.
 
 ### `TrainingPlan`
 
@@ -79,9 +88,9 @@ Su objetivo es alinear producto, journeys y requisitos funcionales sobre **qué 
 ### `TrainingLog`
 
 - **Propósito**: capturar cómo salió realmente una sesión.
-- **Campos clave**: `id`, `userId`, `sessionId`, `status` (`completed|failed|misperformed`), `actualDurationMin?`, `actualElevationM?`, `feeling` (`very_good|good|normal|bad|very_bad`), `painLevel` (`none|mild|moderate|high`), `notes`, `loggedAt`, `updatedAt`.
+- **Campos clave**: `id`, `userId`, `sessionId`, `status` (`completed|failed|misperformed`), `actualDistanceKm?`, `actualDurationMin?`, `rpe?` (`1..10`), `actualElevationM?`, `feeling` (`very_good|good|normal|bad|very_bad`), `painLevel` (`none|mild|moderate|high`), `notes`, `loggedAt`, `updatedAt`.
 - **Relaciones**: pertenece a `User` y `TrainingSession`.
-- **Notas**: base para KPIs y detección de desviaciones relevantes. En MVP existe un único log actual por sesión, pero puede editarse si el usuario corrige datos introducidos manualmente.
+- **Notas**: base para KPIs y detección de desviaciones relevantes. En MVP existe un único log actual por sesión, pero puede editarse si el usuario corrige datos introducidos manualmente. Para carga interna del MVP, `sessionLoad = actualDurationMin × rpe` (sRPE) y la `weeklyLoad` se calcula como suma de `sessionLoad` de la semana. El campo `feeling` se mantiene como señal cualitativa complementaria. Métricas avanzadas (p. ej., ritmo medio o FC media) quedan fuera del MVP y podrán añadirse de forma incremental.
 
 ### `TrainingLogHistory`
 
@@ -131,6 +140,7 @@ Su objetivo es alinear producto, journeys y requisitos funcionales sobre **qué 
    - Sin onboarding completo → onboarding.
    - Onboarding completo y sin plan activo → generar plan.
    - Con plan activo → dashboard.
+11. **`TrainingGoal` debe ser coherente con la modalidad**: toda modalidad exige `targetDate` (fecha del evento). Para Backyard, el objetivo principal no se modela con distancia fija, sino con vueltas/horas (`targetLoops`/`targetHours`) y parámetros de bucle/descanso.
 
 ## 7) Simplificaciones explícitas del MVP
 

@@ -125,8 +125,10 @@ El sistema debe guiar al usuario mediante un onboarding inicial para recopilar l
 ### Requisitos
 
 - El sistema debe preguntar por el objetivo deportivo del usuario.
-- El sistema debe recoger el tipo de prueba o distancia objetivo.
-- El sistema debe recoger la fecha objetivo.
+- El sistema debe recoger la modalidad o tipo de prueba objetivo.
+- El sistema debe recoger campos de objetivo según modalidad:
+  - Trail, ultra-trail y OCR: `targetDistanceKm` y `targetDate`.
+  - Backyard Ultra: `targetDate`, `targetLoops` o `targetHours`, `targetLoopDurationMin` (o ritmo equivalente), `expectedRestMarginMin` y notas básicas de estrategia de box/transición. La distancia fija no se usa como objetivo principal.
 - El sistema debe preguntar por la experiencia previa del corredor.
 - El sistema debe recoger el nivel o volumen actual de entrenamiento.
 - El sistema debe preguntar por la disponibilidad semanal.
@@ -147,7 +149,8 @@ El sistema debe validar que el onboarding contiene la información mínima neces
 ### Requisitos
 
 - El sistema debe comprobar que el usuario ha indicado un objetivo deportivo.
-- El sistema debe comprobar que existe una fecha objetivo o referencia temporal suficiente.
+- El sistema debe comprobar que el objetivo incluye los campos mínimos para la modalidad elegida.
+- El sistema debe comprobar que existe `targetDate` (fecha objetivo del evento) para cualquier modalidad antes de construir el plan.
 - El sistema debe comprobar que existe información mínima sobre experiencia y disponibilidad.
 - Si falta información necesaria, el sistema debe pedirla antes de continuar.
 - El sistema no debe generar un plan inicial con datos insuficientes.
@@ -175,6 +178,7 @@ El sistema debe evaluar la elegibilidad de enfoques de plan, permitir la selecci
 - El sistema debe persistir el enfoque elegido en `TrainingPlan.planApproach`.
 - El sistema debe mostrar un estado de generación mientras se procesa el plan.
 - El sistema debe comunicar que está usando objetivo, disponibilidad, experiencia y enfoque elegido.
+- El sistema debe usar explícitamente los datos de objetivo específicos de la modalidad al generar la planificación.
 - El sistema debe generar una planificación inicial asociada al usuario.
 - El sistema debe generar la planificación respetando `TrainingPlan.planApproach`.
 - El sistema debe guardar el plan generado como plan activo del usuario.
@@ -199,6 +203,7 @@ El sistema debe mostrar al usuario una visión resumida del estado actual de su 
 - El sistema debe mostrar una vista semanal o calendario básico.
 - El sistema debe destacar el próximo entrenamiento.
 - El sistema debe mostrar KPIs simples que ayuden a entender el progreso.
+- En MVP, el KPI `carga semanal actual` debe poder calcularse como suma semanal de carga por sesión basada en sRPE (`actualDurationMin × RPE`).
 
 ### Resultado esperado
 
@@ -249,11 +254,14 @@ El sistema debe recoger métricas simples después de cada entrenamiento para pe
 ### Requisitos
 
 - El sistema debe registrar el cumplimiento del entrenamiento.
+- El sistema debe permitir registrar la distancia total realizada en km.
 - El sistema debe permitir registrar tiempo de entrenamiento.
+- El sistema debe permitir registrar RPE de sesión en escala 1-10.
 - El sistema debe permitir registrar desnivel acumulado cuando aplique.
-- El sistema debe permitir registrar sensaciones del corredor.
+- El sistema debe permitir registrar sensaciones del corredor como señal cualitativa.
 - El sistema debe permitir registrar molestias o dolor reportado.
 - El sistema debe mantener el registro suficientemente simple para no generar fricción excesiva.
+- En MVP, las métricas obligatorias se mantienen simples; métricas adicionales (p. ej., ritmo medio o FC media) podrán incorporarse de forma incremental con futuras integraciones.
 
 ### Resultado esperado
 
@@ -348,13 +356,14 @@ El MVP estará correctamente cubierto si:
 - Kaito identifica si el usuario necesita onboarding, generación de plan o dashboard.
 - El usuario puede completar un onboarding inicial sin fricción excesiva.
 - Kaito valida que tiene información suficiente antes de generar el plan.
+- Kaito recoge y valida campos de objetivo específicos por modalidad, incluyendo `targetDate` en todas y Backyard Ultra por vueltas/horas/ritmo-margen/estrategia.
 - Kaito recomienda un enfoque de plan, permite elegir entre opciones elegibles y muestra las bloqueadas con motivo.
 - Kaito persiste elegibilidad/bloqueos y enfoque elegido para usarlo en la generación del plan.
 - Kaito genera un plan inicial asociado al usuario y alineado con el enfoque elegido.
 - El usuario puede consultar un dashboard con estado general, KPIs básicos y próximo entrenamiento.
 - El usuario puede abrir un entrenamiento y entender su propósito.
 - El usuario puede registrar cumplimiento y métricas simples.
-- Kaito puede detectar desviaciones relevantes a partir de cumplimiento, tiempo, desnivel, sensaciones y molestias.
+- Kaito puede detectar desviaciones relevantes a partir de cumplimiento, tiempo, RPE, desnivel, sensaciones y molestias.
 - Kaito puede aplicar un reajuste básico dentro de los límites del MVP creando una nueva versión de `TrainingPlan`, preservando la anterior y manteniendo un único plan activo.
 - Kaito comunica sus límites cuando aparecen molestias, dolor o decisiones sensibles.
 - Si ocurre un error, el usuario recibe una explicación clara y una acción posible.

@@ -79,6 +79,8 @@ Aplicación en Kaito:
 - planificar simulaciones horarias (run + transición);
 - incluir estrategia nocturna y gestión de sueño para objetivos largos. [18][19]
 
+Estos datos se reflejan en `TrainingGoal` según el modelo definido en [`05-data-model.md`](./05-data-model.md).
+
 ### 5.4 OCR
 
 Foco: combinación de carrera + obstáculos + fuerza funcional/agarre + transiciones.
@@ -127,6 +129,7 @@ Checklist mínimo de validación:
 4. **Datos trazables**: no hay campos inventados ni supuestos ocultos.
 5. **Estructura MVP**: sesiones con propósito, intensidad e instrucciones accionables.
 6. **Backyard/OCR específicos**: Backyard por vueltas/horas; OCR con componente de obstáculos/agarre.
+7. **Carga semanal actual (MVP)**: usar sRPE con `sessionLoad = actualDurationMin × rpe` y `weeklyLoad` como suma semanal de `sessionLoad`; mantener `feeling` como señal cualitativa complementaria.
 
 Si falla cualquier punto, el plan debe rechazarse o regenerarse antes de entregarlo.
 
