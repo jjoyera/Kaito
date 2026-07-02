@@ -58,15 +58,18 @@ El usuario necesita introducir su información sin sentirse abrumado y entender 
 ### Recorrido principal
 
 1. Kaito pregunta por el objetivo deportivo del usuario.
-2. El usuario indica el tipo de prueba, distancia aproximada y fecha objetivo.
-3. Kaito pregunta por la experiencia previa del corredor.
-4. El usuario informa sobre su nivel, volumen actual y antecedentes relevantes.
-5. Kaito pregunta por la disponibilidad semanal.
-6. El usuario define días disponibles, restricciones y preferencias básicas.
-7. Kaito evalúa elegibilidad de enfoques y muestra tarjetas visuales de Camino Kaio, Modo Z y Kaioken.
-8. Kaito recomienda un enfoque según el perfil del corredor.
-9. El usuario elige entre los enfoques elegibles; los bloqueados se muestran con motivo.
-10. Kaito confirma que tiene suficiente información (incluido enfoque elegido) para generar el plan inicial.
+2. El usuario indica el tipo de prueba o modalidad objetivo (trail, ultra-trail, backyard ultra u OCR).
+3. Kaito solicita los campos del objetivo según modalidad:
+   - Trail, ultra-trail u OCR: distancia y fecha objetivo.
+   - Backyard Ultra: fecha objetivo del evento, vueltas/horas objetivo, ritmo o duración esperada por vuelta, margen de descanso estimado y estrategia básica de box/transición. En Backyard, la distancia fija no es el objetivo principal.
+4. Kaito pregunta por la experiencia previa del corredor.
+5. El usuario informa sobre su nivel, volumen actual y antecedentes relevantes.
+6. Kaito pregunta por la disponibilidad semanal.
+7. El usuario define días disponibles, restricciones y preferencias básicas.
+8. Kaito evalúa elegibilidad de enfoques y muestra tarjetas visuales de Camino Kaio, Modo Z y Kaioken.
+9. Kaito recomienda un enfoque según el perfil del corredor.
+10. El usuario elige entre los enfoques elegibles; los bloqueados se muestran con motivo.
+11. Kaito confirma que tiene suficiente información (incluido enfoque elegido) para generar el plan inicial.
 
 ### Resultado esperado
 
