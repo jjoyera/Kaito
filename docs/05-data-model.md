@@ -28,6 +28,7 @@ Su objetivo es alinear producto, journeys y requisitos funcionales sobre **qué 
 | `TrainingSession` | Unidad planificada de entrenamiento | 1 plan → N sesiones |
 | `TrainingLog` | Ejecución real reportada de una sesión | 1 sesión → 0..1 log editable |
 | `TrainingLogHistory` | Histórico de cambios de un registro manual | 1 log → N cambios |
+| `PlanApproachEligibility` | Evaluación de enfoques disponibles/bloqueados | 1 usuario → N evaluaciones |
 | `PlanAdjustment` | Registro de reajuste aplicado al plan | 1 plan → N reajustes |
 
 
@@ -60,13 +61,13 @@ Su objetivo es alinear producto, journeys y requisitos funcionales sobre **qué 
 ### `TrainingPlan`
 
 - **Propósito**: encapsular una versión de planificación (inicial o reajustada) del usuario.
-- **Campos clave**: `id`, `userId`, `status` (`draft|active|archived`), `startDate`, `endDate`, `version`, `previousPlanId?`, `generatedAt`, `activatedAt`.
+- **Campos clave**: `id`, `userId`, `status` (`draft|active|archived`), `startDate`, `endDate`, `version`, `previousPlanId?`, `planApproach` (`kaio_path|z_mode|kaioken`), `generatedAt`, `activatedAt`.
 - **Relaciones**:
   - pertenece a `User`.
   - 1:N con `TrainingSession`.
   - 1:N con `PlanAdjustment`.
   - 1:1 lógico con `TrainingGoal` principal (MVP).
-- **Notas**: solo un plan `active` por usuario. Cuando Kaito reajusta, crea una nueva versión de `TrainingPlan` basada en el plan anterior. El plan previo queda archivado como histórico para poder comparar qué cambió.
+- **Notas**: solo un plan `active` por usuario. Cuando Kaito reajusta, crea una nueva versión de `TrainingPlan` basada en el plan anterior. El plan previo queda archivado como histórico para poder comparar qué cambió. El campo `planApproach` guarda el enfoque elegido para la generación del plan: Camino Kaio (conservador), Modo Z (equilibrado) o Kaioken (exigente).
 
 ### `TrainingSession`
 
@@ -89,6 +90,13 @@ Su objetivo es alinear producto, journeys y requisitos funcionales sobre **qué 
 - **Relaciones**: pertenece a un único `TrainingLog`.
 - **Notas**: permite entender si un reajuste se basó en datos que luego fueron corregidos y evita perder trazabilidad cuando el usuario edita un registro manual.
 
+### `PlanApproachEligibility`
+
+- **Propósito**: registrar qué enfoques de plan puede elegir el usuario en un momento concreto y por qué algunos pueden estar bloqueados.
+- **Campos clave**: `id`, `userId`, `evaluatedAt`, `recommendedApproach` (`kaio_path|z_mode|kaioken`), `availableApproaches`, `blockedApproaches`, `blockingReasons`, `inputSummary`.
+- **Relaciones**: pertenece a `User`; puede referenciar el `RunnerProfile`, `TrainingGoal`, `TrainingPlan` o métricas recientes usadas para la evaluación.
+- **Notas**: las opciones bloqueadas deben poder mostrarse al usuario con explicación. El bloqueo no es permanente: puede cambiar si el usuario mejora su base, cumple el plan y demuestra preparación suficiente.
+
 ### `PlanAdjustment`
 
 - **Propósito**: registrar cuándo y por qué se reajustó un plan.
@@ -105,6 +113,7 @@ Su objetivo es alinear producto, journeys y requisitos funcionales sobre **qué 
 - `TrainingSession` 1 — 0..1 `TrainingLog` (registro actual editable)
 - `User` 1 — N `TrainingLog`
 - `TrainingLog` 1 — N `TrainingLogHistory`
+- `User` 1 — N `PlanApproachEligibility`
 - `TrainingPlan` 1 — N `PlanAdjustment` como plan origen o plan generado
 
 ## 6) Reglas de datos / invariantes
@@ -114,10 +123,11 @@ Su objetivo es alinear producto, journeys y requisitos funcionales sobre **qué 
 3. **Cada sesión pertenece a un único plan**.
 4. **Cada log pertenece a un usuario y a una sesión existente de su plan activo o histórico**.
 5. **Un log de entrenamiento puede editarse**, pero cada cambio relevante debe quedar registrado en `TrainingLogHistory`.
-6. **Un reajuste crea una nueva versión de plan** y conserva el plan anterior como histórico.
-7. **Un reajuste solo existe si hay desviación relevante según política** (`03-plan-adjustment-policy.md`).
-8. **El usuario autenticado es dueño de su perfil, planes, sesiones y logs** (aislamiento por `userId`).
-9. **El estado funcional post-login se deriva de datos**:
+6. **La disponibilidad de enfoques de plan debe evaluarse y registrarse**, incluyendo recomendación, opciones bloqueadas y motivos.
+7. **Un reajuste crea una nueva versión de plan** y conserva el plan anterior como histórico.
+8. **Un reajuste solo existe si hay desviación relevante según política** (`03-plan-adjustment-policy.md`).
+9. **El usuario autenticado es dueño de su perfil, planes, sesiones y logs** (aislamiento por `userId`).
+10. **El estado funcional post-login se deriva de datos**:
    - Sin onboarding completo → onboarding.
    - Onboarding completo y sin plan activo → generar plan.
    - Con plan activo → dashboard.
@@ -135,6 +145,7 @@ Su objetivo es alinear producto, journeys y requisitos funcionales sobre **qué 
 1. **Versionado de reajustes**: cada reajuste crea una nueva versión de `TrainingPlan` basada en el plan anterior. El plan previo queda disponible como histórico y comparación.
 2. **Granularidad del dolor/sensaciones**: el MVP usará enums simples para reducir fricción y facilitar reglas de reajuste.
 3. **Registro por sesión**: cada sesión tiene un único `TrainingLog` actual, pero editable. Las modificaciones se guardan en `TrainingLogHistory`.
+4. **Bloqueo de enfoques de plan**: las opciones no elegibles se muestran bloqueadas con explicación y se registran en `PlanApproachEligibility`. El usuario puede desbloquear enfoques superiores si progresa, cumple el plan y demuestra preparación suficiente.
 
 ## 9) Referencias
 
