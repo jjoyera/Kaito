@@ -15,6 +15,7 @@ El MVP incluye:
 - Registro y login con email y contraseña.
 - Usuario demo para evaluación del TFM.
 - Onboarding inicial del corredor.
+- Evaluación y selección del enfoque del plan (Camino Kaio, Modo Z, Kaioken).
 - Generación del plan inicial.
 - Dashboard del plan activo.
 - Consulta del detalle de entrenamiento.
@@ -41,6 +42,7 @@ Quedan fuera del MVP:
 - Kaito debe asociar cada plan a un usuario identificado.
 - El usuario debe entender qué está haciendo el sistema y por qué le pide determinados datos.
 - El plan debe ser comprensible, no solo una lista de entrenamientos.
+- Los enfoques bloqueados deben mostrarse con motivo; no deben ocultarse.
 - Los reajustes deben ser conservadores y estar limitados al alcance del MVP.
 - Kaito no debe presentarse como sustituto de un entrenador profesional ni como herramienta médica.
 
@@ -154,24 +156,34 @@ El sistema debe validar que el onboarding contiene la información mínima neces
 
 El plan inicial se genera a partir de información suficiente y no desde un formulario incompleto.
 
-## RF-07 Generación del plan inicial
+## RF-07 Selección del enfoque y generación del plan inicial
 
 ### Descripción
 
-El sistema debe generar un plan inicial a partir de la información recogida durante el onboarding.
+El sistema debe evaluar la elegibilidad de enfoques de plan, permitir la selección del usuario y generar el plan inicial con el enfoque elegido.
 
 ### Requisitos
 
 - El sistema debe iniciar la generación del plan cuando el onboarding esté completo.
+- El sistema debe evaluar y mostrar las tres opciones visibles: Camino Kaio (`kaio_path`), Modo Z (`z_mode`) y Kaioken (`kaioken`).
+- El sistema debe recomendar una opción según el perfil y contexto del corredor.
+- El usuario debe poder elegir entre los enfoques elegibles.
+- Si un enfoque está bloqueado, el sistema debe mostrarlo bloqueado con explicación comprensible.
+- `kaioken` debe quedar bloqueado salvo preparación alta demostrable (p. ej., historial sólido y base actual fuerte).
+- Si el corredor viene de un parón, casi sin kilometraje o con base insuficiente para su objetivo/tiempo, solo debe quedar disponible Camino Kaio.
+- El sistema debe persistir la evaluación de disponibilidad y bloqueos usando el concepto `PlanApproachEligibility`.
+- El sistema debe persistir el enfoque elegido en `TrainingPlan.planApproach`.
 - El sistema debe mostrar un estado de generación mientras se procesa el plan.
-- El sistema debe comunicar que está usando objetivo, disponibilidad y experiencia del usuario.
+- El sistema debe comunicar que está usando objetivo, disponibilidad, experiencia y enfoque elegido.
 - El sistema debe generar una planificación inicial asociada al usuario.
+- El sistema debe generar la planificación respetando `TrainingPlan.planApproach`.
 - El sistema debe guardar el plan generado como plan activo del usuario.
+- El sistema debe permitir reevaluar elegibilidad en el futuro para desbloquear enfoques si el usuario progresa, cumple y rinde bien.
 - El sistema debe informar al usuario cuando el plan esté disponible.
 
 ### Resultado esperado
 
-El usuario recibe un plan inicial vinculado a su cuenta y puede continuar hacia la visualización del plan.
+El usuario recibe un plan inicial vinculado a su cuenta, con enfoque explícito y trazabilidad de opciones elegibles/bloqueadas.
 
 ## RF-08 Dashboard del plan activo
 
@@ -276,10 +288,15 @@ El sistema debe proponer un reajuste básico del plan cuando detecte una desviac
 ### Requisitos
 
 - El sistema debe informar al usuario de que el plan puede necesitar un ajuste.
+- El sistema debe generar una propuesta de ajuste cuando detecte una desviación relevante.
 - El sistema debe proponer una adaptación básica y comprensible.
 - El sistema debe evitar recuperar carga perdida de forma agresiva.
 - El sistema debe poder suavizar próximas sesiones si hay exceso de carga, malas sensaciones o molestias.
-- El sistema debe guardar el plan actualizado como referencia activa.
+- Si el usuario aplica el ajuste, el sistema debe crear una nueva versión de `TrainingPlan` basada en el plan anterior.
+- El plan anterior debe quedar preservado/archivado para histórico y comparación.
+- El sistema debe registrar `PlanAdjustment` con: disparador (`trigger`), regla de política aplicada (`policyRule`), resumen del cambio, plan previo y plan nuevo.
+- Tras aplicar el ajuste, solo debe quedar un plan activo para el usuario.
+- El sistema debe permitir que el usuario entienda qué cambió entre el plan previo y el nuevo, sin requerir en MVP el uso simultáneo de ambos planes.
 - El sistema debe mantener el reajuste dentro del alcance definido para el MVP.
 
 ### Resultado esperado
@@ -331,12 +348,14 @@ El MVP estará correctamente cubierto si:
 - Kaito identifica si el usuario necesita onboarding, generación de plan o dashboard.
 - El usuario puede completar un onboarding inicial sin fricción excesiva.
 - Kaito valida que tiene información suficiente antes de generar el plan.
-- Kaito genera un plan inicial asociado al usuario.
+- Kaito recomienda un enfoque de plan, permite elegir entre opciones elegibles y muestra las bloqueadas con motivo.
+- Kaito persiste elegibilidad/bloqueos y enfoque elegido para usarlo en la generación del plan.
+- Kaito genera un plan inicial asociado al usuario y alineado con el enfoque elegido.
 - El usuario puede consultar un dashboard con estado general, KPIs básicos y próximo entrenamiento.
 - El usuario puede abrir un entrenamiento y entender su propósito.
 - El usuario puede registrar cumplimiento y métricas simples.
 - Kaito puede detectar desviaciones relevantes a partir de cumplimiento, tiempo, desnivel, sensaciones y molestias.
-- Kaito puede aplicar un reajuste básico del plan dentro de los límites del MVP.
+- Kaito puede aplicar un reajuste básico dentro de los límites del MVP creando una nueva versión de `TrainingPlan`, preservando la anterior y manteniendo un único plan activo.
 - Kaito comunica sus límites cuando aparecen molestias, dolor o decisiones sensibles.
 - Si ocurre un error, el usuario recibe una explicación clara y una acción posible.
 

@@ -17,7 +17,7 @@ Este usuario no busca únicamente una lista de entrenamientos. Necesita entender
 | Recorrido | Objetivo del usuario | Resultado esperado |
 | --- | --- | --- |
 | Primer acceso | Empezar a usar Kaito desde cero | El usuario entiende qué hace la aplicación e inicia el onboarding |
-| Onboarding | Compartir contexto deportivo y disponibilidad | Kaito recopila la información necesaria para generar un plan inicial |
+| Onboarding | Compartir contexto deportivo y elegir enfoque del plan | Kaito recopila la información necesaria, recomienda un enfoque y permite elegir entre opciones elegibles |
 | Generación del plan | Obtener una planificación personalizada | El usuario recibe un plan inicial asociado a su objetivo |
 | Consulta del dashboard | Entender el estado actual de su preparación | El usuario ve KPIs, calendario semanal y próximos entrenamientos |
 | Detalle del entrenamiento | Comprender qué debe hacer y por qué | El usuario revisa la sesión y su propósito dentro del plan |
@@ -63,11 +63,20 @@ El usuario necesita introducir su información sin sentirse abrumado y entender 
 4. El usuario informa sobre su nivel, volumen actual y antecedentes relevantes.
 5. Kaito pregunta por la disponibilidad semanal.
 6. El usuario define días disponibles, restricciones y preferencias básicas.
-7. Kaito confirma que tiene suficiente información para generar el plan inicial.
+7. Kaito evalúa elegibilidad de enfoques y muestra tarjetas visuales de Camino Kaio, Modo Z y Kaioken.
+8. Kaito recomienda un enfoque según el perfil del corredor.
+9. El usuario elige entre los enfoques elegibles; los bloqueados se muestran con motivo.
+10. Kaito confirma que tiene suficiente información (incluido enfoque elegido) para generar el plan inicial.
 
 ### Resultado esperado
 
-Kaito dispone de una base mínima para crear un plan inicial coherente con el objetivo y la realidad del usuario.
+Kaito dispone de una base mínima para crear un plan inicial coherente con el objetivo y la realidad del usuario, con enfoque explícito seleccionado.
+
+### Reglas visibles de elegibilidad
+
+- `kaioken` solo aparece elegible cuando el corredor demuestra preparación alta (p. ej., historial sólido y base actual fuerte).
+- Si el usuario viene de un parón, casi sin kilometraje o con base insuficiente para su objetivo, solo queda disponible Camino Kaio.
+- Los enfoques bloqueados no se ocultan: se muestran con explicación y pueden desbloquearse más adelante si el corredor progresa y cumple bien.
 
 ### Riesgos a evitar
 
@@ -88,7 +97,7 @@ El usuario necesita confianza durante la espera y una transición clara hacia el
 ### Recorrido principal
 
 1. Kaito muestra un estado de generación del plan.
-2. La aplicación comunica que está combinando objetivo, disponibilidad y nivel actual.
+2. La aplicación comunica que está combinando objetivo, disponibilidad, nivel actual y enfoque elegido.
 3. Kaito genera el plan inicial.
 4. El usuario accede al dashboard con el plan activo.
 
@@ -208,6 +217,7 @@ Los journeys estarán correctamente cubiertos si el MVP permite demostrar que:
 
 - El usuario puede iniciar Kaito y comprender su propuesta de valor.
 - El usuario puede completar un onboarding inicial sin fricción excesiva.
+- Kaito recomienda un enfoque (Camino Kaio, Modo Z o Kaioken), permite elegir entre los elegibles y muestra los bloqueados con motivo.
 - Kaito puede generar un plan inicial a partir del contexto del usuario.
 - El usuario puede consultar el estado del plan desde un dashboard.
 - El usuario puede entender el propósito de cada entrenamiento.
