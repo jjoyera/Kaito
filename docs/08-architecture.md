@@ -1,0 +1,360 @@
+# Arquitectura técnica de Kaito (MVP)
+
+## 1) Propósito
+
+Este documento define la arquitectura técnica objetivo del MVP de Kaito para implementación futura, con decisiones defendibles para revisión arquitectónica del TFM.
+
+Se centra en **cómo se organiza el sistema** (fronteras, responsabilidades, flujos, seguridad, datos, IA y operación) sin crear todavía scaffolding, código ni tareas de implementación.
+
+---
+
+## 2) Resumen de decisiones arquitectónicas
+
+| Decisión | Se adopta | Motivo |
+|---|---|---|
+| Forma del repositorio | Monorepo modular | Mantener cohesión del producto y separar responsabilidades por aplicación/módulo sin sobrecoste de microservicios. |
+| Aplicaciones | `apps/web` (Next.js) + `apps/api` (FastAPI) | Separar UX/web de casos de uso de negocio y motor de planificación IA. |
+| Estilo backend | Monolito modular por dominios + Clean/Hexagonal pragmático por módulo | Aplicar puertos/adaptadores donde la complejidad lo justifique, evitando sobreingeniería homogénea. |
+| Estilo frontend | Modular por features | Escalar UX y estado por capacidades de producto sin forzar Clean Architecture literal en UI. |
+| Microservicios | No (MVP) | Reducir complejidad operativa y de despliegue en etapa inicial. |
+| Base de datos | PostgreSQL gestionado por Supabase | Robustez relacional para planes/versionado y operación simplificada para TFM. |
+| Auth | Supabase Auth | Registro/login/sesión resueltos con proveedor gestionado y JWT estándar. |
+| Contrato de validación | Zod en frontend + Pydantic en backend | Validación temprana de UX y validación autoritativa en frontera API. |
+| Persistencia backend | SQLAlchemy + Alembic | Modelo ORM explícito y migraciones trazables para evolución del esquema. |
+| Núcleo IA | FastAPI (`apps/api`) | El backend controla contexto, reglas, validaciones y ownership de casos de uso de Kaito. |
+| Observabilidad IA | Langfuse | Trazabilidad de prompts, respuestas, costes y calidad de ejecución IA. |
+| Error monitoring | Sentry | Detección temprana y diagnóstico en frontend/backend. |
+
+---
+
+## 3) Forma del sistema (diagrama de alto nivel en texto)
+
+```text
+Usuario
+  │
+  ▼
+apps/web (Next.js)
+  - UI/UX, onboarding, dashboard, calendario, logs
+  - Validación de formularios con Zod
+  - Gestión de sesión con Supabase Auth (SDK cliente)
+  │
+  │ HTTPS + JWT (Supabase)
+  ▼
+apps/api (FastAPI)
+  - Validación JWT / identidad de usuario
+  - Casos de uso de Kaito (onboarding, elegibilidad, generación, reajuste, KPIs)
+  - Motor IA con contexto controlado y guardrails
+  - Persistencia con SQLAlchemy
+  │
+  ├──────────────► Supabase Auth (verificación de identidad)
+  │
+  └──────────────► Supabase PostgreSQL (datos de dominio)
+
+Observabilidad transversal:
+- Sentry (web + api)
+- Langfuse (pipeline IA)
+```
+
+---
+
+## 4) Layout conceptual del monorepo (no creado todavía)
+
+```text
+/
+├── apps/
+│   ├── web/                         # Next.js
+│   │   ├── app/                     # App Router
+│   │   │   ├── (auth)/
+│   │   │   ├── onboarding/
+│   │   │   ├── dashboard/
+│   │   │   └── training/
+│   │   ├── features/                # Funcionalidades de frontend
+│   │   │   ├── auth/
+│   │   │   ├── onboarding/
+│   │   │   ├── training-plan/
+│   │   │   ├── training-log/
+│   │   │   └── dashboard/
+│   │   ├── components/
+│   │   ├── lib/
+│   │   └── tests/
+│   │
+│   └── api/                         # FastAPI
+│       ├── app/
+│       │   ├── main.py
+│       │   ├── core/                # Configuración, seguridad, logging, DB
+│       │   ├── modules/
+│       │   │   ├── auth/            # Identidad y autenticación
+│       │   │   ├── runner_profile/  # Perfil deportivo del corredor
+│       │   │   ├── planning/        # Elegibilidad, generación, sesiones y reajuste/versionado
+│       │   │   ├── training_log/    # Registro real de entrenamientos
+│       │   │   ├── insights/        # KPIs, cumplimiento y cálculos de progreso
+│       │   │   └── ai_coach/        # Adaptadores IA, prompts, generación estructurada y validación
+│       │   └── shared/              # Código común muy controlado
+│       ├── tests/
+│       └── alembic/
+├── packages/
+│   └── api-client/                  # Cliente generado desde OpenAPI
+├── docs/                            # Documentación del TFM
+├── openspec/                        # Artefactos SDD / especificaciones de cambios
+├── docker/                          # Infraestructura local
+└── .github/                         # CI/CD y automatización
+```
+
+Principio: separar por **frontera de aplicación** primero (`web` vs `api`) y por **módulo funcional** dentro de cada app.
+
+---
+
+## 5) Arquitectura frontend (`apps/web`)
+
+### Responsabilidad
+
+`apps/web` resuelve experiencia de usuario: registro/login, onboarding, dashboard, detalle de sesión, carga de logs y visualización de KPIs.
+
+### Enfoque estructural
+
+- Modular por features (ejemplo conceptual: `auth`, `onboarding`, `plan`, `dashboard`, `training-log`).
+- Componentes/páginas orientados a flujo de producto, no a capas Clean rígidas.
+- Validación de entrada en cliente con Zod para feedback inmediato y reducción de errores de UX.
+
+### Reglas clave
+
+- El frontend **no decide reglas de negocio críticas** (elegibilidad final, reajustes, versionado, invariantes).
+- El frontend consume contratos API versionados y muestra estados de carga/error claros.
+- La sesión del usuario se apoya en Supabase Auth; el frontend transmite token JWT al backend para operaciones de dominio.
+
+---
+
+## 6) Arquitectura backend (`apps/api`): módulos y capas Clean/Hexagonal pragmáticas
+
+### Responsabilidad
+
+`apps/api` es dueño de los casos de uso de Kaito y de las reglas de dominio del MVP.
+
+### Modularidad por dominios (conceptual)
+
+- `auth`: validación de identidad y contexto de usuario.
+- `runner_profile`: onboarding y estado inicial del corredor.
+- `planning`: casos de uso de elegibilidad, generación inicial, sesiones y reajuste/versionado.
+- `training_log`: registro de cumplimiento y métricas simples.
+- `insights`: cálculo de KPIs, cumplimiento y progreso para dashboard.
+- `ai_coach`: adaptadores IA, prompts, generación estructurada y soporte de validación.
+
+### Capas (aplicar donde haya complejidad)
+
+En módulos con lógica crítica se recomienda:
+
+- **Domain**: entidades/reglas/invariantes (p. ej., un solo plan activo, reglas de versionado).
+- **Application**: casos de uso (generate plan, apply adjustment, calculate KPIs).
+- **Ports**: interfaces para repositorios, proveedores IA, trazas, reloj, etc.
+- **Adapters**: FastAPI controllers, SQLAlchemy repositories, cliente Langfuse, cliente Supabase.
+
+En módulos simples/CRUD, se permite simplificación sin imponer todas las capas, manteniendo invariantes y testabilidad.
+
+---
+
+## 7) Arquitectura de datos y persistencia
+
+### Base de datos
+
+- PostgreSQL gestionado por Supabase.
+- Modelo de datos alineado con `docs/05-data-model.md`.
+
+### Acceso y evolución de esquema
+
+- SQLAlchemy como capa ORM/repositorio en backend.
+- Alembic para migraciones versionadas y reproducibles.
+
+### Invariantes de persistencia (MVP)
+
+- Un único `TrainingPlan` activo por usuario.
+- Reajuste mediante versionado (`previousPlanId`, `version`, archivo del plan anterior).
+- Trazabilidad de ajuste (`PlanAdjustment`) y de edición de logs (`TrainingLogHistory`).
+
+---
+
+## 8) Arquitectura de autenticación/sesión (Supabase + FastAPI)
+
+### Flujo de autenticación
+
+1. Usuario se registra/inicia sesión desde `apps/web` usando Supabase Auth.
+2. Supabase emite JWT de sesión.
+3. `apps/web` envía JWT al backend en cada request de negocio.
+4. `apps/api` valida firma/claims del JWT y construye contexto de identidad.
+5. Solo tras validar identidad se ejecutan casos de uso de Kaito.
+
+### Principios de seguridad de identidad
+
+- `apps/api` nunca confía en `userId` enviado por el cliente sin JWT válido.
+- Aislamiento de datos por usuario en cada consulta/comando.
+- Frontend gestiona UX de sesión; backend conserva autoridad sobre acceso a recursos de dominio.
+
+---
+
+## 9) Arquitectura de IA: generación, validación, conocimiento y trazabilidad
+
+### Ubicación del núcleo IA
+
+El motor de planificación IA reside en `apps/api` para controlar:
+
+- contexto permitido,
+- reglas de negocio,
+- validación estructural,
+- guardrails de seguridad,
+- persistencia transaccional del resultado.
+
+### Contexto controlado y fuentes
+
+La IA solo usa contexto trazable del dominio MVP y reglas de:
+
+- `docs/06-ai-behavior.md`
+- `docs/07-training-knowledge.md`
+- entidades del modelo (`RunnerProfile`, `TrainingGoal`, `TrainingPlan`, `TrainingSession`, `TrainingLog`, etc.).
+
+### Structured outputs y guardrails
+
+- Respuesta IA en formato estructurado (schema definido por backend).
+- Validación de estructura y coherencia (Pydantic) antes de persistir.
+- Validadores programáticos adicionales (p. ej., no catch-up agresivo, consistencia modal, límites de seguridad).
+- Si falla validación, la salida se rechaza/regenera; no se publica al usuario.
+
+### Observabilidad IA
+
+- Langfuse para trazas de prompts, respuestas, latencia, coste y calidad operativa.
+
+---
+
+## 10) Flujos principales de arquitectura
+
+### 10.1 Registro / login
+
+1. `web` ejecuta registro/login con Supabase Auth.
+2. Supabase devuelve sesión/JWT.
+3. `web` consume API de `apps/api` con JWT.
+4. `api` valida JWT y resuelve estado funcional inicial (onboarding, generar plan o dashboard).
+
+### 10.2 Onboarding + elegibilidad de enfoque
+
+1. `web` recoge onboarding y valida formato con Zod.
+2. `api` revalida contrato e invariantes con Pydantic.
+3. Caso de uso de `planning` (subflujo `plan-eligibility`) calcula `PlanApproachEligibility`.
+4. `api` devuelve opciones elegibles/bloqueadas + motivo.
+
+### 10.3 Generación de plan
+
+1. `api` toma contexto validado (`RunnerProfile`, `TrainingGoal`, elegibilidad, enfoque elegido).
+2. Construye prompt/control de contexto según `06` + `07`.
+3. Ejecuta llamada IA con salida estructurada.
+4. Ejecuta validadores de seguridad y coherencia modal.
+5. Persiste `TrainingPlan` + `TrainingSession` como plan activo.
+
+### 10.4 Registro de entrenamiento + KPIs
+
+1. Usuario registra `TrainingLog` en `web`.
+2. `api` valida y persiste log/histórico.
+3. `api` recalcula KPIs del dashboard:
+   - `completedKm = SUM(actualDistanceKm)`.
+   - `sessionLoad = actualDurationMin × rpe`.
+   - `weeklyLoad = SUM(sessionLoad)` por semana.
+4. `web` refresca estado de progreso.
+
+### 10.5 Reajuste y versionado de plan
+
+1. `api` detecta desvío relevante según política.
+2. Si aplica, genera propuesta de ajuste con IA bajo guardrails.
+3. Ejecuta pipeline de versionado copy-on-write:
+   - archiva plan actual,
+   - crea nueva versión,
+   - vincula `previousPlanId`,
+   - registra `PlanAdjustment`.
+4. Garantiza invariante: solo un plan activo por usuario.
+
+---
+
+## 11) Estrategia de testing
+
+### Backend (`apps/api`)
+
+- `pytest` para unit e integración.
+- Pruebas de dominio/casos de uso: elegibilidad, generación segura, reajuste/versionado, invariantes de plan activo único.
+- Pruebas de contrato API y validaciones Pydantic.
+
+### Frontend (`apps/web`)
+
+- Pruebas de UI/flujo y validaciones de formularios (Zod + capa de presentación).
+- E2E con Playwright sobre flujos críticos (registro/login, onboarding, generación, log, ajuste).
+
+### IA
+
+- Tests de pipeline y validadores (esquema estructurado + guardrails).
+- Casos de regresión de prompts/outputs para evitar deriva funcional.
+
+---
+
+## 12) Observabilidad y monitorización
+
+- **Sentry**: errores, excepciones y degradación funcional en frontend y backend.
+- **Langfuse**: observabilidad específica de IA (prompts, outputs, latencia, coste, calidad).
+- Métricas técnicas mínimas: disponibilidad API, tiempos de respuesta, ratio de error, ratio de validación fallida IA.
+
+---
+
+## 13) CI/CD y controles de seguridad (OWASP)
+
+### Pipeline (GitHub Actions)
+
+En cada cambio relevante:
+
+1. Lint/format/check estático.
+2. Tests automatizados (backend, frontend, E2E críticos según rama/entorno).
+3. Checks de seguridad (dependencias, secrets, configuración).
+4. Validaciones de cabeceras de seguridad equivalentes a Helmet en capa web/API (CSP, HSTS, X-Content-Type-Options, etc. según despliegue).
+
+### Controles esperados
+
+- Enfoque OWASP en CI/CD (SAST/dependency checks, hardening base, validación de configuración).
+- Principio de mínimo privilegio para secretos y credenciales.
+- Auditoría de accesos y errores sensibles.
+
+---
+
+## 14) Entorno local y despliegue (conceptual con Docker)
+
+- Docker como estrategia de estandarización de entorno para `web`, `api` y servicios necesarios.
+- Objetivo: paridad razonable local/CI/entornos de despliegue.
+- No define todavía `Dockerfile`/compose concretos en esta fase documental.
+
+---
+
+## 15) Evolución futura (fuera de implementación MVP inmediata)
+
+Ejes previstos de crecimiento, sin adoptar ahora en runtime MVP:
+
+1. **RAG** para ampliar conocimiento especializado con fuentes curadas.
+2. **Integración Strava** para ingestión automática de actividad.
+3. **Workers/colas** para tareas asíncronas (ajustes pesados, re-procesados, jobs periódicos).
+4. **Métricas avanzadas** (más allá de sRPE y KPIs básicos MVP).
+
+Estas extensiones deben respetar las invariantes actuales y no romper la trazabilidad del plan/versionado.
+
+---
+
+## 16) No-objetivos explícitos de la fase actual
+
+- No crear microservicios.
+- No crear scaffolding, carpetas de app ni código de implementación.
+- No definir integración completa con Strava en MVP.
+- No introducir RAG operativo en MVP.
+- No introducir workers en MVP.
+- No ampliar alcance a diagnóstico médico ni lógica clínica avanzada.
+
+---
+
+## 17) Referencias
+
+- [`00-product-vision.md`](./00-product-vision.md)
+- [`04-functional-requirements.md`](./04-functional-requirements.md)
+- [`05-data-model.md`](./05-data-model.md)
+- [`06-ai-behavior.md`](./06-ai-behavior.md)
+- [`07-training-knowledge.md`](./07-training-knowledge.md)
+- [`openspec/changes/architecture-foundation/proposal.md`](../openspec/changes/architecture-foundation/proposal.md)
+- [`openspec/changes/architecture-foundation/exploration.md`](../openspec/changes/architecture-foundation/exploration.md)

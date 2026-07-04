@@ -10,7 +10,7 @@ Su objetivo es alinear producto, journeys y requisitos funcionales sobre **qué 
 
 ### Incluye
 
-- Datos de autenticación y propiedad del usuario.
+- Datos de identidad (vinculada a Auth) y propiedad del usuario.
 - Perfil del corredor y contexto de onboarding.
 - Objetivo principal de entrenamiento.
 - Plan activo y sus sesiones planificadas.
@@ -21,7 +21,7 @@ Su objetivo es alinear producto, journeys y requisitos funcionales sobre **qué 
 
 | Entidad | Propósito | Cardinalidad clave |
 | --- | --- | --- |
-| `User` | Identidad/autenticación y dueño de los datos | 1 usuario → 1 perfil, N planes |
+| `User` | Registro interno de usuario/perfil dueño de los datos (vinculado a Auth) | 1 usuario → 1 perfil, N planes |
 | `RunnerProfile` | Contexto base del corredor (onboarding) | 1:1 con `User` |
 | `TrainingGoal` | Objetivo deportivo principal para un plan | 1 plan activo → 1 objetivo principal |
 | `TrainingPlan` | Planificación generada/reajustada | N planes por usuario, solo 1 activo |
@@ -36,13 +36,13 @@ Su objetivo es alinear producto, journeys y requisitos funcionales sobre **qué 
 
 ### `User`
 
-- **Propósito**: autenticación (email/password) y frontera de propiedad de datos.
-- **Campos clave**: `id`, `email` (único), `passwordHash`, `createdAt`, `updatedAt`.
+- **Propósito**: registro interno de propiedad de datos del usuario en Kaito, vinculado a la identidad autenticada.
+- **Campos clave**: `id`, `supabaseUserId` (o `authProviderUserId`, único), `email`, `createdAt`, `updatedAt`.
 - **Relaciones**:
   - 1:1 con `RunnerProfile`.
   - 1:N con `TrainingPlan`.
   - 1:N con `TrainingLog` (ownership explícito para auditoría simple).
-- **Notas**: el estado inicial (onboarding pendiente / generar plan / dashboard) se deriva de perfil + plan activo.
+- **Notas**: las credenciales (password/sesión) las gestiona Supabase Auth, no las tablas de dominio de Kaito. El estado inicial (onboarding pendiente / generar plan / dashboard) se deriva de perfil + plan activo.
 
 ### `RunnerProfile`
 
