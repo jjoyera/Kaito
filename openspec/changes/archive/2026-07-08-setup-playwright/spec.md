@@ -60,7 +60,7 @@ The test SHALL:
 - Navigate to the homepage route (`/`).
 - Assert the page loads successfully.
 - Assert the stable scaffold text is rendered (the homepage heading
-  "Project scaffold is running").
+  "Project scaffold is running.").
 
 The suite SHALL remain limited to this single smoke spec. It SHALL NOT add
 product-flow coverage, protected-route coverage, multi-page navigation suites, or

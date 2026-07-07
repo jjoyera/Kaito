@@ -89,8 +89,8 @@ is deterministic; the build already exists from step 6, so `next start` is cheap
 Locally, `pnpm dev` + `reuseExistingServer` gives fast iteration and satisfies the
 spec requirement to "reuse an already running server locally when available".
 
-**Supporting change:** add `"start": "next start"` to `apps/web/package.json`
-(currently absent; required for the CI `webServer` command).
+**Supporting change:** ensure `apps/web/package.json` exposes the existing
+`"start": "next start"` script required for the CI `webServer` command.
 
 ### D3 — Scripts and naming
 
