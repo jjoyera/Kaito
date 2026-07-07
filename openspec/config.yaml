@@ -1,0 +1,72 @@
+project:
+  name: kaito
+  language: mixed
+  artifact_store: both
+  working_branch: feature/project-scaffolding
+  documentation_language: es
+  technical_artifact_language: en
+  summary: >-
+    Kaito is an AI coach web application for ultradistance runners. It uses
+    onboarding, training knowledge, Strava-derived activity data, and adaptive
+    plan recalculation to support trail, backyard ultra, and OCR goals.
+
+sdd:
+  mode: interactive
+  strict_tdd: false
+  strict_tdd_reason: >-
+    No application source, package manifest, CI configuration, or test runner is
+    present yet. TDD must become mandatory for implementation changes after the
+    scaffolding change introduces concrete runners.
+  artifact_store: both
+  chained_pr_strategy: ask-always
+  review_budget_changed_lines: 600
+  phase_rules:
+    init:
+      allowed_outputs:
+        - openspec project context/config
+        - change skeleton and artifact references
+      disallowed_outputs:
+        - implementation scaffolding
+        - proposal/spec/design/tasks/apply execution
+    proposal:
+      requires_user_approval: true
+    spec:
+      requires_approved_proposal: true
+    design:
+      requires_approved_proposal: true
+    tasks:
+      requires_approved_design_or_spec: true
+    apply:
+      requires_approved_tasks: true
+      requires_tests_when_runner_exists: true
+
+testing:
+  status: not_configured
+  detected_runners: []
+  commands: []
+  notes: >-
+    Repository currently contains product/architecture documentation only. The
+    next implementation-oriented change should define JavaScript/TypeScript and
+    Python test runners for the planned Next.js + FastAPI monorepo.
+
+architecture:
+  planned_repo_shape: monorepo
+  planned_apps:
+    web: Next.js
+    api: FastAPI
+  planned_database: Supabase PostgreSQL
+  planned_auth: Supabase Auth
+  planned_backend_persistence: SQLAlchemy + Alembic
+  source_docs:
+    - README.md
+    - docs/00-product-vision.md
+    - docs/04-functional-requirements.md
+    - docs/05-data-model.md
+    - docs/06-ai-behavior.md
+    - docs/08-architecture.md
+
+conventions:
+  branches: english-lowercase-hyphenated
+  commits: conventional-commits-in-english
+  docs: >-
+    Spanish TFM docs; English technical artifacts unless extending Spanish docs

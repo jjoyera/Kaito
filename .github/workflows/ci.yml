@@ -1,0 +1,83 @@
+---
+name: CI
+
+permissions:
+  contents: read
+
+"on":
+  pull_request:
+  push:
+    branches:
+      - main
+      - feature/project-scaffolding
+
+jobs:
+  web:
+    name: Web scaffold validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@b906affcce14559ad1aafd4ab0e942779e9f58b1
+        with:
+          node-version: "24.18"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          version: "11.0.0"
+          run_install: false
+
+      - name: Install web dependencies
+        run: pnpm install
+
+      - name: Lint web scaffold
+        run: pnpm lint:web
+
+      - name: Build web scaffold
+        run: pnpm build:web
+
+      - name: Smoke-test web scaffold
+        run: pnpm smoke:web
+
+  api:
+    name: API scaffold validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
+
+      - name: Install API dependencies
+        working-directory: apps/api
+        run: uv sync --frozen
+
+      - name: Lint API scaffold
+        working-directory: apps/api
+        run: uv run ruff check .
+
+      - name: Smoke-load FastAPI app
+        working-directory: apps/api
+        run: uv run python -c "from app.main import app; print(app.title)"
+
+      - name: Validate health contract
+        working-directory: apps/api
+        run: >-
+          uv run python -c "from fastapi.testclient import TestClient;
+          from app.main import app;
+          response = TestClient(app).get('/health');
+          assert response.status_code == 200;
+          assert response.json() == {'status': 'ok'}"

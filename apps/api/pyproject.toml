@@ -1,0 +1,16 @@
+[project]
+name = "kaito-api"
+version = "0.0.0"
+description = "Minimal FastAPI boundary for the Kaito scaffold."
+requires-python = ">=3.12"
+dependencies = ["fastapi==0.115.6", "uvicorn[standard]==0.34.0"]
+
+[dependency-groups]
+dev = ["httpx==0.28.1", "ruff==0.8.4"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
