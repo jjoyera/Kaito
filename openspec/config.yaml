@@ -45,21 +45,19 @@ testing:
   detected_runners:
     - eslint
     - next build
-    - Node.js test runner
-    - web smoke script
+    - Playwright E2E (Chromium smoke)
     - ruff
     - FastAPI TestClient smoke check
   commands:
     - pnpm lint:web
     - pnpm build:web
-    - pnpm test:web-smoke-script
-    - pnpm smoke:web
+    - pnpm test:web-e2e
     - cd apps/api && uv run ruff check .
     - cd apps/api && uv run python -c "from app.main import app"
   notes: >-
-    The repository now contains scaffolded web/API apps and CI validation. The
-    next implementation-oriented change should define JavaScript/TypeScript and
-    Python test runners for the planned Next.js + FastAPI monorepo.
+    Web browser-smoke validation now runs through Playwright (Chromium) in both
+    local workflows and PR CI. Backend/API E2E and real auth-flow
+    coverage remain deferred until frontend/backend integration matures.
 
 architecture:
   planned_repo_shape: monorepo

@@ -40,11 +40,11 @@ jobs:
       - name: Build web scaffold
         run: pnpm build:web
 
-      - name: Test web smoke script lifecycle
-        run: pnpm test:web-smoke-script
+      - name: Install Playwright Chromium
+        run: pnpm --filter web exec playwright install --with-deps chromium
 
-      - name: Smoke-test web scaffold
-        run: pnpm smoke:web
+      - name: Run Playwright web smoke check
+        run: pnpm test:web-e2e
 
   api:
     name: API scaffold validation
