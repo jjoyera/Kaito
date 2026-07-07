@@ -1,31 +1,33 @@
 # Project Context — Kaito
 
-Kaito is currently a documentation-first repository for an AI coach web
-application focused on ultradistance running.
+Kaito is an AI coach web application for ultradistance runners, backed by a
+modular monorepo architecture.
 
 ## Current state
 
-- No application source code, package manifest, CI workflow, or test runner is
-  present yet.
-- Product and TFM documentation is primarily in Spanish under `docs/`.
-- Technical SDD/OpenSpec artifacts should be written in English unless they
-  extend existing Spanish documentation.
-- The target architecture documented in `docs/08-architecture.md` is a modular
-  monorepo with `apps/web` (Next.js) and `apps/api` (FastAPI).
+- Repository now includes implementation scaffolding:
+  - `apps/web`: Next.js 16 + React 19 + TypeScript.
+  - `apps/api`: FastAPI + Python 3.12 with `uv` and `ruff`.
+- Root workspace tooling uses `pnpm` workspaces for web-related scripts.
+- CI exists at `.github/workflows/ci.yml` with scaffold validation for web and
+  API.
+- Product and TFM documentation remains primarily in Spanish under `docs/`.
+- Technical SDD/OpenSpec artifacts should be written in English unless extending
+  existing Spanish documentation.
 
 ## SDD preferences
 
 - Execution mode: interactive.
 - Artifact store: both OpenSpec files and Engram memory.
 - Chained PR strategy: ask always.
-- Review budget: 400 changed lines.
-- Strict TDD: disabled only until the scaffolding change introduces concrete
-  test runners.
+- Session review budget (current preflight): 400 changed lines.
+- Strict TDD: currently disabled at config level (`strict_tdd: false`), but test
+  validation hooks already exist and future implementation changes should tighten
+  runner-backed test requirements.
 
-## Change initialized
+## OpenSpec state
 
-- Change name: `initial-project-scaffolding`.
-- Goal: define initial monorepo project scaffolding, including README-as-living
-  document requirements.
-- This init phase does not implement scaffolding and does not create proposal,
-  spec, design, or tasks content.
+- Archived change exists: `2026-07-07-initial-project-scaffolding`.
+- Active specs directory exists at `openspec/specs/`.
+- New change skeleton initialization is expected to happen under
+  `openspec/changes/<change-name>/`.

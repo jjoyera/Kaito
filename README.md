@@ -52,11 +52,21 @@ pnpm dev:web
 
 La app web queda disponible en `http://localhost:3000`.
 
-Valida de forma determinista que la home web arranca y muestra el texto esperado:
+Instala una vez el binario Chromium para los tests de navegador:
 
 ```bash
-pnpm smoke:web
+pnpm --filter web exec playwright install chromium
 ```
+
+Valida de forma determinista que la home web arranca y muestra el texto esperado
+mediante Playwright:
+
+```bash
+pnpm test:web-e2e
+```
+
+Este smoke check de Playwright (Chromium) también se ejecuta en CI para pull
+requests.
 
 Ejecuta la API desde `apps/api`:
 
@@ -104,13 +114,14 @@ openspec/              Artefactos SDD/OpenSpec.
 
 - Página web mínima que confirma que el scaffold frontend está funcionando.
 - API FastAPI con `GET /health` que devuelve `{"status":"ok"}`.
-- Validación básica: lint/build/smoke test de web, test del script de smoke y
-  lint/smoke-load de API.
+- Validación básica: lint/build de web, smoke browser con Playwright (Chromium)
+  y lint/smoke-load de API.
 - Paquete `@kaito/api-client` reservado para un futuro cliente generado; hoy no
   exporta código ni contratos de producto.
 
 No hay Supabase, base de datos/PostgreSQL, SQLAlchemy/Alembic, autenticación,
-Strava, IA/RAG, onboarding, planes de entrenamiento ni despliegue/CD.
+Strava, IA/RAG, onboarding, planes de entrenamiento ni despliegue/CD. También
+siguen fuera de alcance los E2E backend/API y los flujos de autenticación real.
 
 ## Regla de actualización
 
