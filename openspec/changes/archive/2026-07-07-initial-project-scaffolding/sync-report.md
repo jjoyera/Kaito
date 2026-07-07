@@ -10,23 +10,23 @@ The file-backed OpenSpec sync completed successfully for change `initial-project
 
 - Change: `initial-project-scaffolding`.
 - Artifact store: `both`; OpenSpec disk is authoritative and Engram persistence is supplemental.
-- Planning home: `/home/jjdelarubia/Workspace/BIGschool/Kaito`.
-- Change root: `openspec/changes/initial-project-scaffolding`.
+- Planning home: `<repo-root>`.
+- Change root: `openspec/changes/archive/2026-07-07-initial-project-scaffolding`.
 - Native status consumed: `applyState: all_done`; `taskProgress: 76/76 complete`; `dependencies.sync: ready`.
 - Verification dependency: ready; `verify-report.md` exists and reports PASS with no unresolved `FAIL`, `BLOCKED`, `CRITICAL`, or verification blockers.
 - Action context mode: `repo-local`.
-- Allowed edit roots: `/home/jjdelarubia/Workspace/BIGschool/Kaito`.
+- Allowed edit roots: `<repo-root>`.
 - Canonical spec path updated inside the authoritative workspace and allowed edit root.
 - User/orchestrator approval: user explicitly approved only `sdd-sync` after verify PASS.
 
 ## Inputs read
 
-- `openspec/changes/initial-project-scaffolding/proposal.md`
-- `openspec/changes/initial-project-scaffolding/specs/project-scaffolding/spec.md`
-- `openspec/changes/initial-project-scaffolding/design.md`
-- `openspec/changes/initial-project-scaffolding/tasks.md`
-- `openspec/changes/initial-project-scaffolding/apply-progress.md`
-- `openspec/changes/initial-project-scaffolding/verify-report.md`
+- `openspec/changes/archive/2026-07-07-initial-project-scaffolding/proposal.md`
+- `openspec/changes/archive/2026-07-07-initial-project-scaffolding/specs/project-scaffolding/spec.md`
+- `openspec/changes/archive/2026-07-07-initial-project-scaffolding/design.md`
+- `openspec/changes/archive/2026-07-07-initial-project-scaffolding/tasks.md`
+- `openspec/changes/archive/2026-07-07-initial-project-scaffolding/apply-progress.md`
+- `openspec/changes/archive/2026-07-07-initial-project-scaffolding/verify-report.md`
 - `openspec/config.yaml`
 
 ## Domains synced
@@ -73,7 +73,7 @@ Because this was the first canonical spec for the domain, the following requirem
 
 None found. The only active file-backed change spec for `project-scaffolding` is:
 
-- `openspec/changes/initial-project-scaffolding/specs/project-scaffolding/spec.md`
+- `openspec/changes/archive/2026-07-07-initial-project-scaffolding/specs/project-scaffolding/spec.md`
 
 ## Destructive sync approvals or blockers
 
@@ -87,7 +87,7 @@ None found. The only active file-backed change spec for `project-scaffolding` is
 - `verify-report.md` exists: yes.
 - Verify status clearly passing: yes (`PASS — verification completed successfully`).
 - Unresolved `FAIL`, `BLOCKED`, or `CRITICAL` markers in verify report: none found.
-- Legacy flat `openspec/changes/initial-project-scaffolding/spec.md`: absent.
+- Legacy flat `openspec/changes/archive/2026-07-07-initial-project-scaffolding/spec.md`: absent.
 - Domain specs directory present: yes.
 - Canonical spec path within allowed edit root: yes.
 - Archive movement performed: no.
@@ -95,9 +95,9 @@ None found. The only active file-backed change spec for `project-scaffolding` is
 ## Validation commands/checks performed
 
 ```bash
-test -e openspec/changes/initial-project-scaffolding/spec.md && echo legacy-flat-present || echo no-legacy-flat
-test -d openspec/changes/initial-project-scaffolding/specs && echo domain-specs-present || echo no-domain-specs
-grep -n '^### Requirement:' openspec/changes/initial-project-scaffolding/specs/project-scaffolding/spec.md
+test -e openspec/changes/archive/2026-07-07-initial-project-scaffolding/spec.md && echo legacy-flat-present || echo no-legacy-flat
+test -d openspec/changes/archive/2026-07-07-initial-project-scaffolding/specs && echo domain-specs-present || echo no-domain-specs
+grep -n '^### Requirement:' openspec/changes/archive/2026-07-07-initial-project-scaffolding/specs/project-scaffolding/spec.md
 ```
 
 Result: no legacy flat spec; domain specs present; nine requirements found.
@@ -105,7 +105,7 @@ Result: no legacy flat spec; domain specs present; nine requirements found.
 ```bash
 python - <<'PY'
 from pathlib import Path
-s = Path('openspec/changes/initial-project-scaffolding/verify-report.md').read_text()
+s = Path('openspec/changes/archive/2026-07-07-initial-project-scaffolding/verify-report.md').read_text()
 print('PASS marker:', 'PASS' in s[:200])
 for term in ['FAIL', 'BLOCKED', 'CRITICAL']:
     print(term, term in s)
@@ -119,12 +119,12 @@ Result: PASS marker present; no `FAIL`, `BLOCKED`, or `CRITICAL`; blockers repor
 find openspec/changes -maxdepth 4 -path '*/specs/*/spec.md' -print | sort
 ```
 
-Result: only `openspec/changes/initial-project-scaffolding/specs/project-scaffolding/spec.md` was found.
+Result: only `openspec/changes/archive/2026-07-07-initial-project-scaffolding/specs/project-scaffolding/spec.md` was found.
 
 ```bash
 mkdir -p openspec/specs/project-scaffolding
-cp openspec/changes/initial-project-scaffolding/specs/project-scaffolding/spec.md openspec/specs/project-scaffolding/spec.md
-cmp -s openspec/changes/initial-project-scaffolding/specs/project-scaffolding/spec.md openspec/specs/project-scaffolding/spec.md && echo 'canonical copy verified'
+cp openspec/changes/archive/2026-07-07-initial-project-scaffolding/specs/project-scaffolding/spec.md openspec/specs/project-scaffolding/spec.md
+cmp -s openspec/changes/archive/2026-07-07-initial-project-scaffolding/specs/project-scaffolding/spec.md openspec/specs/project-scaffolding/spec.md && echo 'canonical copy verified'
 ```
 
 Result: canonical copy verified.

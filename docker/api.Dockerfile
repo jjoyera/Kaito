@@ -3,7 +3,7 @@ FROM python:3.12-slim
 WORKDIR /workspace/apps/api
 
 COPY apps/api/pyproject.toml apps/api/uv.lock ./
-RUN pip install --no-cache-dir uv && uv sync --frozen
+RUN pip install --no-cache-dir uv && uv sync --frozen --no-install-project
 
 COPY apps/api ./
 

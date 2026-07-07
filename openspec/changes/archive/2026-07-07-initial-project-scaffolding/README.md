@@ -17,7 +17,6 @@ scaffolding plan for:
 
 ## Guardrails
 
-- This file is only a new-change skeleton created during SDD init.
-- No scaffolding implementation has been performed.
-- Proposal, spec, design, tasks, and apply artifacts are intentionally not
-  generated in this phase.
+- This file records the archived scaffold change.
+- Proposal, spec, design, task, apply, verify, sync, and archive artifacts live
+  alongside it in this archive.

@@ -104,7 +104,8 @@ openspec/              Artefactos SDD/OpenSpec.
 
 - Página web mínima que confirma que el scaffold frontend está funcionando.
 - API FastAPI con `GET /health` que devuelve `{"status":"ok"}`.
-- Validación básica: lint/build/smoke test de web y lint/smoke-load de API.
+- Validación básica: lint/build/smoke test de web, test del script de smoke y
+  lint/smoke-load de API.
 - Paquete `@kaito/api-client` reservado para un futuro cliente generado; hoy no
   exporta código ni contratos de producto.
 

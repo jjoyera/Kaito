@@ -14,7 +14,7 @@ Product/domain concerns stay out of scope.
 3. `apps/api`: minimal FastAPI app exposing `GET /health`.
 4. `packages/api-client`: metadata and README only.
 5. `docker/` plus root `compose.yaml`: `web` and `api` services only.
-6. `.github/workflows/ci.yml`: install plus lint/build/smoke validation.
+6. `.github/workflows/ci.yml`: install plus lint/build/smoke-script/smoke validation.
 7. Spanish root `README.md` as living document with a future-update rule.
 
 ## Tooling decisions
@@ -135,7 +135,7 @@ Create one `.github/workflows/ci.yml`, triggered on pull requests and pushes.
 Jobs:
 
 - `web`: set up Node 24.18 and pnpm 11, run `pnpm install`, `pnpm lint:web`,
-  `pnpm build:web`, and `pnpm smoke:web`.
+  `pnpm build:web`, `pnpm test:web-smoke-script`, and `pnpm smoke:web`.
 - `api`: set up Python 3.12 and `uv`, run `uv sync`, `uv run ruff check .`, and
   a smoke import/load check for the FastAPI app.
 
@@ -200,7 +200,7 @@ by the current estimate, but remains available if tasks reveal extra scope.
 - API: FastAPI `/health` returns `{"status": "ok"}`.
 - `api-client`: metadata and README only.
 - Docker/compose: web and API only, local-only.
-- CI: install plus lint/build/smoke/load, no product tests, no CD.
+- CI: install plus lint/build/smoke-script/smoke/load, no product tests, no CD.
 - README: Spanish, with mandatory future-update rule.
 - Single PR is acceptable under the 600-line budget; split only if tasks reveal
   extra scope.

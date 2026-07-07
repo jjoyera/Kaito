@@ -9,7 +9,6 @@ permissions:
   push:
     branches:
       - main
-      - feature/project-scaffolding
 
 jobs:
   web:
@@ -40,6 +39,9 @@ jobs:
 
       - name: Build web scaffold
         run: pnpm build:web
+
+      - name: Test web smoke script lifecycle
+        run: pnpm test:web-smoke-script
 
       - name: Smoke-test web scaffold
         run: pnpm smoke:web

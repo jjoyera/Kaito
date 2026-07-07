@@ -14,9 +14,9 @@ sdd:
   mode: interactive
   strict_tdd: false
   strict_tdd_reason: >-
-    No application source, package manifest, CI configuration, or test runner is
-    present yet. TDD must become mandatory for implementation changes after the
-    scaffolding change introduces concrete runners.
+    The scaffold now includes application source, package manifests, and CI
+    validation. TDD should become mandatory once concrete test runners are
+    introduced for implementation changes.
   artifact_store: both
   chained_pr_strategy: ask-always
   review_budget_changed_lines: 600
@@ -41,11 +41,23 @@ sdd:
       requires_tests_when_runner_exists: true
 
 testing:
-  status: not_configured
-  detected_runners: []
-  commands: []
+  status: scaffold_validation
+  detected_runners:
+    - eslint
+    - next build
+    - Node.js test runner
+    - web smoke script
+    - ruff
+    - FastAPI TestClient smoke check
+  commands:
+    - pnpm lint:web
+    - pnpm build:web
+    - pnpm test:web-smoke-script
+    - pnpm smoke:web
+    - cd apps/api && uv run ruff check .
+    - cd apps/api && uv run python -c "from app.main import app"
   notes: >-
-    Repository currently contains product/architecture documentation only. The
+    The repository now contains scaffolded web/API apps and CI validation. The
     next implementation-oriented change should define JavaScript/TypeScript and
     Python test runners for the planned Next.js + FastAPI monorepo.
 

@@ -139,7 +139,7 @@ SHALL NOT imply production/deployment readiness.
 ### Requirement: Basic CI validation only
 
 The repository SHALL include `.github/workflows/ci.yml` that performs basic
-validation only: dependency install, lint/build-level checks, and cheap scaffold smoke checks.
+validation only: dependency install, lint/build-level checks, smoke-script lifecycle checks, and cheap scaffold smoke checks.
 
 CI SHALL NOT run real product test suites (none exist yet), and SHALL NOT perform
 deployment, publishing, or continuous delivery steps.
@@ -148,8 +148,8 @@ deployment, publishing, or continuous delivery steps.
 
 - GIVEN a pull request that changes scaffold files
 - WHEN the CI workflow runs
-- THEN it SHALL install dependencies and run lint/build-level validation plus cheap
-  smoke checks for the scaffolded apps
+- THEN it SHALL install dependencies and run lint/build-level validation plus
+  smoke-script lifecycle checks and cheap smoke checks for the scaffolded apps
 - AND it SHALL NOT execute deploy, publish, or CD steps
 
 ### Requirement: Spanish root README as living document

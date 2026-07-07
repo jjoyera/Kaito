@@ -10,20 +10,20 @@ PASS — archive completed successfully.
 - Artifact store: `both`; OpenSpec disk is authoritative.
 - Native status consumed: `dependencies.archive: ready`, `applyState: all_done`, `taskProgress: 76/76 complete`.
 - Action context mode: `repo-local`
-- Allowed edit roots: `/home/jjdelarubia/Workspace/BIGschool/Kaito`
+- Allowed edit roots: `<repo-root>`
 - User/orchestrator approval: explicit `sdd-archive` approval after successful sync.
 
 ## Artifacts read
 
 Filesystem:
 
-- `openspec/changes/initial-project-scaffolding/proposal.md`
-- `openspec/changes/initial-project-scaffolding/specs/project-scaffolding/spec.md`
-- `openspec/changes/initial-project-scaffolding/design.md`
-- `openspec/changes/initial-project-scaffolding/tasks.md`
-- `openspec/changes/initial-project-scaffolding/apply-progress.md`
-- `openspec/changes/initial-project-scaffolding/verify-report.md`
-- `openspec/changes/initial-project-scaffolding/sync-report.md`
+- `openspec/changes/archive/2026-07-07-initial-project-scaffolding/proposal.md`
+- `openspec/changes/archive/2026-07-07-initial-project-scaffolding/specs/project-scaffolding/spec.md`
+- `openspec/changes/archive/2026-07-07-initial-project-scaffolding/design.md`
+- `openspec/changes/archive/2026-07-07-initial-project-scaffolding/tasks.md`
+- `openspec/changes/archive/2026-07-07-initial-project-scaffolding/apply-progress.md`
+- `openspec/changes/archive/2026-07-07-initial-project-scaffolding/verify-report.md`
+- `openspec/changes/archive/2026-07-07-initial-project-scaffolding/sync-report.md`
 - `openspec/config.yaml`
 
 Engram observations:

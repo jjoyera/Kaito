@@ -8,21 +8,21 @@ PASS — verification completed successfully. No archive blockers were found.
 
 - Change: `initial-project-scaffolding`.
 - Artifact store: `both`; disk-backed OpenSpec is authoritative because `openspec/` exists.
-- Planning home: `/home/jjdelarubia/Workspace/BIGschool/Kaito`.
-- Change root: `openspec/changes/initial-project-scaffolding`.
+- Planning home: `<repo-root>`.
+- Change root: `openspec/changes/archive/2026-07-07-initial-project-scaffolding`.
 - Native status: `verify` dependency ready; `applyState: all_done`; `taskProgress: 76/76 complete`.
 - Action context mode: `repo-local`.
-- Allowed edit roots: `/home/jjdelarubia/Workspace/BIGschool/Kaito`.
+- Allowed edit roots: `<repo-root>`.
 - Implementation ownership/target files were verified inside the authoritative workspace.
 - Status warning consumed: Engram HTTP server was unavailable during parent status; disk OpenSpec remained authoritative.
 
 ## Inputs read
 
-- `openspec/changes/initial-project-scaffolding/proposal.md`
-- `openspec/changes/initial-project-scaffolding/specs/project-scaffolding/spec.md`
-- `openspec/changes/initial-project-scaffolding/design.md`
-- `openspec/changes/initial-project-scaffolding/tasks.md`
-- `openspec/changes/initial-project-scaffolding/apply-progress.md`
+- `openspec/changes/archive/2026-07-07-initial-project-scaffolding/proposal.md`
+- `openspec/changes/archive/2026-07-07-initial-project-scaffolding/specs/project-scaffolding/spec.md`
+- `openspec/changes/archive/2026-07-07-initial-project-scaffolding/design.md`
+- `openspec/changes/archive/2026-07-07-initial-project-scaffolding/tasks.md`
+- `openspec/changes/archive/2026-07-07-initial-project-scaffolding/apply-progress.md`
 - `openspec/config.yaml`
 - Changed/untracked workspace files via `git status`, `git diff --stat`, `git diff --name-only`, and `git ls-files --others --exclude-standard`.
 
@@ -159,7 +159,7 @@ Result:
 - `docker compose down`: completed cleanup.
 
 ```bash
-grep -n '^\s*- \[ \]' openspec/changes/initial-project-scaffolding/tasks.md
+grep -n '^\s*- \[ \]' openspec/changes/archive/2026-07-07-initial-project-scaffolding/tasks.md
 ```
 
 Result: no matches.
