@@ -1,3 +1,13 @@
 /.atl
 /.qdo
 /.context
+/.pi
+/node_modules
+**/node_modules
+/apps/web/.next
+/apps/web/tsconfig.tsbuildinfo
+/apps/api/.venv
+__pycache__/
+.ruff_cache/
+# Local Pi runtime state
+.atl/

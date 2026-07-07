@@ -1,0 +1,19 @@
+{
+  "name": "kaito",
+  "private": true,
+  "packageManager": "pnpm@11.0.0",
+  "engines": {
+    "node": ">=24.18 <25"
+  },
+  "workspaces": [
+    "apps/web",
+    "packages/api-client"
+  ],
+  "scripts": {
+    "dev:web": "pnpm --filter web dev",
+    "build:web": "pnpm --filter web build",
+    "lint:web": "pnpm --filter web lint",
+    "test:web-smoke-script": "pnpm --filter web test:smoke-script",
+    "smoke:web": "pnpm --filter web smoke"
+  }
+}

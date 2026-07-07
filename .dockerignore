@@ -1,0 +1,10 @@
+.git
+.next
+node_modules
+**/node_modules
+apps/api/.venv
+__pycache__
+**/__pycache__
+.pytest_cache
+.ruff_cache
+.DS_Store
