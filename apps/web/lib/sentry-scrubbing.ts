@@ -1,4 +1,4 @@
-import type { ErrorEvent, Event } from "@sentry/nextjs";
+import type { ErrorEvent, Event, init as _sentryInit } from "@sentry/nextjs";
 
 type TransactionEvent = Event & { type: "transaction" };
 
@@ -43,12 +43,32 @@ const DENIED_KEYWORDS = [
 	"heartrate",
 	"athlete",
 ] as const;
+// Short keywords (≤ 3 chars) are common English substrings that would produce
+// false positives with simple `.includes()` matching (e.g. "lat" in "platform",
+// "hr" in "threshold", "lon" in "belongs_to"). They must appear as a whole
+// delimited token (word-boundary via `_`, `-`, `.`, or string start/end).
+// Literals are used instead of dynamic `new RegExp()` so patterns are auditable.
+const SHORT_DENY_REGEXES: ReadonlyArray<RegExp> = [
+	/(?:^|[_\-.])hr(?:$|[_\-.])/i,
+	/(?:^|[_\-.])lat(?:$|[_\-.])/i,
+	/(?:^|[_\-.])lon(?:$|[_\-.])/i,
+	/(?:^|[_\-.])jwt(?:$|[_\-.])/i,
+	/(?:^|[_\-.])gps(?:$|[_\-.])/i,
+];
+// The short keywords above are excluded from the substring list so they are
+// checked exclusively via boundary matching.
+const SHORT_DENY_SET = new Set(["hr", "lat", "lon", "jwt", "gps"]);
+const LONG_DENY_KEYWORDS: ReadonlyArray<string> = DENIED_KEYWORDS.filter(
+	(kw) => !SHORT_DENY_SET.has(kw),
+);
 const DYNAMIC_SEGMENT =
 	/(\b\d{4,}\b|[0-9a-f]{8,}|[A-Za-z0-9_-]{24,}|[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)/;
 const DYNAMIC_SEGMENT_TEXT = new RegExp(DYNAMIC_SEGMENT.source, "g");
 const SECRET_TEXT_PATTERNS = [
 	/bearer\s+[A-Za-z0-9._-]+/gi,
-	/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/gi,
+	// Bounded local-part/domain lengths prevent catastrophic backtracking on
+	// long non-email strings (RFC 5321 local-part ≤ 64, domain ≤ 253, TLD ≤ 24).
+	/[\w.+-]{1,64}@[\w.-]{1,253}\.[A-Za-z]{2,24}/gi,
 	/https?:\/\/\S+\?\S+/gi,
 	/-?\d{1,3}\.\d{4,}\s*,\s*-?\d{1,3}\.\d{4,}/g,
 	/\b\d{8,}\b/g,
@@ -64,9 +84,23 @@ function isObject(value: unknown): value is JsonObject {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+/**
+ * Normalises camelCase keys to snake_case so short boundary-matched tokens
+ * correctly fire on keys like `userLat` → `user_lat` or `heartHr` → `heart_hr`.
+ */
+function camelToSnake(s: string): string {
+	return s.replace(/([a-z])([A-Z])/g, "$1_$2").toLowerCase();
+}
+
 function isDeniedKey(key: string): boolean {
 	const normalized = key.toLowerCase();
-	return DENIED_KEYWORDS.some((keyword) => normalized.includes(keyword));
+	// Long keywords: simple substring scan is unlikely to produce false positives.
+	if (LONG_DENY_KEYWORDS.some((kw) => normalized.includes(kw))) return true;
+	// Short keywords: require delimiter or string-boundary context to avoid
+	// incidental matches (e.g. "lat" inside "platform", "hr" inside "threshold").
+	// camelCase is normalised to snake_case first so `userLat` → `user_lat` matches.
+	const snakeKey = camelToSnake(key);
+	return SHORT_DENY_REGEXES.some((re) => re.test(snakeKey));
 }
 
 function scrubText(value: string): string {
@@ -208,6 +242,7 @@ export function sentryPrivacyOptions() {
 	};
 }
 
+/** @internal — exported only for tests; use `initSentryIfConfigured` at runtime. */
 export function buildSentryInitOptions() {
 	const dsn = getSentryDsn();
 	if (!dsn) return undefined;
@@ -215,6 +250,18 @@ export function buildSentryInitOptions() {
 		dsn,
 		...sentryPrivacyOptions(),
 	};
+}
+
+/**
+ * Initialises the given Sentry SDK object when a DSN is present.
+ * The `opts` type is intentionally widened to the union that `@sentry/nextjs`
+ * `init` itself accepts, so no cast is needed at call sites.
+ */
+export function initSentryIfConfigured(sentry: {
+	init(opts: Parameters<typeof _sentryInit>[0]): unknown;
+}): void {
+	const options = buildSentryInitOptions();
+	if (options) sentry.init(options as Parameters<typeof _sentryInit>[0]);
 }
 
 export function beforeSend(event: ErrorEvent): ErrorEvent {

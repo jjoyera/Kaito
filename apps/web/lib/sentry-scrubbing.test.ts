@@ -220,6 +220,90 @@ describe("Sentry privacy scrubber", () => {
 		);
 	});
 
+	it("short deny tokens match delimited/exact keys but do NOT overmatch incidental substrings", () => {
+		// Keys that contain short deny tokens as incidental substrings.
+		// With allowOnlySafeKeys=true in scrubObject:
+		//   - denied key  → kept, value becomes "[redacted]"
+		//   - non-safe, non-denied key → dropped (value undefined in output)
+		// So an *undefined* value proves the key was NOT denied (just dropped as non-safe).
+		const harmlessEvent = beforeSend({
+			type: undefined,
+			breadcrumbs: [
+				{
+					data: {
+						// "lat" is a substring of "platform" — must NOT be denied.
+						platform: "web",
+						// "hr" is a substring of "threshold" — must NOT be denied.
+						threshold: 42,
+						// "lon" is a substring of "belongsTo" — must NOT be denied.
+						belongsTo: "category",
+					},
+				},
+			],
+		});
+		const harmlessData = harmlessEvent.breadcrumbs?.[0]?.data as
+			| Record<string, unknown>
+			| undefined;
+		// All three are non-safe, non-denied → dropped (not redacted).
+		assert.equal(harmlessData?.platform, undefined);
+		assert.equal(harmlessData?.threshold, undefined);
+		assert.equal(harmlessData?.belongsTo, undefined);
+
+		// Exact and delimited sensitive keys MUST be denied (value → "[redacted]").
+		const sensitiveEvent = beforeSend({
+			type: undefined,
+			breadcrumbs: [
+				{
+					data: {
+						// Exact short tokens.
+						lat: "48.8566",
+						lon: "2.3522",
+						hr: "72",
+						// Underscore-delimited.
+						user_lat: "48.8566",
+						// Hyphen-delimited.
+						"user-lon": "2.3522",
+						// Dot-delimited (e.g. nested path flattened to a key).
+						"heart.hr": "72",
+						// camelCase: normalised to snake_case before matching.
+						userLat: "48.8566",
+						heartHr: "72",
+					},
+				},
+			],
+		});
+		const sensitiveData = sensitiveEvent.breadcrumbs?.[0]?.data as
+			| Record<string, unknown>
+			| undefined;
+		// All sensitive keys must be present with "[redacted]" value.
+		assert.equal(sensitiveData?.lat, "[redacted]");
+		assert.equal(sensitiveData?.lon, "[redacted]");
+		assert.equal(sensitiveData?.hr, "[redacted]");
+		assert.equal(sensitiveData?.user_lat, "[redacted]");
+		assert.equal(sensitiveData?.["user-lon"], "[redacted]");
+		assert.equal(sensitiveData?.["heart.hr"], "[redacted]");
+		assert.equal(sensitiveData?.userLat, "[redacted]");
+		assert.equal(sensitiveData?.heartHr, "[redacted]");
+	});
+
+	it("email addresses in messages and exception values are redacted", () => {
+		const event = beforeSend({
+			type: undefined,
+			message: "Login failed for user athlete@example.com",
+			exception: {
+				values: [
+					{ type: "AuthError", value: "No account for coach@kaito.app" },
+				],
+			},
+		});
+		assert.doesNotMatch(event.message ?? "", /athlete@example\.com/);
+		assert.doesNotMatch(
+			event.exception?.values?.[0]?.value ?? "",
+			/coach@kaito\.app/,
+		);
+		assert.match(JSON.stringify(event), /\[redacted\]/);
+	});
+
 	it("defaults performance sampling to disabled outside production", () => {
 		const previous = process.env.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE;
 		delete process.env.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE;
