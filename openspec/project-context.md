@@ -27,7 +27,10 @@ modular monorepo architecture.
 
 ## OpenSpec state
 
-- Archived change exists: `2026-07-07-initial-project-scaffolding`.
+- Archived changes exist:
+  - `2026-07-07-initial-project-scaffolding`
+  - `2026-07-08-setup-playwright`
 - Active specs directory exists at `openspec/specs/`.
+- Current initialized change skeleton: `openspec/changes/frontend-sentry-observability/`.
 - New change skeleton initialization is expected to happen under
   `openspec/changes/<change-name>/`.

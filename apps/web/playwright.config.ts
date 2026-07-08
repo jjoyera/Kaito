@@ -16,7 +16,10 @@ export default defineConfig({
 	],
 	webServer: {
 		command: process.env.CI ? "pnpm start" : "pnpm dev",
-		reuseExistingServer: !Boolean(process.env.CI),
+		env: {
+			NEXT_PUBLIC_SENTRY_DSN: "",
+		},
+		reuseExistingServer: false,
 		url: "http://127.0.0.1:3000",
 		timeout: 120_000,
 	},
