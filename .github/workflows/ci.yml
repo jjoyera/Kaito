@@ -38,7 +38,7 @@ jobs:
         run: pnpm lint:web
 
       - name: Test Sentry privacy scrubber
-        run: pnpm --filter web test:sentry-scrubbing
+        run: pnpm test:web-sentry-scrubbing
 
       - name: Build web scaffold
         run: pnpm build:web

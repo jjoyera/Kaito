@@ -1,13 +1,10 @@
 import * as Sentry from "@sentry/nextjs";
-import { getSentryDsn, sentryPrivacyOptions } from "./lib/sentry-scrubbing";
+import { buildSentryInitOptions } from "./lib/sentry-scrubbing";
 
-const dsn = getSentryDsn();
+const options = buildSentryInitOptions();
 
-if (dsn) {
-	Sentry.init({
-		dsn,
-		...sentryPrivacyOptions(),
-	} as Parameters<typeof Sentry.init>[0]);
+if (options) {
+	Sentry.init(options as Parameters<typeof Sentry.init>[0]);
 }
 
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;

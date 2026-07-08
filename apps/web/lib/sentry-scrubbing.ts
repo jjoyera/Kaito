@@ -14,13 +14,47 @@ const SAFE_KEYS = new Set([
 	"release",
 	"environment",
 ]);
-const DENY_KEY =
-	/(token|secret|password|api_?key|authorization|cookie|session|supabase|strava|access_token|refresh_token|jwt|bearer|email|phone|lat|lon|latitude|longitude|gps|coordinates|activity|workout|hr|heartrate|athlete)/i;
+const DENIED_KEYWORDS = [
+	"token",
+	"secret",
+	"password",
+	"apikey",
+	"api_key",
+	"authorization",
+	"cookie",
+	"session",
+	"supabase",
+	"strava",
+	"access_token",
+	"refresh_token",
+	"jwt",
+	"bearer",
+	"email",
+	"phone",
+	"lat",
+	"lon",
+	"latitude",
+	"longitude",
+	"gps",
+	"coordinates",
+	"activity",
+	"workout",
+	"hr",
+	"heartrate",
+	"athlete",
+] as const;
 const DYNAMIC_SEGMENT =
 	/(\b\d{4,}\b|[0-9a-f]{8,}|[A-Za-z0-9_-]{24,}|[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)/;
 const DYNAMIC_SEGMENT_TEXT = new RegExp(DYNAMIC_SEGMENT.source, "g");
-const SECRET_TEXT =
-	/(bearer\s+[A-Za-z0-9._-]+|[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}|https?:\/\/\S+\?\S+|-?\d{1,3}\.\d{4,}\s*,\s*-?\d{1,3}\.\d{4,}|\b\d{8,}\b|\b[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b|\b[A-Za-z0-9+/]{32,}={0,2}\b)/gi;
+const SECRET_TEXT_PATTERNS = [
+	/bearer\s+[A-Za-z0-9._-]+/gi,
+	/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/gi,
+	/https?:\/\/\S+\?\S+/gi,
+	/-?\d{1,3}\.\d{4,}\s*,\s*-?\d{1,3}\.\d{4,}/g,
+	/\b\d{8,}\b/g,
+	/\b[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g,
+	/\b[A-Za-z0-9+/]{32,}={0,2}\b/g,
+] as const;
 // Production keeps sampling intentionally low unless explicitly overridden.
 const PRODUCTION_TRACES_SAMPLE_RATE = 0.1;
 
@@ -30,10 +64,17 @@ function isObject(value: unknown): value is JsonObject {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function isDeniedKey(key: string): boolean {
+	const normalized = key.toLowerCase();
+	return DENIED_KEYWORDS.some((keyword) => normalized.includes(keyword));
+}
+
 function scrubText(value: string): string {
-	return value
-		.replace(SECRET_TEXT, REDACTED)
-		.replace(DYNAMIC_SEGMENT_TEXT, REDACTED);
+	const withoutSecrets = SECRET_TEXT_PATTERNS.reduce(
+		(text, pattern) => text.replace(pattern, REDACTED),
+		value,
+	);
+	return withoutSecrets.replace(DYNAMIC_SEGMENT_TEXT, REDACTED);
 }
 
 function scrubUrl(value: string): string {
@@ -73,7 +114,7 @@ function scrubObject(value: unknown, allowOnlySafeKeys = false): unknown {
 
 	return Object.fromEntries(
 		Object.entries(value).flatMap(([key, nested]) => {
-			if (DENY_KEY.test(key)) return [[key, REDACTED]];
+			if (isDeniedKey(key)) return [[key, REDACTED]];
 			if (allowOnlySafeKeys && !SAFE_KEYS.has(key)) return [];
 			if (allowOnlySafeKeys && !safePrimitive(nested)) return [];
 			return [[key, scrubObject(nested, allowOnlySafeKeys)]];
@@ -164,6 +205,15 @@ export function sentryPrivacyOptions() {
 		beforeSendTransaction,
 		environment: getSentryEnvironment(),
 		tracesSampleRate: getTracesSampleRate(),
+	};
+}
+
+export function buildSentryInitOptions() {
+	const dsn = getSentryDsn();
+	if (!dsn) return undefined;
+	return {
+		dsn,
+		...sentryPrivacyOptions(),
 	};
 }
 

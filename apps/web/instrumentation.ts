@@ -1,7 +1,8 @@
 import * as Sentry from "@sentry/nextjs";
+import { getSentryDsn } from "./lib/sentry-scrubbing";
 
 export async function register() {
-	if (!process.env.NEXT_PUBLIC_SENTRY_DSN?.trim()) return;
+	if (!getSentryDsn()) return;
 
 	if (process.env.NEXT_RUNTIME === "nodejs") {
 		await import("./sentry.server.config");
@@ -13,6 +14,6 @@ export async function register() {
 }
 
 export const onRequestError: typeof Sentry.captureRequestError = (...args) => {
-	if (!process.env.NEXT_PUBLIC_SENTRY_DSN?.trim()) return;
+	if (!getSentryDsn()) return;
 	return Sentry.captureRequestError(...args);
 };

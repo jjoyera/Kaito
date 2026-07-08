@@ -6,9 +6,9 @@ import { getSentryDsn } from "../lib/sentry-scrubbing";
 
 export default function GlobalError({
 	error,
-}: {
+}: Readonly<{
 	error: Error & { digest?: string };
-}) {
+}>) {
 	useEffect(() => {
 		if (getSentryDsn()) Sentry.captureException(error);
 	}, [error]);
