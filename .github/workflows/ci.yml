@@ -37,8 +37,14 @@ jobs:
       - name: Lint web scaffold
         run: pnpm lint:web
 
+      - name: Test Sentry privacy scrubber
+        run: pnpm test:web-sentry-scrubbing
+
       - name: Build web scaffold
         run: pnpm build:web
+
+      - name: Build Docker web image
+        run: pnpm test:web-docker-build
 
       - name: Install Playwright Chromium
         run: pnpm --filter web exec playwright install --with-deps chromium
