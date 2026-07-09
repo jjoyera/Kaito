@@ -36,8 +36,9 @@ returns identity only. Supabase is an adapter/tool, not a domain dependency.
    `{ "detail": "Not authenticated" }` across all unauthorized token failures;
    no full API-wide error framework.
 9. **Startup tolerance with clear failure when auth config is missing** — backend
-   boots and public health/scaffold endpoints keep working; protected routes fail
-   clearly and consistently until configured.
+   boots and public health/scaffold endpoints keep working; protected routes
+   return `503 Service Unavailable` with
+   `{ "detail": "Authentication is not configured" }` until configured.
 10. **Default auth dependency pattern** for future protected domain APIs.
 11. **Discoverable configuration and documentation** in `apps/api/.env.example` and
     `apps/api/README.md` (centered on explicit `SUPABASE_JWKS_URL` and JWKS verification).

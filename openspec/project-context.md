@@ -21,7 +21,12 @@ modular monorepo architecture.
 - Artifact store: both OpenSpec files and Engram memory.
 - Chained PR strategy: ask always.
 - Session review budget (current preflight): 400 changed lines.
-- Strict TDD: enabled at config level (`strict_tdd: true`) for implementation changes with available runners.
+- Strict TDD: enabled at config level (`strict_tdd: true`) for implementation
+  changes with available runners.
+- SDD sync must review the root `README.md` and update it when a completed
+  flow changes project capabilities, setup/environment variables,
+  architecture/runtime behavior, or developer verification commands. Keep root
+  README updates concise and link to package-specific docs for details.
 
 ## OpenSpec state
 
@@ -30,6 +35,8 @@ modular monorepo architecture.
   - `2026-07-08-setup-playwright`
   - `2026-07-09-setup-supabase-auth-backend`
 - Active specs directory exists at `openspec/specs/`.
-- `setup-supabase-auth-backend` is archived at `openspec/changes/archive/2026-07-09-setup-supabase-auth-backend/`; no active change skeleton exists for it.
+- `setup-supabase-auth-backend` is archived at
+  `openspec/changes/archive/2026-07-09-setup-supabase-auth-backend/`; no active
+  change skeleton exists for it.
 - New change skeleton initialization is expected to happen under
   `openspec/changes/<change-name>/`.

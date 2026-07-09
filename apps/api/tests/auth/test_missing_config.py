@@ -19,6 +19,8 @@ import logging
 import pytest
 from fastapi.testclient import TestClient
 
+from tests.auth.conftest import reloaded_main_test_client
+
 _AUTH_CONFIG_DETAIL = " ".join(["Authentication", "is", "not", "configured"])
 
 
@@ -125,14 +127,11 @@ def test_jwks_cache_ttl_accepts_positive_value(
 @pytest.fixture()
 def no_auth_client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     """TestClient against a freshly reloaded app with auth config absent."""
-    monkeypatch.delenv("SUPABASE_URL", raising=False)
-    monkeypatch.delenv("SUPABASE_JWKS_URL", raising=False)
-    monkeypatch.delenv("SUPABASE_JWT_SECRET", raising=False)
-    monkeypatch.delenv("SUPABASE_JWT_AUDIENCE", raising=False)
-    import app.main as main_module
-
-    importlib.reload(main_module)
-    return TestClient(main_module.app, raise_server_exceptions=False)
+    return reloaded_main_test_client(
+        monkeypatch,
+        jwks_url=None,
+        audience=None,
+    )
 
 
 @pytest.fixture()
@@ -142,13 +141,11 @@ def url_only_client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     Proves that SUPABASE_URL alone is not sufficient to enable auth; the explicit
     SUPABASE_JWKS_URL is required for protected routes to work.
     """
-    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
-    monkeypatch.delenv("SUPABASE_JWKS_URL", raising=False)
-    monkeypatch.delenv("SUPABASE_JWT_SECRET", raising=False)
-    import app.main as main_module
-
-    importlib.reload(main_module)
-    return TestClient(main_module.app, raise_server_exceptions=False)
+    return reloaded_main_test_client(
+        monkeypatch,
+        jwks_url=None,
+        supabase_url="https://example.supabase.co",
+    )
 
 
 # ---------------------------------------------------------------------------

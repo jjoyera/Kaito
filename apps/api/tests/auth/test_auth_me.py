@@ -15,6 +15,8 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from fastapi.testclient import TestClient
 from jwt.algorithms import ECAlgorithm
 
+from tests.auth.conftest import reloaded_main_test_client
+
 # ---------------------------------------------------------------------------
 # Module-level ephemeral keypair and JWKS
 # ---------------------------------------------------------------------------
@@ -61,25 +63,12 @@ def _make_token(
 
 @pytest.fixture()
 def auth_client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
-    """TestClient against app.main.app with SUPABASE_JWKS_URL configured.
-
-    JWKS fetch is stubbed so tests never hit the network.
-    """
-    _jwks_url = "https://example.supabase.co/auth/v1/.well-known/jwks.json"
-    monkeypatch.setenv("SUPABASE_JWKS_URL", _jwks_url)
-    monkeypatch.setenv("SUPABASE_JWT_AUDIENCE", _TEST_AUDIENCE)
-    monkeypatch.delenv("SUPABASE_JWT_SECRET", raising=False)
-    monkeypatch.delenv("SUPABASE_URL", raising=False)  # optional/informational only
-
-    _fake_jwks = _make_jwks()
-    monkeypatch.setattr(jwt.PyJWKClient, "fetch_data", lambda self: _fake_jwks)
-
-    import importlib
-
-    import app.main as main_module
-
-    importlib.reload(main_module)
-    return TestClient(main_module.app, raise_server_exceptions=False)
+    """TestClient against app.main.app with SUPABASE_JWKS_URL configured."""
+    return reloaded_main_test_client(
+        monkeypatch,
+        audience=_TEST_AUDIENCE,
+        fake_jwks=_make_jwks(),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -164,13 +153,6 @@ def test_repeated_protected_requests_reuse_jwks_cache(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Repeated valid requests with same settings fetch JWKS once within cache TTL."""
-    monkeypatch.setenv(
-        "SUPABASE_JWKS_URL",
-        "https://example.supabase.co/auth/v1/.well-known/jwks.json",
-    )
-    monkeypatch.setenv("SUPABASE_JWT_AUDIENCE", _TEST_AUDIENCE)
-    monkeypatch.delenv("SUPABASE_URL", raising=False)
-
     fake_jwks = _make_jwks()
     fetch_count = 0
 
@@ -179,14 +161,11 @@ def test_repeated_protected_requests_reuse_jwks_cache(
         fetch_count += 1
         return fake_jwks
 
-    monkeypatch.setattr(jwt.PyJWKClient, "fetch_data", counted_fetch)
-
-    import importlib
-
-    import app.main as main_module
-
-    importlib.reload(main_module)
-    client = TestClient(main_module.app, raise_server_exceptions=False)
+    client = reloaded_main_test_client(
+        monkeypatch,
+        audience=_TEST_AUDIENCE,
+        fetch_data=counted_fetch,
+    )
     token = _make_token()
 
     first_response = client.get(

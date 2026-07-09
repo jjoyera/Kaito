@@ -2,9 +2,17 @@
 
 ## Status
 
-**synced.** The canonical `backend-auth` OpenSpec spec is synchronized with the final structured change spec for `setup-supabase-auth-backend`. The change remains active and was **not** archived.
+**synced and archived.** The canonical `backend-auth` OpenSpec spec is
+synchronized with the final structured change spec for
+`setup-supabase-auth-backend`; this report is preserved in the archived change
+record.
 
-This final sync supersedes the prior URL-derivation sync/report state. The canonical spec now reflects the explicit `SUPABASE_JWKS_URL` contract: backend JWT verification uses only the configured JWKS endpoint; `SUPABASE_URL` is optional/informational and is not used to derive the JWKS URL; `SUPABASE_JWT_SECRET` and `SUPABASE_SECRET_KEY` are not used for JWT verification.
+This final sync supersedes the prior URL-derivation sync/report state. The
+canonical spec now reflects the explicit `SUPABASE_JWKS_URL` contract: backend
+JWT verification uses only the configured JWKS endpoint; `SUPABASE_URL` is
+optional/informational and is not used to derive the JWKS URL;
+`SUPABASE_JWT_SECRET` and `SUPABASE_SECRET_KEY` are not used for JWT
+verification.
 
 ## Structured status and actionContext findings
 

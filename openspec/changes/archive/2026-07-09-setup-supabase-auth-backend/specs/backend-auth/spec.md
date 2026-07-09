@@ -267,11 +267,12 @@ auth-dependent routes fail clearly and consistently until auth is configured.
   configuration (e.g., `SUPABASE_JWKS_URL`) is absent.
 - Public health/scaffold endpoints (e.g., `/health`) MUST continue to respond
   normally when auth config is absent.
-- When auth config is missing, protected routes such as `GET /auth/me` MUST fail
-  clearly and consistently rather than crashing the server, returning a stable
-  error that indicates authentication cannot be performed.
-- The missing-config failure on protected routes MUST NOT expose secret material or
-  provider internals.
+- When auth config is missing, protected routes such as `GET /auth/me` MUST
+  return `503 Service Unavailable` with
+  `{ "detail": "Authentication is not configured" }` rather than crashing the
+  server.
+- The missing-config failure on protected routes MUST NOT expose secret material
+  or provider internals.
 
 #### Scenario: Backend starts and health works without auth config
 
@@ -284,7 +285,9 @@ auth-dependent routes fail clearly and consistently until auth is configured.
 
 - GIVEN the backend runs with no auth verification configuration set
 - WHEN `GET /auth/me` is called
-- THEN the request SHALL fail clearly and consistently without crashing the server
+- THEN the request SHALL return `503 Service Unavailable`
+- AND the response body SHALL be
+  `{ "detail": "Authentication is not configured" }`
 - AND the response SHALL NOT expose secret material or provider internals
 
 ### Requirement: Default auth dependency pattern for future protected APIs
@@ -311,9 +314,9 @@ The system SHALL make backend auth configuration discoverable where backend
 contributors expect it, without documenting signup/login UX, frontend session
 handling, or wider deployment rollout concerns.
 
-- `apps/api/.env.example` SHALL list the required auth environment variables
-  (including explicit `SUPABASE_JWKS_URL` and any supporting settings) with
-  placeholder/default guidance.
+- `apps/api/.env.example` SHALL identify `SUPABASE_JWKS_URL` as the required
+  auth variable, while listing `SUPABASE_URL` and other supporting auth settings
+  as optional or conditional with placeholder/default guidance.
 - `apps/api/README.md` SHALL document the auth boundary, the required environment
   configuration, the local behavior when auth config is absent (public endpoints
   work, protected routes fail clearly), and how to exercise `GET /auth/me` for

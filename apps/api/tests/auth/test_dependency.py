@@ -18,6 +18,7 @@ from jwt.algorithms import ECAlgorithm
 
 from app.modules.auth.context import UserContext
 from app.modules.auth.dependencies import get_current_user
+from tests.auth.conftest import configure_auth_test_env
 
 # ---------------------------------------------------------------------------
 # Module-level ephemeral keypair and JWKS
@@ -72,14 +73,11 @@ def protected_app(monkeypatch: pytest.MonkeyPatch) -> FastAPI:
     JWKS fetch is stubbed so tests never hit the network.
     The sentinel side-effect list tracks whether the handler body executed.
     """
-    _jwks_url = "https://example.supabase.co/auth/v1/.well-known/jwks.json"
-    monkeypatch.setenv("SUPABASE_JWKS_URL", _jwks_url)
-    monkeypatch.setenv("SUPABASE_JWT_AUDIENCE", _TEST_AUDIENCE)
-    monkeypatch.delenv("SUPABASE_JWT_SECRET", raising=False)
-    monkeypatch.delenv("SUPABASE_URL", raising=False)  # optional/informational only
-
-    _fake_jwks = _make_jwks()
-    monkeypatch.setattr(jwt.PyJWKClient, "fetch_data", lambda self: _fake_jwks)
+    configure_auth_test_env(
+        monkeypatch,
+        audience=_TEST_AUDIENCE,
+        fake_jwks=_make_jwks(),
+    )
 
     test_app = FastAPI()
     executed: list[bool] = []

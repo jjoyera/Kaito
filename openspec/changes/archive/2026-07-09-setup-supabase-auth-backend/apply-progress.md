@@ -1,6 +1,6 @@
 # Apply Progress — Setup Supabase Auth Backend
 
-## Status: COMPLETE (Work Units 0–5 all done)
+## Status: COMPLETE (Work Units 0–6 all done)
 
 **Delivery mode**: Internal chunks / single PR by user later. User accepted chunked implementation despite the high 400-line review budget risk.
 
@@ -88,7 +88,7 @@ $ cd apps/api && uv run python -c "from app.main import app"
 | Chunk | RED command | RED outcome | GREEN command | GREEN outcome |
 | ----- | ----------- | ----------- | ------------- | ------------- |
 | 5a config | `uv run pytest tests/auth/test_missing_config.py` | 2 FAILED (`test_auth_settings_reads_explicit_jwks_url`: derived URL ≠ explicit; `test_auth_me_returns_503_with_url_but_no_jwks_url`: got 401 not 503) | Rewrote `config.py` (`jwks_url` from `SUPABASE_JWKS_URL`), updated `provider.py` (check `jwks_url`) | 10 passed |
-| 5b fixtures/docs | Implicit RED: fixture still set `SUPABASE_URL` → provider would return 503 (no `SUPABASE_JWKS_URL`) | Updated `_make_settings()`, `auth_client`, `protected_app` fixtures + `.env.example` + `README.md` | 40 auth + 65 full + ruff clean + import OK |
+| 5b fixtures/docs | Implicit RED: fixture still set `SUPABASE_URL` → provider would return 503 (no `SUPABASE_JWKS_URL`) | Fixture/doc drift identified before full validation | Updated `_make_settings()`, `auth_client`, `protected_app` fixtures + `.env.example` + `README.md` | 40 auth + 65 full + ruff clean + import OK |
 
 ### Files Changed in Work Unit 5
 
