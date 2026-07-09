@@ -8,12 +8,19 @@ The bootstrap module MUST NOT import FastAPI or Starlette.
 import ast
 import importlib.util
 import logging
+import math
 import pathlib
 from unittest.mock import patch
 
 import pytest
 
 from tests.conftest import clear_sentry_env
+
+
+def _assert_float_close(actual: float, expected: float) -> None:
+    """Assert float equivalence without direct equality checks."""
+    assert math.isclose(actual, expected, rel_tol=0.0, abs_tol=1e-12)
+
 
 # ---------------------------------------------------------------------------
 # Framework boundary test — AST / source-level inspection
@@ -162,24 +169,24 @@ def test_parse_sample_rate_returns_default_when_unset() -> None:
     """_parse_sample_rate must return the default when the raw value is None."""
     from app.observability.sentry import _parse_sample_rate  # noqa: PLC0415
 
-    assert _parse_sample_rate("SENTRY_TRACES_SAMPLE_RATE", None) == 0.0
-    assert _parse_sample_rate("SENTRY_PROFILES_SAMPLE_RATE", None) == 0.0
+    _assert_float_close(_parse_sample_rate("SENTRY_TRACES_SAMPLE_RATE", None), 0.0)
+    _assert_float_close(_parse_sample_rate("SENTRY_PROFILES_SAMPLE_RATE", None), 0.0)
 
 
 def test_parse_sample_rate_returns_default_for_empty_string() -> None:
     """_parse_sample_rate must return the default when the raw value is empty."""
     from app.observability.sentry import _parse_sample_rate  # noqa: PLC0415
 
-    assert _parse_sample_rate("SENTRY_TRACES_SAMPLE_RATE", "") == 0.0
+    _assert_float_close(_parse_sample_rate("SENTRY_TRACES_SAMPLE_RATE", ""), 0.0)
 
 
 def test_parse_sample_rate_parses_valid_float() -> None:
     """_parse_sample_rate must parse a valid float string correctly."""
     from app.observability.sentry import _parse_sample_rate  # noqa: PLC0415
 
-    assert _parse_sample_rate("SENTRY_TRACES_SAMPLE_RATE", "0.5") == 0.5
-    assert _parse_sample_rate("SENTRY_TRACES_SAMPLE_RATE", "1.0") == 1.0
-    assert _parse_sample_rate("SENTRY_TRACES_SAMPLE_RATE", "0") == 0.0
+    _assert_float_close(_parse_sample_rate("SENTRY_TRACES_SAMPLE_RATE", "0.5"), 0.5)
+    _assert_float_close(_parse_sample_rate("SENTRY_TRACES_SAMPLE_RATE", "1.0"), 1.0)
+    _assert_float_close(_parse_sample_rate("SENTRY_TRACES_SAMPLE_RATE", "0"), 0.0)
 
 
 # ---------------------------------------------------------------------------
@@ -196,7 +203,7 @@ def test_parse_sample_rate_warns_and_falls_back_on_invalid(
     with caplog.at_level(logging.WARNING, logger="app.observability.sentry"):
         result = _parse_sample_rate("SENTRY_TRACES_SAMPLE_RATE", "invalid")
 
-    assert result == 0.0
+    _assert_float_close(result, 0.0)
     warned = any(
         "SENTRY_TRACES_SAMPLE_RATE" in record.message for record in caplog.records
     )
@@ -212,7 +219,7 @@ def test_parse_sample_rate_warns_on_non_numeric_profiles(
     with caplog.at_level(logging.WARNING, logger="app.observability.sentry"):
         result = _parse_sample_rate("SENTRY_PROFILES_SAMPLE_RATE", "notanumber")
 
-    assert result == 0.0
+    _assert_float_close(result, 0.0)
     warned = any(
         "SENTRY_PROFILES_SAMPLE_RATE" in record.message for record in caplog.records
     )
@@ -234,8 +241,8 @@ def test_parse_sample_rate_warns_and_falls_back_for_out_of_range(
         result_high = _parse_sample_rate("SENTRY_TRACES_SAMPLE_RATE", "1.5")
         result_neg = _parse_sample_rate("SENTRY_TRACES_SAMPLE_RATE", "-0.1")
 
-    assert result_high == 0.0
-    assert result_neg == 0.0
+    _assert_float_close(result_high, 0.0)
+    _assert_float_close(result_neg, 0.0)
     assert len(caplog.records) >= 2, "Expected at least 2 warning records"
 
 
@@ -249,8 +256,8 @@ def test_parse_sample_rate_warns_and_falls_back_for_non_finite(
         result_inf = _parse_sample_rate("SENTRY_TRACES_SAMPLE_RATE", "inf")
         result_nan = _parse_sample_rate("SENTRY_TRACES_SAMPLE_RATE", "nan")
 
-    assert result_inf == 0.0
-    assert result_nan == 0.0
+    _assert_float_close(result_inf, 0.0)
+    _assert_float_close(result_nan, 0.0)
     assert (
         len(caplog.records) >= 2
     ), "Expected at least 2 warning records for non-finite"
@@ -307,5 +314,5 @@ def test_init_sentry_uses_defaults_when_optional_vars_absent(
     _args, kwargs = mock_init.call_args
     assert kwargs["dsn"] == _FAKE_DSN
     assert kwargs["environment"] == "development"
-    assert kwargs["traces_sample_rate"] == 0.0
-    assert kwargs["profiles_sample_rate"] == 0.0
+    _assert_float_close(kwargs["traces_sample_rate"], 0.0)
+    _assert_float_close(kwargs["profiles_sample_rate"], 0.0)

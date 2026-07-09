@@ -145,3 +145,28 @@ Total test count increased from 19 (post-apply) to **25** (post-4R corrections).
   feature; the README explicitly warns against enabling it in production.
 - Starlette/asyncio deprecation warnings from Python 3.14 (`asyncio.iscoroutinefunction`)
   are upstream library issues; they do not affect functionality or CI gate.
+
+## SonarQube Cloud Corrections (2026-07-09)
+
+SonarQube Cloud failed the PR quality gate on Reliability Rating for new code.
+The reported findings were reviewed through the SonarCloud API and corrected
+before re-pushing the PR.
+
+### Findings and Resolutions
+
+| Finding | Resolution |
+| --- | --- |
+| `python:S5799` in `apps/api/app/observability/sentry.py`: implicitly concatenated strings | Merged the warning message into a single explicit string literal. |
+| `python:S8572` in `apps/api/app/observability/sentry.py`: use `logging.exception()` | Replaced `logger.error(..., exc)` inside the exception handler with `logger.exception(...)`. |
+| `python:S1244` in `apps/api/tests/test_sentry_bootstrap.py`: direct float equality checks | Added `_assert_float_close()` using `math.isclose(...)` and replaced direct float equality assertions in sample-rate tests and SDK-init kwarg checks. |
+
+### Verification Evidence
+
+```text
+cd apps/api && uv sync --frozen       → Checked 28 packages
+cd apps/api && uv run ruff check .    → All checks passed!
+cd apps/api && uv run pytest tests/ -q → 25 passed, 86 warnings
+import smoke                          → Kaito API
+/health smoke                         → 200 {"status": "ok"}
+LSP diagnostics on changed files      → No diagnostics found
+```

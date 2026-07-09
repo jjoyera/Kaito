@@ -41,7 +41,7 @@ def _parse_sample_rate(var_name: str, raw: str | None, default: float = 0.0) -> 
         return default
     if not math.isfinite(value) or not (0.0 <= value <= 1.0):
         logger.warning(
-            "%s=%r is out of range [0.0, 1.0] or non-finite; " "falling back to %s",
+            "%s=%r is out of range [0.0, 1.0] or non-finite; falling back to %s",
             var_name,
             value,
             default,
@@ -84,11 +84,10 @@ def init_sentry() -> bool:
             traces_sample_rate=traces_sample_rate,
             profiles_sample_rate=profiles_sample_rate,
         )
-    except Exception as exc:
-        logger.error(
-            "Sentry initialisation failed (check SENTRY_DSN): %s "
-            "— continuing with Sentry disabled.",
-            exc,
+    except Exception:
+        logger.exception(
+            "Sentry initialisation failed (check SENTRY_DSN); "
+            "continuing with Sentry disabled."
         )
         return False
     return True
