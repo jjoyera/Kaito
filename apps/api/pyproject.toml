@@ -5,6 +5,7 @@ description = "Minimal FastAPI boundary for the Kaito scaffold."
 requires-python = ">=3.12"
 dependencies = [
   "fastapi==0.115.6",
+  "pyjwt[crypto]==2.10.1",
   "sentry-sdk==2.64.0",
   "uvicorn[standard]==0.34.0",
 ]

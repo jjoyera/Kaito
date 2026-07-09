@@ -21,16 +21,15 @@ modular monorepo architecture.
 - Artifact store: both OpenSpec files and Engram memory.
 - Chained PR strategy: ask always.
 - Session review budget (current preflight): 400 changed lines.
-- Strict TDD: currently disabled at config level (`strict_tdd: false`), but test
-  validation hooks already exist and future implementation changes should tighten
-  runner-backed test requirements.
+- Strict TDD: enabled at config level (`strict_tdd: true`) for implementation changes with available runners.
 
 ## OpenSpec state
 
 - Archived changes exist:
   - `2026-07-07-initial-project-scaffolding`
   - `2026-07-08-setup-playwright`
+  - `2026-07-09-setup-supabase-auth-backend`
 - Active specs directory exists at `openspec/specs/`.
-- Current initialized change skeleton: `openspec/changes/frontend-sentry-observability/`.
+- `setup-supabase-auth-backend` is archived at `openspec/changes/archive/2026-07-09-setup-supabase-auth-backend/`; no active change skeleton exists for it.
 - New change skeleton initialization is expected to happen under
   `openspec/changes/<change-name>/`.

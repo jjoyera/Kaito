@@ -12,7 +12,7 @@ project:
 
 sdd:
   mode: interactive
-  strict_tdd: false
+  strict_tdd: true
   strict_tdd_reason: >-
     The scaffold now includes application source, package manifests, and CI
     validation. TDD should become mandatory once concrete test runners are
