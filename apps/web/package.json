@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
     "test:sentry-scrubbing": "tsx --test lib/sentry-scrubbing.test.ts",
+    "test:auth": "tsx --test features/auth/*.test.ts",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install chromium"
   },
