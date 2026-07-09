@@ -1,0 +1,6 @@
+{
+  "include": ["apps/api/app", "apps/api/tests"],
+  "extraPaths": ["apps/api"],
+  "venvPath": "apps/api",
+  "venv": ".venv"
+}
