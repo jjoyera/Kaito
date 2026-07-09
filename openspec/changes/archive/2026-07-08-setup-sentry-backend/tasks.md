@@ -56,7 +56,7 @@ Chain strategy: size-exception
   - Use stdlib `logging` for invalid numeric warnings.
   - Do not import FastAPI, Starlette, or host-adapter code in this module.
 - Verify GREEN:
-  - `cd apps/api && uv run pytest apps/api/tests/test_sentry_bootstrap.py` or, from `apps/api`, `uv run pytest tests/test_sentry_bootstrap.py`.
+  - `cd apps/api && uv run pytest tests/test_sentry_bootstrap.py` or, from `apps/api`, `uv run pytest tests/test_sentry_bootstrap.py`.
   - `cd apps/api && uv run python -c "from app.observability.sentry import init_sentry; assert init_sentry() is False"` with no Sentry env vars.
 - Rollback: remove the bootstrap module and `sentry-sdk` dependency/lockfile changes.
 
@@ -66,15 +66,15 @@ Chain strategy: size-exception
 
 - Start: framework-agnostic bootstrap exists and passes unit tests.
 - Change targets:
-  - `apps/api/app/main.py`: import and call `init_sentry()` during app bootstrap; add `GET /debug-sentry`.
+  - `apps/api/app/main.py`: import and call `init_sentry()` during app bootstrap; add `GET /debug-sentry` only when `ENABLE_DEBUG_SENTRY=true` (404 otherwise).
   - `apps/api/tests/test_main.py`: complete host-adapter tests for `/health` and `/debug-sentry`.
 - Requirements:
   - Keep FastAPI-specific code only in `app/main.py` or host-adapter modules.
   - Preserve `GET /health -> 200 {"status": "ok"}` with Sentry env vars absent.
-  - Add `GET /debug-sentry` that intentionally raises an unhandled exception such as `ZeroDivisionError`.
+  - Add `GET /debug-sentry` behind `ENABLE_DEBUG_SENTRY=true` that intentionally raises an unhandled exception such as `ZeroDivisionError`.
   - Ensure no real Sentry ingestion is attempted when DSN is absent.
 - Verify GREEN:
-  - `cd apps/api && uv run pytest tests/test_main.py`.
+  - `cd apps/api && uv run pytest tests/test_main.py` (assert 404 when the flag is absent and 500 only when enabled).
   - `cd apps/api && uv run python -c "from app.main import app; print(app.title)"`.
   - `cd apps/api && uv run python -c "from fastapi.testclient import TestClient; from app.main import app; r = TestClient(app).get('/health'); assert r.status_code == 200; assert r.json() == {'status': 'ok'}"`.
 - Rollback: remove the `init_sentry()` call and `/debug-sentry` route.

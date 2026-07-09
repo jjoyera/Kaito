@@ -170,3 +170,29 @@ import smoke                          → Kaito API
 /health smoke                         → 200 {"status": "ok"}
 LSP diagnostics on changed files      → No diagnostics found
 ```
+
+## CodeRabbit Documentation Alignment (2026-07-09)
+
+CodeRabbit identified that some archived OpenSpec reports still described the
+pre-4R state even though the implementation had already been corrected.
+
+### Findings and Resolutions
+
+| Finding | Resolution |
+| --- | --- |
+| `apply-progress.md` still described `/debug-sentry` as unconditional | Reframed the note as historical and documented that post-4R corrections gate the route with `ENABLE_DEBUG_SENTRY=true`. |
+| `archive-report.md` still listed the unconditional route as an active risk | Reframed the risk as historical context and documented the current default-404 behavior. |
+| Archived change spec missed the debug-route gate contract | Synced the archived change spec with the corrected canonical spec. |
+| `sync-report.md` still said the change folder remained active and recommended archive | Updated status to say the change was synced and then archived; no SDD phase remains pending. |
+| `tasks.md` used an unrunnable pytest path after `cd apps/api` | Corrected the command to `uv run pytest tests/test_sentry_bootstrap.py`. |
+| `verify-report.md` still described `/debug-sentry` as unconditional | Reframed it as historical context and documented the `ENABLE_DEBUG_SENTRY=true` gate. |
+| `reload_main()` lacked a return type | Added `types.ModuleType` return annotation. |
+| `/debug-sentry` route registration had no startup log | Added a warning log when the route is registered. |
+| Some tests manually managed Sentry env vars | Switched those tests to call `clear_sentry_env(monkeypatch)` first. |
+
+### Verification Evidence
+
+```text
+cd apps/api && uv run ruff check .       → All checks passed
+cd apps/api && uv run pytest tests/ -q   → 25 passed
+```

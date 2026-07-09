@@ -7,6 +7,7 @@ Importable from test modules:
 """
 
 import importlib
+from types import ModuleType
 
 import pytest
 
@@ -33,7 +34,7 @@ def clear_sentry_env(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv(var, raising=False)
 
 
-def reload_main():
+def reload_main() -> ModuleType:
     """Reload ``app.main`` and return the module (picks up current env state)."""
     import app.main as main_module  # noqa: PLC0415
 

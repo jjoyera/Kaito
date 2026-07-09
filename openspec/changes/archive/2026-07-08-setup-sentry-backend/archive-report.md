@@ -79,7 +79,10 @@
 
 ## Risks
 
-- `/debug-sentry` is unconditional and intentionally raises in any environment; tracked in `verify-report.md` as a non-blocking follow-up risk.
+- Historical context: at archive time, `/debug-sentry` was recorded as an
+  unconditional diagnostic route. Post-4R corrections now gate it behind
+  `ENABLE_DEBUG_SENTRY=true`; without that flag, the route is not registered and
+  returns the normal host-adapter 404.
 - Review workload remains high under the approved single-PR size exception context recorded in `tasks.md` and `apply-progress.md`.
 
 ## Archived Path

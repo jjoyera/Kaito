@@ -117,10 +117,9 @@ def test_health_with_dsn_present_and_sdk_mocked(
 
     init_sentry() must have been invoked and returned True on app reload.
     """
+    clear_sentry_env(monkeypatch)
     monkeypatch.setenv("SENTRY_DSN", _FAKE_DSN)
     monkeypatch.setenv("SENTRY_ENVIRONMENT", "testing")
-    monkeypatch.delenv("SENTRY_TRACES_SAMPLE_RATE", raising=False)
-    monkeypatch.delenv("SENTRY_PROFILES_SAMPLE_RATE", raising=False)
     monkeypatch.delenv("ENABLE_DEBUG_SENTRY", raising=False)
 
     with patch("sentry_sdk.init") as mock_init:
@@ -149,6 +148,7 @@ def test_app_starts_and_health_ok_with_malformed_dsn(
     init_sentry() logs an error and continues with Sentry disabled rather
     than crashing the application.
     """
+    clear_sentry_env(monkeypatch)
     monkeypatch.setenv("SENTRY_DSN", "totally-invalid-dsn-value")
     monkeypatch.delenv("ENABLE_DEBUG_SENTRY", raising=False)
 

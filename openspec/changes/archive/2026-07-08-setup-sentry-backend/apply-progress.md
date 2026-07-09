@@ -144,9 +144,13 @@ git diff --stat                           → 4 tracked files, 90+, 2−
 | **Sample-rate range/finiteness validation** — `_parse_sample_rate` only caught non-numeric strings, not out-of-range floats or non-finite values | Added `import math`; extended `_parse_sample_rate` to check `math.isfinite(value)` and `0.0 <= value <= 1.0`; logs WARNING + falls back to `0.0` on violation |
 | **Tests for range/finiteness** | Added `test_parse_sample_rate_warns_and_falls_back_for_out_of_range` (tests `1.5`, `-0.1`) and `test_parse_sample_rate_warns_and_falls_back_for_non_finite` (tests `"inf"`, `"nan"`) |
 
-### Open tracked risk (NOT implemented — intentional)
+### Tracked risk resolved by post-4R correction
 
-> ⚠️ **`/debug-sentry` is unconditional in production** — the route currently raises `ZeroDivisionError` on every request regardless of environment. The accepted spec/design explicitly requires the diagnostic route; a production guard (e.g., enabled only when `SENTRY_DSN` is set or when a debug flag is active) was raised as a future concern but is **out of scope for this change**. This must be discussed before PR merge or in a follow-up change. See design notes.
+> ✅ **`/debug-sentry` is now gated** — the original apply pass left the route
+> unconditionally registered, but the post-4R correction changed host wiring so
+> `/debug-sentry` is registered only when `ENABLE_DEBUG_SENTRY=true` is present
+> at application startup. When the flag is absent or any other value, the route
+> returns the normal FastAPI 404.
 
 ### Correction-pass verification commands
 

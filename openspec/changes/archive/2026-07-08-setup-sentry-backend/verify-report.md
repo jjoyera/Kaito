@@ -23,7 +23,7 @@
 | Optional env defaults | Covered. `SENTRY_ENVIRONMENT` defaults to `development`; traces/profiles default to `0.0`. |
 | Invalid numeric warning/fallback | Covered and hardened beyond base design: invalid, out-of-range, and non-finite sample rates warn and fall back to `0.0`. |
 | Errors-only default sampling | Covered. `traces_sample_rate=0.0` and `profiles_sample_rate=0.0` by default; error capture active when DSN exists. |
-| Diagnostic route through current host adapter | Covered. `GET /debug-sentry` is mounted in FastAPI host adapter and intentionally raises `ZeroDivisionError`. |
+| Diagnostic route through current host adapter | Covered. `GET /debug-sentry` is conditionally mounted when `ENABLE_DEBUG_SENTRY=true` and intentionally raises `ZeroDivisionError`. |
 | Framework-agnostic bootstrap | Covered. Bootstrap module imports `logging`, `math`, `os`, and `sentry_sdk`; no FastAPI/Starlette imports. FastAPI code remains in `app/main.py`. |
 | Docs/env example discoverability | Covered. `apps/api/README.md` documents optional Sentry setup and `/debug-sentry`; `.env.example` Sentry variables confirmed via grep because direct read of the env example was blocked by local safety policy. |
 
@@ -90,7 +90,9 @@ None.
 
 ## Risks / Follow-up Notes
 
-- `/debug-sentry` is unconditional and will raise in any environment. This matches the accepted spec/design diagnostic-route requirement and the parent instruction says to treat it as a tracked risk, not a blocker.
+- Historical context: the original verify pass recorded `/debug-sentry` as
+  unconditional. Post-4R corrections now mount the route only when
+  `ENABLE_DEBUG_SENTRY=true`; otherwise the host adapter returns 404.
 - CI now runs backend pytest from `apps/api`, which covers the new Sentry contracts.
 
 ## Next Recommendation

@@ -2,7 +2,7 @@
 
 ## Status
 
-**synced** — canonical OpenSpec specs were updated for the verified backend Sentry observability change. The change folder remains active and was not archived or moved.
+**synced, then archived** — canonical OpenSpec specs were updated for the verified backend Sentry observability change. At sync time the change folder remained active; it has since been archived under `openspec/changes/archive/2026-07-08-setup-sentry-backend/`.
 
 ## Domains Synced
 
@@ -91,4 +91,4 @@ grep '^### Requirement:' openspec/changes/setup-sentry-backend/specs/backend-obs
 
 ## Next Recommended Phase
 
-`sdd-archive` — the canonical spec is synced and verification was PASS with no sync blockers found.
+Archive has already completed. No further SDD phase is pending for this change.

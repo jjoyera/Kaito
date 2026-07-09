@@ -1,8 +1,11 @@
+import logging
 import os
 
 from fastapi import FastAPI
 
 from app.observability.sentry import init_sentry
+
+logger = logging.getLogger(__name__)
 
 init_sentry()
 
@@ -15,6 +18,7 @@ def health() -> dict[str, str]:
 
 
 if os.getenv("ENABLE_DEBUG_SENTRY", "").strip().lower() == "true":
+    logger.warning("ENABLE_DEBUG_SENTRY is true; /debug-sentry is registered.")
 
     @app.get("/debug-sentry")
     def debug_sentry() -> None:

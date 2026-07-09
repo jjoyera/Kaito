@@ -119,6 +119,27 @@ default and emit a warning signal suitable for developer troubleshooting.
 - AND the traces sample rate SHALL fall back to `0.0`
 - AND a warning identifying the offending variable SHALL be emitted
 
+### Requirement: Graceful degradation on malformed DSN
+
+The system SHALL handle a non-empty but malformed `SENTRY_DSN` value gracefully so
+that application import and startup never fail due to an invalid DSN string.
+
+- When `SENTRY_DSN` is non-empty but cannot be parsed as a valid Sentry DSN, the
+  backend MUST log an ERROR-level message identifying the failure and continue
+  startup with Sentry disabled.
+- The application MUST remain importable and the `/health` endpoint MUST remain
+  responsive regardless of the DSN value.
+
+#### Scenario: Malformed DSN logs error and continues
+
+- GIVEN `SENTRY_DSN` is set to a non-empty string that is not a valid Sentry DSN
+  URL
+- WHEN the application starts
+- THEN startup SHALL NOT raise an exception
+- AND an ERROR-level log message SHALL be emitted identifying the failure
+- AND Sentry SHALL be treated as disabled for the remainder of the session
+- AND `/health` SHALL return its healthy status
+
 ### Requirement: Errors-only default sampling posture
 
 The system SHALL keep the first backend slice conservative and errors-focused so
@@ -155,6 +176,10 @@ host-adapter detail rather than the architectural integration boundary. The
 route exists solely for setup verification and SHALL be clearly documented as a
 diagnostic mechanism.
 
+- The route SHALL be registered **only** when the environment variable
+  `ENABLE_DEBUG_SENTRY=true` is set at application startup. When the flag is
+  absent or has any other value, the route MUST NOT be registered and requests
+  to it MUST return 404.
 - The route SHALL raise an unhandled exception when invoked.
 - When a DSN is configured, invoking the route SHALL result in the error being
   reported to Sentry through the backend Python runtime integration mounted on
@@ -162,9 +187,15 @@ diagnostic mechanism.
 - When no DSN is configured, invoking the route SHALL raise the exception
   without attempting any Sentry ingestion network request.
 
-#### Scenario: Diagnostic route triggers an error
+#### Scenario: Diagnostic route not available when flag is absent
 
-- GIVEN the backend is running
+- GIVEN the backend is running without `ENABLE_DEBUG_SENTRY=true`
+- WHEN a request is made to the diagnostic debug route
+- THEN the response SHALL be 404 (route not registered)
+
+#### Scenario: Diagnostic route triggers an error when explicitly enabled
+
+- GIVEN the backend is running with `ENABLE_DEBUG_SENTRY=true`
 - WHEN the diagnostic debug route is invoked
 - THEN the route SHALL raise an unhandled exception
 - AND WHEN a DSN is configured, the exception SHALL be reported to Sentry
@@ -177,14 +208,17 @@ The system SHALL make backend Sentry configuration discoverable where backend
 contributors expect it, without documenting frontend, root README, or wider
 deployment rollout concerns.
 
-- `apps/api/.env.example` SHALL list the supported Sentry environment variables
+- `apps/api/.env.example` SHALL list all supported environment variables
   (`SENTRY_DSN`, `SENTRY_ENVIRONMENT`, `SENTRY_TRACES_SAMPLE_RATE`,
-  `SENTRY_PROFILES_SAMPLE_RATE`) with placeholder/default guidance.
+  `SENTRY_PROFILES_SAMPLE_RATE`, `ENABLE_DEBUG_SENTRY`) with
+  placeholder/default guidance.
 - `apps/api/README.md` SHALL document the optional setup, the local-safe
-  behavior when variables are absent, the available Sentry variables, and how to
-  use the diagnostic route for verification.
+  behavior when variables are absent, the available variables, how to use
+  `--env-file` or export to load the `.env` file (the server does not
+  load it automatically), and how to use the diagnostic route for verification.
 - Documentation SHALL make clear that the diagnostic error route is a
-  verification mechanism and not a general-purpose endpoint.
+  verification mechanism, not a general-purpose endpoint, and requires
+  `ENABLE_DEBUG_SENTRY=true` to be registered.
 
 #### Scenario: Contributor discovers backend Sentry setup
 
