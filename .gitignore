@@ -16,3 +16,4 @@ __pycache__/
 # Local Pi runtime state
 .atl/
 /apps/web/.env
+/apps/api/.env

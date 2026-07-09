@@ -77,6 +77,10 @@ jobs:
         working-directory: apps/api
         run: uv run ruff check .
 
+      - name: Run API tests
+        working-directory: apps/api
+        run: uv run pytest tests/
+
       - name: Smoke-load FastAPI app
         working-directory: apps/api
         run: uv run python -c "from app.main import app; print(app.title)"
