@@ -2,7 +2,11 @@ import logging
 import os
 
 from fastapi import FastAPI
+from fastapi.requests import Request
+from fastapi.responses import JSONResponse
 
+from app.core.auth.errors import AuthConfigError
+from app.modules.auth.router import router as auth_router
 from app.observability.sentry import init_sentry
 
 logger = logging.getLogger(__name__)
@@ -10,6 +14,17 @@ logger = logging.getLogger(__name__)
 init_sentry()
 
 app = FastAPI(title="Kaito API")
+
+app.include_router(auth_router)
+
+
+@app.exception_handler(AuthConfigError)
+def _handle_auth_config_error(request: Request, exc: AuthConfigError) -> JSONResponse:
+    """Map missing auth config to 503 — distinct from the 401 token-failure contract."""
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "Authentication is not configured"},
+    )
 
 
 @app.get("/health")

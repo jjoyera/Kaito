@@ -12,7 +12,7 @@ project:
 
 sdd:
   mode: interactive
-  strict_tdd: false
+  strict_tdd: true
   strict_tdd_reason: >-
     The scaffold now includes application source, package manifests, and CI
     validation. TDD should become mandatory once concrete test runners are
@@ -39,6 +39,18 @@ sdd:
     apply:
       requires_approved_tasks: true
       requires_tests_when_runner_exists: true
+    sync:
+      requires_verify_pass: true
+      requires_root_readme_review: true
+      root_readme_update_when:
+        - completed work changes project capabilities
+        - completed work changes setup or environment variables
+        - completed work changes architecture or runtime behavior
+        - completed work changes developer commands or verification flow
+      root_readme_guidance: >-
+        Keep the root README concise: summarize stable project-level changes
+        and point to package-specific documentation instead of duplicating full
+        specs.
 
 testing:
   status: scaffold_validation
