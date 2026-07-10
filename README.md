@@ -1,14 +1,26 @@
 # Kaito
 
-Kaito es una aplicación web planificada para actuar como coach de IA para
-corredores de ultradistancia. Este repositorio ya incluye el primer scaffold
-runnable del monorepo, pero todavía no implementa funcionalidades de producto.
+<p align="center">
+  <img src="apps/web/public/assets/brand/Kaito_logo.png" alt="Kaito" width="160">
+</p>
 
-## Visión general
+Kaito es una aplicación web para actuar como coach de IA para corredores de
+ultradistancia. El repositorio ya contiene el scaffold runnable del monorepo,
+validación de CI, límites iniciales de autenticación y documentación de producto
+/ marca para guiar las siguientes pantallas.
 
-El objetivo actual es ofrecer límites técnicos claros para futuras iteraciones:
-una app web mínima, una API mínima y un paquete compartido reservado. La lógica
-de entrenamiento, datos reales, integraciones e IA llegará en cambios posteriores.
+## Estado actual
+
+El proyecto todavía está en fase temprana: hay base técnica y contratos de auth,
+pero no existe aún una experiencia completa de producto para usuarios finales.
+
+| Área | Estado |
+| --- | --- |
+| Web | Next.js App Router con home scaffold y contratos frontend de login. |
+| API | FastAPI con health check y verificación JWT Supabase vía JWKS. |
+| Auth | Backend protegido con `GET /auth/me`; UI de login en construcción. |
+| Marca | Paleta y assets iniciales bajo `docs/` y `apps/web/public/`. |
+| SDD | Cambios guiados por OpenSpec en `openspec/changes/`. |
 
 ## Stack tecnológico
 
@@ -18,6 +30,7 @@ de entrenamiento, datos reales, integraciones e IA llegará en cambios posterior
 | Backend | FastAPI con Python 3.12 |
 | Paquetes JS/TS | pnpm 11 workspaces |
 | Entorno Python | uv |
+| Autenticación | Supabase Auth tokens verificados en backend por JWKS |
 | Contenedores locales | Docker Compose solo para desarrollo local |
 
 ## Instalación
@@ -42,7 +55,7 @@ cd apps/api
 uv sync
 ```
 
-## Ejecución
+## Ejecución local
 
 Ejecuta la web desde la raíz:
 
@@ -51,22 +64,6 @@ pnpm dev:web
 ```
 
 La app web queda disponible en `http://localhost:3000`.
-
-Instala una vez el binario Chromium para los tests de navegador:
-
-```bash
-pnpm --filter web exec playwright install chromium
-```
-
-Valida de forma determinista que la home web arranca y muestra el texto esperado
-mediante Playwright:
-
-```bash
-pnpm test:web-e2e
-```
-
-Este smoke check de Playwright (Chromium) también se ejecuta en CI para pull
-requests.
 
 Ejecuta la API desde `apps/api`:
 
@@ -80,12 +77,7 @@ salud con:
 
 ```bash
 curl http://localhost:8000/health
-```
-
-La respuesta esperada es:
-
-```json
-{"status":"ok"}
+# → {"status":"ok"}
 ```
 
 También puedes levantar ambos servicios con Docker Compose para desarrollo local:
@@ -96,35 +88,107 @@ docker compose up --build
 
 Compose solo define `web` y `api`; no es configuración de despliegue ni CD.
 
+## Autenticación
+
+El backend tiene un límite de autenticación independiente del proveedor. El código
+de dominio consume `UserContext` y `AuthVerifier`; los detalles de Supabase quedan
+aislados en el adaptador de infraestructura.
+
+La verificación JWT usa las Signing Keys/JWKS de Supabase mediante una URL
+explícita:
+
+| Variable | Uso |
+| --- | --- |
+| `SUPABASE_JWKS_URL` | Requerida para activar rutas protegidas. |
+| `SUPABASE_URL` | Opcional/informativa; no se usa para derivar JWKS. |
+| `SUPABASE_JWT_AUDIENCE` | Audiencia esperada; por defecto `authenticated`. |
+| `SUPABASE_JWT_ISSUER` | Emisor esperado; vacío desactiva esta verificación. |
+| `SUPABASE_JWKS_CACHE_TTL_SECONDS` | TTL de caché JWKS; por defecto `600`. |
+
+Si `SUPABASE_JWKS_URL` no está configurada, el backend arranca normalmente,
+`GET /health` sigue funcionando y las rutas protegidas devuelven `503` con
+`{"detail":"Authentication is not configured"}`.
+
+Verifica el usuario autenticado con:
+
+```bash
+curl -H "Authorization: Bearer <token>" http://localhost:8000/auth/me
+# → 200 {"user_id":"...","email":"..."}
+```
+
+Más detalle en `apps/api/README.md`.
+
+## Validación
+
+Instala una vez Chromium para los tests de navegador:
+
+```bash
+pnpm --filter web exec playwright install chromium
+```
+
+Comandos principales desde la raíz:
+
+```bash
+pnpm lint:web
+pnpm build:web
+pnpm test:web-e2e
+pnpm test:web-auth
+```
+
+Comandos principales de API desde `apps/api`:
+
+```bash
+uv run ruff check .
+uv run python -c "from app.main import app"
+uv run pytest
+```
+
+`pnpm test:web-auth` cubre los contratos frontend de login: validación local,
+normalización de resultados de auth y handoff autenticado centralizado. No requiere
+cuentas reales de Supabase.
+
 ## Estructura del proyecto
 
 ```text
 apps/
-  web/                  App Next.js mínima.
-  api/                  API FastAPI mínima con /health.
+  web/                  App Next.js, assets de marca y features frontend.
+  api/                  API FastAPI con /health y auth protegida por JWKS.
 packages/
   api-client/           Paquete reservado; todavía no exporta un cliente real.
 docker/                 Dockerfiles locales para web y API.
 .github/workflows/     Validación básica de CI.
-docs/                  Documentación de producto y arquitectura.
+docs/                  Documentación de producto, arquitectura y marca.
 openspec/              Artefactos SDD/OpenSpec.
 ```
 
 ## Funcionalidades actuales
 
-- Página web mínima que confirma que el scaffold frontend está funcionando.
-- API FastAPI con `GET /health` que devuelve `{"status":"ok"}`.
-- Validación básica: lint/build de web, smoke browser con Playwright (Chromium)
-  y lint/smoke-load de API.
+- Home web scaffold que confirma que el frontend arranca.
+- Assets iniciales de marca en `apps/web/public/assets/brand/`.
+- Paleta visual inicial en `docs/09-brand-palette.md`.
+- API FastAPI con `GET /health`.
+- Backend auth con `GET /auth/me`, verificación JWKS, cache de claves y errores
+  seguros para configuración ausente.
+- Contratos frontend de login para validar email/password, mapear resultados de
+  proveedor a estados propios de Kaito y centralizar el handoff autenticado.
+- Validación básica: lint/build de web, tests unitarios auth, smoke browser con
+  Playwright y lint/smoke/tests de API.
 - Paquete `@kaito/api-client` reservado para un futuro cliente generado; hoy no
   exporta código ni contratos de producto.
 
-No hay Supabase, base de datos/PostgreSQL, SQLAlchemy/Alembic, autenticación,
-Strava, IA/RAG, onboarding, planes de entrenamiento ni despliegue/CD. También
-siguen fuera de alcance los E2E backend/API y los flujos de autenticación real.
+Todavía no hay pantalla `/login` funcional, signup, password reset, magic links,
+social auth, demo access, onboarding, dashboard, Strava, IA/RAG, planes de
+entrenamiento reales, base de datos de dominio ni despliegue/CD.
+
+## Flujo SDD/OpenSpec
+
+Los cambios no triviales se planifican en `openspec/changes/<change-name>/` con
+proposal, spec, design, tasks, apply, verify y sync. Si un cambio supera el
+presupuesto de revisión, se divide en PRs encadenadas para mantener diffs chicos
+y revisables.
 
 ## Regla de actualización
 
-Cualquier cambio futuro que modifique la estructura scaffolded, los comandos de
-ejecución o las funcionalidades disponibles debe actualizar este `README.md` en
-español dentro del mismo cambio.
+Cualquier cambio que modifique estructura, comandos, capacidades disponibles,
+variables de entorno, arquitectura o flujo de verificación debe actualizar este
+`README.md` en español dentro del mismo cambio.

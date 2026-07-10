@@ -14,6 +14,7 @@
     "build:web": "pnpm --filter web build",
     "lint:web": "pnpm --filter web lint",
     "test:web-sentry-scrubbing": "pnpm --filter web test:sentry-scrubbing",
+    "test:web-auth": "pnpm --filter web test:auth",
     "test:web-docker-build": "docker compose build web && docker compose run --rm --no-deps web sh -lc 'test -f apps/web/instrumentation.ts && test -f apps/web/instrumentation-client.ts'",
     "test:web-e2e": "pnpm --filter web test:e2e"
   }

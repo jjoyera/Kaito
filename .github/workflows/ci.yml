@@ -40,6 +40,9 @@ jobs:
       - name: Test Sentry privacy scrubber
         run: pnpm test:web-sentry-scrubbing
 
+      - name: Test web auth contracts
+        run: pnpm test:web-auth
+
       - name: Build web scaffold
         run: pnpm build:web
 
