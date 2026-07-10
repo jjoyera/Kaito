@@ -82,9 +82,10 @@ Persisted in `openspec/changes/build-login-ui/tasks.md`:
 - The PR 1 handoff destination is centralized as `AUTHENTICATED_FLOW_DESTINATION = "/"` because downstream authenticated routing is deferred. This keeps the temporary destination in one place and avoids onboarding/dashboard branching.
 - No concrete Supabase adapter was added in PR 1; the UI-facing contract and mapping boundary are provider-agnostic as required.
 
-## Remaining tasks
+## Remaining tasks at PR 1 handoff (historical)
 
-Exact unchecked task lines remaining in `tasks.md`:
+The following was the unchecked snapshot at the PR 1 handoff; see the PR 2
+update below for the current checklist:
 
 - [ ] Add `apps/web/e2e/login.spec.ts` for `/login` covering visible labels, keyboard reachability, local required-field validation, invalid email validation, and preservation of the entered email value.
 - [ ] Add controlled-auth-outcome coverage in `apps/web/e2e/login.spec.ts` for pending duplicate-submit prevention, invalid-credentials feedback, technical/system error feedback, and successful authenticated-flow handoff.
@@ -221,6 +222,19 @@ Exact unchecked task lines remaining in `tasks.md`:
 - [ ] Update `openspec/changes/build-login-ui/artifacts.md` during apply/verify with implementation and verification status.
 - [ ] During sync, review `README.md`; update it only if this login UI changes stable capabilities, setup/environment variables, architecture/runtime behavior, or developer commands.
 
-### Ready state
+### CodeRabbit follow-up
 
-PR 2 implementation is complete and validated for its assigned scope. The broader `build-login-ui` change is **not ready for final verify/archive** because PR 3 remains unchecked.
+- Production route gating now uses `VERCEL_ENV=production`, with a dedicated
+  production-build Playwright check running against `pnpm start` on port 3100.
+- Duplicate-submit coverage now focuses an enabled control before the second
+  Enter activation and verifies exactly one guarded test-adapter call.
+- Rejected sign-in promises now render/report the system error and always
+  release the in-flight guard.
+- Final change verification and README sync remain unchecked as future PR 3/final
+  tasks.
+
+### PR 2 ready state
+
+PR 2 implementation is complete and validated for its assigned scope. The broader
+`build-login-ui` change is **not ready for final verify/archive** because PR 3
+remains unchecked.

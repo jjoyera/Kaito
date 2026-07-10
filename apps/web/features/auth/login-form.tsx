@@ -47,20 +47,26 @@ export function LoginForm() {
 
 		setStatus("submitting");
 		pendingSubmission.current = true;
-		const outcome = await signIn({
-			email: validation.submission.email,
-			password: validation.submission.password,
-		});
+		try {
+			const outcome = await signIn({
+				email: validation.submission.email,
+				password: validation.submission.password,
+			});
 
-		if (outcome.status === "success") {
-			continueToAuthenticatedFlow(router);
-			return;
-		}
+			if (outcome.status === "success") {
+				continueToAuthenticatedFlow(router);
+				return;
+			}
 
-		pendingSubmission.current = false;
-		setStatus(outcome.status);
-		if (outcome.status === "system_error") {
+			setStatus(outcome.status);
+			if (outcome.status === "system_error") {
+				reportLoginSystemError();
+			}
+		} catch {
+			setStatus("system_error");
 			reportLoginSystemError();
+		} finally {
+			pendingSubmission.current = false;
 		}
 	}
 
@@ -144,10 +150,17 @@ function getEmailErrorMessage(
 
 function createDefaultSignInWithPassword(): SignInWithPassword {
 	if (isTestAuthAdapterEnabled()) {
-		return async (input) => resolveTestAuthOutcome(input.email);
+		return (input) => {
+			const testWindow = window as typeof window & {
+				__KAITO_TEST_AUTH_CALL_COUNT__?: number;
+			};
+			testWindow.__KAITO_TEST_AUTH_CALL_COUNT__ =
+				(testWindow.__KAITO_TEST_AUTH_CALL_COUNT__ ?? 0) + 1;
+			return resolveTestAuthOutcome(input.email);
+		};
 	}
 
-	return async () => ({ status: "system_error" });
+	return () => Promise.resolve({ status: "system_error" });
 }
 
 async function resolveTestAuthOutcome(email: string): Promise<SignInOutcome> {

@@ -22,5 +22,5 @@ export default function LoginPage() {
 }
 
 function isProductionLoginUnavailable(): boolean {
-	return process.env.NODE_ENV === "production";
+	return process.env.VERCEL_ENV === "production";
 }

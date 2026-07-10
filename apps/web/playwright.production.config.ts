@@ -2,28 +2,21 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
 	testDir: "./e2e",
-	testIgnore: "login-production.spec.ts",
+	testMatch: "login-production.spec.ts",
 	forbidOnly: Boolean(process.env.CI),
 	workers: 1,
 	use: {
-		baseURL: "http://127.0.0.1:3000",
+		...devices["Desktop Chrome"],
+		baseURL: "http://127.0.0.1:3100",
 	},
-	projects: [
-		{
-			name: "chromium",
-			use: {
-				...devices["Desktop Chrome"],
-			},
-		},
-	],
 	webServer: {
-		command: "pnpm dev",
+		command: "pnpm build && pnpm start --port 3100",
 		env: {
-			NEXT_PUBLIC_KAITO_TEST_AUTH_ADAPTER: "1",
+			VERCEL_ENV: "production",
 			NEXT_PUBLIC_SENTRY_DSN: "",
 		},
 		reuseExistingServer: false,
-		url: "http://127.0.0.1:3000",
+		url: "http://127.0.0.1:3100",
 		timeout: 120_000,
 	},
 });

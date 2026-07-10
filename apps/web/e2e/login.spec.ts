@@ -75,11 +75,24 @@ test.describe("/login", () => {
 		await expect(
 			page.getByRole("button", { name: "Signing in…" }),
 		).toBeDisabled();
+		await page.getByLabel("Password").focus();
 		await page.keyboard.press("Enter");
 
 		await expect(
 			page.getByRole("button", { name: "Signing in…" }),
 		).toBeDisabled();
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() =>
+						(
+							window as typeof window & {
+								__KAITO_TEST_AUTH_CALL_COUNT__?: number;
+							}
+						).__KAITO_TEST_AUTH_CALL_COUNT__ ?? 0,
+				),
+			)
+			.toBe(1);
 	});
 
 	test("shows generic invalid-credentials feedback", async ({ page }) => {
