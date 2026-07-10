@@ -11,7 +11,7 @@ Artifact index and status tracking for the `build-login-ui` OpenSpec change.
 | spec | ✅ complete | `specs/web-login-ui/spec.md` |
 | design | ✅ complete | `design.md` |
 | tasks | ✅ complete | `tasks.md` |
-| apply | in progress — PR 1 complete | `apply-progress.md` |
+| apply | in progress — PR 2 complete | `apply-progress.md` |
 | verify | pending — blocked until chained PRs complete | not created |
 | sync | pending | not created |
 
@@ -47,5 +47,6 @@ Artifact index and status tracking for the `build-login-ui` OpenSpec change.
 
 - PR 1 — Auth contracts and unit-level tests: ✅ complete.
 - PR 1 validation completed: `pnpm test:web-auth`, `pnpm lint:web`, `pnpm build:web`.
-- PR 2 — Functional `/login` UI and E2E behavior: pending.
+- PR 2 — Functional `/login` UI and E2E behavior: ✅ complete.
+- PR 2 validation completed: `pnpm test:web-auth`, `pnpm lint:web`, `pnpm build:web`, `pnpm test:web-e2e`.
 - PR 3 — Visual polish, accessibility, and reduced-motion hardening: pending.

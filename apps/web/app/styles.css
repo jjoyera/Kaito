@@ -52,3 +52,81 @@ p {
 	font-size: 1.125rem;
 	line-height: 1.7;
 }
+
+.login-page {
+	background: #f5f0e6;
+}
+
+.login-card {
+	width: min(100%, 28rem);
+	border: 1px solid #e1d8c7;
+	border-radius: 1.25rem;
+	background: #fffdf8;
+	padding: 2rem;
+	box-shadow: 0 1rem 3rem rgb(31 61 53 / 10%);
+}
+
+.login-intro {
+	margin-bottom: 1.5rem;
+}
+
+.login-form {
+	display: grid;
+	gap: 1rem;
+	margin-top: 1.5rem;
+}
+
+.login-field {
+	display: grid;
+	gap: 0.4rem;
+}
+
+.login-field label {
+	font-weight: 700;
+}
+
+.login-field input {
+	width: 100%;
+	border: 1px solid #b9c1b8;
+	border-radius: 0.75rem;
+	font: inherit;
+	padding: 0.85rem 1rem;
+}
+
+.login-field input:focus {
+	border-color: #2f5d50;
+	outline: 3px solid rgb(47 93 80 / 18%);
+}
+
+.login-field input[aria-invalid="true"] {
+	border-color: #b84a3a;
+}
+
+.login-field-error,
+.login-form-error {
+	color: #b84a3a;
+	font-size: 0.95rem;
+	line-height: 1.5;
+}
+
+.login-form button {
+	border: 0;
+	border-radius: 999px;
+	background: #2f5d50;
+	color: #fffdf8;
+	cursor: pointer;
+	font: inherit;
+	font-weight: 800;
+	min-height: 2.75rem;
+	padding: 0.85rem 1.25rem;
+}
+
+.login-form button:focus-visible {
+	outline: 3px solid rgb(232 137 58 / 45%);
+	outline-offset: 3px;
+}
+
+.login-form button:disabled {
+	cursor: not-allowed;
+	opacity: 0.72;
+}

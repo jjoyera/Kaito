@@ -36,19 +36,19 @@ Chain strategy: pending
 
 ### 3. RED — add `/login` browser behavior coverage
 
-- [ ] Add `apps/web/e2e/login.spec.ts` for `/login` covering visible labels, keyboard reachability, local required-field validation, invalid email validation, and preservation of the entered email value.
-- [ ] Add controlled-auth-outcome coverage in `apps/web/e2e/login.spec.ts` for pending duplicate-submit prevention, invalid-credentials feedback, technical/system error feedback, and successful authenticated-flow handoff.
-- [ ] Use a test-only mock adapter selected by an explicit Playwright/non-production flag in `apps/web/playwright.config.ts`, or document a concrete network-interception target if the implementation chooses interception.
+- [x] Add `apps/web/e2e/login.spec.ts` for `/login` covering visible labels, keyboard reachability, local required-field validation, invalid email validation, and preservation of the entered email value.
+- [x] Add controlled-auth-outcome coverage in `apps/web/e2e/login.spec.ts` for pending duplicate-submit prevention, invalid-credentials feedback, technical/system error feedback, and successful authenticated-flow handoff.
+- [x] Use a test-only mock adapter selected by an explicit Playwright/non-production flag in `apps/web/playwright.config.ts`, or document a concrete network-interception target if the implementation chooses interception.
 - Acceptance: tests fail before UI implementation and verify that local validation blocks auth attempts.
 
 ### 4. GREEN — build route and login form behavior
 
-- [ ] Create `apps/web/app/(auth)/login/page.tsx` as a thin route-level composition for `/login`.
-- [ ] Create `apps/web/features/auth/login-form.tsx` as a client component for field state, validation, pending state, submit handling, and error rendering.
-- [ ] Ensure email/password controls use accessible labels, `type="email"`, `type="password"`, `autoComplete="email"`, and `autoComplete="current-password"`.
-- [ ] Disable or guard submit while pending so repeated activation cannot start a second sign-in attempt.
-- [ ] Render generic invalid-credentials feedback separately from technical/system feedback.
-- [ ] On success, call `continueToAuthenticatedFlow(...)`; do not add signup, password reset, magic-link, social auth, demo access, route guards, or onboarding/dashboard branching.
+- [x] Create `apps/web/app/(auth)/login/page.tsx` as a thin route-level composition for `/login`.
+- [x] Create `apps/web/features/auth/login-form.tsx` as a client component for field state, validation, pending state, submit handling, and error rendering.
+- [x] Ensure email/password controls use accessible labels, `type="email"`, `type="password"`, `autoComplete="email"`, and `autoComplete="current-password"`.
+- [x] Disable or guard submit while pending so repeated activation cannot start a second sign-in attempt.
+- [x] Render generic invalid-credentials feedback separately from technical/system feedback.
+- [x] On success, call `continueToAuthenticatedFlow(...)`; do not add signup, password reset, magic-link, social auth, demo access, route guards, onboarding/dashboard branching.
 - Acceptance: Task 3 behavior tests pass and `/login` is additive; existing `/` scaffold tests remain valid unless intentionally updated.
 
 ### 5. TRIANGULATE — visual styling from the approved mockup and Kaito brand
