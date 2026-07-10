@@ -224,8 +224,9 @@ Exact unchecked task lines remaining in `tasks.md`:
 
 ### CodeRabbit follow-up
 
-- Production route gating now uses `VERCEL_ENV=production`, with a dedicated
-  production-build Playwright check running against `pnpm start` on port 3100.
+- Production route gating was superseded during PR 3 verify: the user chose to
+  expose `/login` in production, and the production-build Playwright check now
+  verifies the page renders under `pnpm start` on port 3100.
 - Duplicate-submit coverage now focuses an enabled control before the second
   Enter activation and verifies exactly one guarded test-adapter call.
 - Rejected sign-in promises now render/report the system error and always
@@ -238,3 +239,86 @@ Exact unchecked task lines remaining in `tasks.md`:
 PR 2 implementation is complete and validated for its assigned scope. The broader
 `build-login-ui` change is **not ready for final verify/archive** because PR 3
 remains unchecked.
+
+---
+
+## PR 3 update — Visual polish, accessibility, and reduced-motion hardening
+
+### Status consumed
+
+- Parent-provided structured status was authoritative: `artifactStore: both`, OpenSpec authoritative because `openspec/` exists, active change `build-login-ui`, and PR 1/PR 2 dependencies ready.
+- Strict TDD mode was active from `openspec/config.yaml` and the parent prompt. Global strict-TDD guidance was consumed from `/home/jjdelarubia/.pi/agent/gentle-ai/support/strict-tdd.md`.
+- Action context warning: no separate `allowedEditRoots` was supplied; mode was not workspace-planning and every edit stayed in the authoritative repository workspace.
+- Review-workload guard was resolved by the parent: `auto-chain`/assigned PR 3 slice only. No commit or push was made.
+
+### Workload / PR boundary
+
+- Current slice: **PR 3 — Visual polish, accessibility, and reduced-motion hardening** (Tasks 5–8, except the explicitly sync-owned README review).
+- Changed production files are limited to the login route, form semantics, and global login CSS. No backend/API changes were made.
+- Verification reconciliation: the current PR 3 source/test diff is 439 changed lines (355 additions, 84 deletions) before OpenSpec status documents. It stays below the configured 600-line review budget and inside the dedicated PR 3 visual/accessibility boundary.
+
+### Completed tasks and persisted checkbox updates
+
+Persisted in `openspec/changes/build-login-ui/tasks.md`:
+
+- [x] Tasks 5.1–5.4: Kaito tokens and warm mountain/sun/trail composition were implemented from the inspected `Kaito.dc.html` reference; no password recovery was added and the form remains primary.
+- [x] Tasks 6.1–6.4: feedback associations and alert semantics, accessibility/focus and reduced-motion Playwright coverage, `prefers-reduced-motion` CSS, and 375px/1440px no-overflow checks.
+- [x] Tasks 7.1–7.4: auth feature boundary/refactor review, thin route, concise coaching copy, and frontend-only confirmation.
+- [x] Tasks 8.1–8.3: expected validation commands, existing auth helper test command, and artifact status update.
+
+### Files changed
+
+- `apps/web/app/(auth)/login/page.tsx`
+- `apps/web/app/styles.css`
+- `apps/web/e2e/login.spec.ts`
+- `apps/web/features/auth/login-form.tsx`
+- `openspec/changes/build-login-ui/tasks.md`
+- `openspec/changes/build-login-ui/artifacts.md`
+- `openspec/changes/build-login-ui/apply-progress.md`
+
+### TDD Cycle Evidence
+
+| Task | Test File | Layer | Safety Net | RED | GREEN | TRIANGULATE | REFACTOR |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 5/6 visual, accessibility, responsive motion | `apps/web/e2e/login.spec.ts` | E2E | ✅ Existing focused login suite passed 7/7 | ✅ Added failing accessible Kaito brand assertion plus expected default card animation before production changes; 1/9 failed | ✅ Route branding, CSS composition/motion, and field alert semantics made focused suite pass 9/9 at apply time | ✅ Validated both 375px and 1440px viewports, default and reduced motion, field descriptors, and each alert message | ✅ Kept CSS-only decoration and compact route composition; focused suite passed 9/9 before subsequent user-requested visual tweaks |
+| 7 refactor/boundary review | Existing auth tests | Unit + E2E | ✅ `pnpm test:web-auth` passed 15/15 before final validation | ➖ Approval behavior already covered by existing unit/E2E suite; no behavior change required | ✅ 15/15 auth tests and 9/9 focused login E2E passed | ➖ Structural review only: provider mapping and raw-error boundary remain in `auth-client.ts` | ✅ No extraction was needed; route remains composition-only and form logic remains feature-local |
+| 8 verification/status | Existing validation runners | Unit + E2E | ✅ Focused suites green | ➖ Documentation/status task; no production behavior | ✅ Lint, build, auth tests, and full E2E passed | ➖ Command outcomes cover unit and browser paths | ✅ Status documentation merged with prior PR 1/PR 2 progress |
+
+### Commands run
+
+- Safety net: `pnpm --filter web exec playwright test e2e/login.spec.ts` → passed, 7/7 before PR 3 edits.
+- RED: `pnpm --filter web exec playwright test e2e/login.spec.ts` → failed as expected: accessible `Kaito mountain coach` brand mark did not exist.
+- GREEN/refactor: `pnpm --filter web exec playwright test e2e/login.spec.ts` → passed, 9/9.
+- `pnpm test:web-auth` → passed, 15/15.
+- `pnpm lint:web` → passed.
+- `pnpm build:web` → passed; `/login` prerendered.
+- `KAITO_PLAYWRIGHT_PORT=3001 pnpm test:web-e2e` → passed: 11 development E2E tests and 1 production login-page test. Expected synthetic no-DSN Sentry console diagnostics were emitted by the pre-existing no-Sentry test; the command passed.
+
+### Deviations from design
+
+- The approved reference uses inline SVG scenery. This slice uses CSS-only mountain layers, a sun gradient, and a diagonal serpentine orange trail running from the lower-left viewport toward the sun. Following the user's latest decision, the brand header uses a text-only `Kaito` wordmark; no image logo asset is rendered.
+- User-facing login copy is Spanish (Spain) for now; no i18n framework or translation files were introduced.
+- Verification reconciliation: the text-only wordmark and final trail treatment
+  were subsequent user-requested visual tweaks. Their final GREEN state was
+  re-established during verify with `KAITO_PLAYWRIGHT_PORT=3001 pnpm
+  test:web-e2e`.
+- The existing form already had `aria-invalid`, `aria-describedby`, and form-level alerts. PR 3 added `role="alert"` to field-level feedback and E2E assertions for the complete feedback contract.
+- README review is intentionally not completed here: Tasks 8.4 and sync configuration assign it to sync, and this frontend visual/accessibility slice did not alter stable commands, setup, environment variables, or runtime architecture.
+
+### Remaining tasks
+
+Exact unchecked task line remaining in `tasks.md`:
+
+- [ ] During sync, review `README.md`; update it only if this login UI changes stable capabilities, setup/environment variables, architecture/runtime behavior, or developer commands.
+
+### PR 3 ready state
+
+PR 3 implementation is complete and its completed tasks are visibly checked in the persisted task artifact. The change is ready for **verify**, then sync's required README review; it is not yet ready for archive.
+
+---
+
+## Final sync update
+
+- Verification passed on 2026-07-10; canonical spec sync completed without archiving.
+- Root `README.md` was reviewed and updated because `/login` is a stable production capability and the validation flow now documents `KAITO_PLAYWRIGHT_PORT` plus the production login-page check.
+- The README review task is checked in `tasks.md`. See `sync-report.md` for canonical merge details.

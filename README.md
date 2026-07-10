@@ -11,14 +11,14 @@ validación de CI, límites iniciales de autenticación y documentación de prod
 
 ## Estado actual
 
-El proyecto todavía está en fase temprana: hay base técnica y contratos de auth,
-pero no existe aún una experiencia completa de producto para usuarios finales.
+El proyecto todavía está en fase temprana: hay base técnica y una primera pantalla
+funcional de acceso para usuarios finales.
 
 | Área | Estado |
 | --- | --- |
-| Web | Next.js App Router con home scaffold y contratos frontend de login. |
+| Web | Next.js App Router con home scaffold y pantalla `/login`. |
 | API | FastAPI con health check y verificación JWT Supabase vía JWKS. |
-| Auth | Backend protegido con `GET /auth/me`; UI de login en construcción. |
+| Auth | Backend protegido con `GET /auth/me`; pantalla `/login` disponible en producción. |
 | Marca | Paleta y assets iniciales bajo `docs/` y `apps/web/public/`. |
 | SDD | Cambios guiados por OpenSpec en `openspec/changes/`. |
 
@@ -133,6 +133,8 @@ pnpm lint:web
 pnpm build:web
 pnpm test:web-e2e
 pnpm test:web-auth
+# Si el puerto 3000 está ocupado:
+KAITO_PLAYWRIGHT_PORT=3001 pnpm test:web-e2e
 ```
 
 Comandos principales de API desde `apps/api`:
@@ -169,16 +171,20 @@ openspec/              Artefactos SDD/OpenSpec.
 - API FastAPI con `GET /health`.
 - Backend auth con `GET /auth/me`, verificación JWKS, cache de claves y errores
   seguros para configuración ausente.
+- Pantalla `/login` para usuarios existentes con validación local, estados de
+  carga y errores seguros, y handoff autenticado centralizado; el copy de la
+  interfaz está en español (España) y no incluye signup ni recuperación de
+  contraseña.
 - Contratos frontend de login para validar email/password, mapear resultados de
   proveedor a estados propios de Kaito y centralizar el handoff autenticado.
-- Validación básica: lint/build de web, tests unitarios auth, smoke browser con
-  Playwright y lint/smoke/tests de API.
+- Validación básica: lint/build de web, tests unitarios auth, E2E Playwright de
+  login (incluido un chequeo de producción) y lint/smoke/tests de API.
 - Paquete `@kaito/api-client` reservado para un futuro cliente generado; hoy no
   exporta código ni contratos de producto.
 
-Todavía no hay pantalla `/login` funcional, signup, password reset, magic links,
-social auth, demo access, onboarding, dashboard, Strava, IA/RAG, planes de
-entrenamiento reales, base de datos de dominio ni despliegue/CD.
+Todavía no hay signup, password reset, magic links, social auth, demo access,
+onboarding, dashboard, Strava, IA/RAG, planes de entrenamiento reales, base de
+datos de dominio ni despliegue/CD.
 
 ## Flujo SDD/OpenSpec
 
