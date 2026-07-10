@@ -7,18 +7,22 @@ test.describe("/login", () => {
 		await page.goto("/login");
 
 		await expect(
-			page.getByRole("heading", { name: /sign in to kaito/i }),
+			page.getByRole("heading", { name: /inicia sesión/i }),
 		).toBeVisible();
-		await expect(page.getByLabel("Email address")).toBeVisible();
-		await expect(page.getByLabel("Password")).toBeVisible();
-		await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
+		await expect(page.getByLabel("Correo electrónico")).toBeVisible();
+		await expect(page.getByLabel("Contraseña")).toBeVisible();
+		await expect(
+			page.getByRole("button", { name: "Iniciar sesión" }),
+		).toBeVisible();
 
 		await page.keyboard.press("Tab");
-		await expect(page.getByLabel("Email address")).toBeFocused();
+		await expect(page.getByLabel("Correo electrónico")).toBeFocused();
 		await page.keyboard.press("Tab");
-		await expect(page.getByLabel("Password")).toBeFocused();
+		await expect(page.getByLabel("Contraseña")).toBeFocused();
 		await page.keyboard.press("Tab");
-		await expect(page.getByRole("button", { name: "Sign in" })).toBeFocused();
+		await expect(
+			page.getByRole("button", { name: "Iniciar sesión" }),
+		).toBeFocused();
 	});
 
 	test("validates required fields locally without attempting authentication", async ({
@@ -26,17 +30,25 @@ test.describe("/login", () => {
 	}) => {
 		await page.goto("/login");
 
-		await page.getByRole("button", { name: "Sign in" }).click();
+		await page.getByRole("button", { name: "Iniciar sesión" }).click();
 
-		await expect(page.getByText("Email is required.")).toBeVisible();
-		await expect(page.getByText("Password is required.")).toBeVisible();
-		await expect(page.getByLabel("Email address")).toHaveValue("");
-		await expect(page.getByRole("button", { name: "Sign in" })).toBeEnabled();
 		await expect(
-			page.getByText("We could not sign you in with that email and password."),
+			page.getByText("El correo electrónico es obligatorio."),
+		).toBeVisible();
+		await expect(page.getByText("La contraseña es obligatoria.")).toBeVisible();
+		await expect(page.getByLabel("Correo electrónico")).toHaveValue("");
+		await expect(
+			page.getByRole("button", { name: "Iniciar sesión" }),
+		).toBeEnabled();
+		await expect(
+			page.getByText(
+				"No hemos podido iniciar sesión con ese correo electrónico y contraseña.",
+			),
 		).toHaveCount(0);
 		await expect(
-			page.getByText("Kaito could not reach the sign-in service right now."),
+			page.getByText(
+				"Kaito no puede conectar con el servicio de inicio de sesión ahora mismo.",
+			),
 		).toHaveCount(0);
 	});
 
@@ -45,20 +57,28 @@ test.describe("/login", () => {
 	}) => {
 		await page.goto("/login");
 
-		await page.getByLabel("Email address").fill("runner-at-kaito");
-		await page.getByLabel("Password").fill("trail-password");
-		await page.getByRole("button", { name: "Sign in" }).click();
+		await page.getByLabel("Correo electrónico").fill("runner-at-kaito");
+		await page.getByLabel("Contraseña").fill("trail-password");
+		await page.getByRole("button", { name: "Iniciar sesión" }).click();
 
-		await expect(page.getByText("Enter a valid email address.")).toBeVisible();
-		await expect(page.getByLabel("Email address")).toHaveValue(
+		await expect(
+			page.getByText("Introduce un correo electrónico válido."),
+		).toBeVisible();
+		await expect(page.getByLabel("Correo electrónico")).toHaveValue(
 			"runner-at-kaito",
 		);
-		await expect(page.getByRole("button", { name: "Sign in" })).toBeEnabled();
 		await expect(
-			page.getByText("We could not sign you in with that email and password."),
+			page.getByRole("button", { name: "Iniciar sesión" }),
+		).toBeEnabled();
+		await expect(
+			page.getByText(
+				"No hemos podido iniciar sesión con ese correo electrónico y contraseña.",
+			),
 		).toHaveCount(0);
 		await expect(
-			page.getByText("Kaito could not reach the sign-in service right now."),
+			page.getByText(
+				"Kaito no puede conectar con el servicio de inicio de sesión ahora mismo.",
+			),
 		).toHaveCount(0);
 	});
 
@@ -67,19 +87,19 @@ test.describe("/login", () => {
 	}) => {
 		await page.goto("/login");
 
-		await page.getByLabel("Email address").fill("pending@example.com");
-		await page.getByLabel("Password").fill("trail-password");
-		const submit = page.getByRole("button", { name: "Sign in" });
+		await page.getByLabel("Correo electrónico").fill("pending@example.com");
+		await page.getByLabel("Contraseña").fill("trail-password");
+		const submit = page.getByRole("button", { name: "Iniciar sesión" });
 
 		await submit.click();
 		await expect(
-			page.getByRole("button", { name: "Signing in…" }),
+			page.getByRole("button", { name: "Iniciando sesión…" }),
 		).toBeDisabled();
-		await page.getByLabel("Password").focus();
+		await page.getByLabel("Contraseña").focus();
 		await page.keyboard.press("Enter");
 
 		await expect(
-			page.getByRole("button", { name: "Signing in…" }),
+			page.getByRole("button", { name: "Iniciando sesión…" }),
 		).toBeDisabled();
 		await expect
 			.poll(() =>
@@ -98,40 +118,46 @@ test.describe("/login", () => {
 	test("shows generic invalid-credentials feedback", async ({ page }) => {
 		await page.goto("/login");
 
-		await page.getByLabel("Email address").fill("invalid@example.com");
-		await page.getByLabel("Password").fill("trail-password");
-		await page.getByRole("button", { name: "Sign in" }).click();
+		await page.getByLabel("Correo electrónico").fill("invalid@example.com");
+		await page.getByLabel("Contraseña").fill("trail-password");
+		await page.getByRole("button", { name: "Iniciar sesión" }).click();
 
 		const feedback = page.getByRole("alert").filter({
-			hasText: "We could not sign you in with that email and password.",
+			hasText:
+				"No hemos podido iniciar sesión con ese correo electrónico y contraseña.",
 		});
 		await expect(feedback).toBeVisible();
 		await expect(feedback).not.toContainText("provider");
-		await expect(page.getByRole("button", { name: "Sign in" })).toBeEnabled();
+		await expect(
+			page.getByRole("button", { name: "Iniciar sesión" }),
+		).toBeEnabled();
 
-		await page.getByLabel("Email address").fill("runner@example.com");
-		await page.getByRole("button", { name: "Sign in" }).click();
+		await page.getByLabel("Correo electrónico").fill("runner@example.com");
+		await page.getByRole("button", { name: "Iniciar sesión" }).click();
 		await expect(page).toHaveURL("/");
 	});
 
 	test("shows separate technical/system error feedback", async ({ page }) => {
 		await page.goto("/login");
 
-		await page.getByLabel("Email address").fill("system@example.com");
-		await page.getByLabel("Password").fill("trail-password");
-		await page.getByRole("button", { name: "Sign in" }).click();
+		await page.getByLabel("Correo electrónico").fill("system@example.com");
+		await page.getByLabel("Contraseña").fill("trail-password");
+		await page.getByRole("button", { name: "Iniciar sesión" }).click();
 
 		const feedback = page.getByRole("alert").filter({
-			hasText: "Kaito could not reach the sign-in service right now.",
+			hasText:
+				"Kaito no puede conectar con el servicio de inicio de sesión ahora mismo.",
 		});
 		await expect(feedback).toBeVisible();
 		await expect(feedback).not.toContainText(
-			"We could not sign you in with that email and password.",
+			"No hemos podido iniciar sesión con ese correo electrónico y contraseña.",
 		);
-		await expect(page.getByRole("button", { name: "Sign in" })).toBeEnabled();
+		await expect(
+			page.getByRole("button", { name: "Iniciar sesión" }),
+		).toBeEnabled();
 
-		await page.getByLabel("Email address").fill("runner@example.com");
-		await page.getByRole("button", { name: "Sign in" }).click();
+		await page.getByLabel("Correo electrónico").fill("runner@example.com");
+		await page.getByRole("button", { name: "Iniciar sesión" }).click();
 		await expect(page).toHaveURL("/");
 	});
 
@@ -140,13 +166,76 @@ test.describe("/login", () => {
 	}) => {
 		await page.goto("/login");
 
-		await page.getByLabel("Email address").fill("runner@example.com");
-		await page.getByLabel("Password").fill("trail-password");
-		await page.getByRole("button", { name: "Sign in" }).click();
+		await page.getByLabel("Correo electrónico").fill("runner@example.com");
+		await page.getByLabel("Contraseña").fill("trail-password");
+		await page.getByRole("button", { name: "Iniciar sesión" }).click();
 
 		await expect(page).toHaveURL("/");
 		await expect(
 			page.getByRole("heading", { name: "Project scaffold is running." }),
 		).toBeVisible();
+	});
+
+	test("exposes field and form feedback to assistive technology", async ({
+		page,
+	}) => {
+		await page.goto("/login");
+		await expect(page.getByText("Kaito", { exact: true })).toBeVisible();
+
+		await page.getByRole("button", { name: "Iniciar sesión" }).click();
+		const email = page.getByLabel("Correo electrónico");
+		const password = page.getByLabel("Contraseña");
+		await expect(email).toHaveAttribute("aria-invalid", "true");
+		await expect(email).toHaveAttribute(
+			"aria-describedby",
+			"login-email-error",
+		);
+		await expect(password).toHaveAttribute("aria-invalid", "true");
+		await expect(password).toHaveAttribute(
+			"aria-describedby",
+			"login-password-error",
+		);
+		await expect(
+			page
+				.getByRole("alert")
+				.filter({ hasText: "El correo electrónico es obligatorio." }),
+		).toBeVisible();
+		await expect(
+			page
+				.getByRole("alert")
+				.filter({ hasText: "La contraseña es obligatoria." }),
+		).toBeVisible();
+	});
+
+	test("keeps the form usable without decorative motion at narrow and wide viewports", async ({
+		page,
+	}) => {
+		await page.emulateMedia({ reducedMotion: "no-preference" });
+		await page.goto("/login");
+		await expect(page.locator(".login-card")).toHaveCSS(
+			"animation-name",
+			"login-card-enter",
+		);
+
+		for (const viewport of [
+			{ width: 375, height: 812 },
+			{ width: 1440, height: 900 },
+		]) {
+			await page.setViewportSize(viewport);
+			await page.emulateMedia({ reducedMotion: "reduce" });
+			await page.goto("/login");
+			await expect(page.locator(".login-card")).toHaveCSS(
+				"animation-name",
+				"none",
+			);
+			expect(
+				await page
+					.locator("html")
+					.evaluate((element) => element.scrollWidth <= element.clientWidth),
+			).toBe(true);
+			await expect(
+				page.getByRole("button", { name: "Iniciar sesión" }),
+			).toBeVisible();
+		}
 	});
 });

@@ -1,12 +1,15 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const webPort = process.env.KAITO_PLAYWRIGHT_PORT ?? "3000";
+const baseURL = `http://127.0.0.1:${webPort}`;
+
 export default defineConfig({
 	testDir: "./e2e",
 	testIgnore: "login-production.spec.ts",
 	forbidOnly: Boolean(process.env.CI),
 	workers: 1,
 	use: {
-		baseURL: "http://127.0.0.1:3000",
+		baseURL,
 	},
 	projects: [
 		{
@@ -17,13 +20,13 @@ export default defineConfig({
 		},
 	],
 	webServer: {
-		command: "pnpm dev",
+		command: `pnpm dev --port ${webPort}`,
 		env: {
 			NEXT_PUBLIC_KAITO_TEST_AUTH_ADAPTER: "1",
 			NEXT_PUBLIC_SENTRY_DSN: "",
 		},
 		reuseExistingServer: false,
-		url: "http://127.0.0.1:3000",
+		url: baseURL,
 		timeout: 120_000,
 	},
 });

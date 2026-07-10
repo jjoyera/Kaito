@@ -25,9 +25,9 @@
 | Finding | Severity | Resolution |
 | --- | --- | --- |
 | Test auth adapter could be enabled by public env flag alone. | R1/R3 blocker | Fixed: adapter now requires non-production runtime, explicit Playwright flag, and loopback browser hostname. Hidden test DOM counter was removed. |
-| Production `/login` exposed a guaranteed `system_error` fallback because real auth integration is deferred. | R4 blocker | Fixed: PR2 route is dev/preview-only and calls `notFound()` in production until a real auth adapter is introduced. |
+| Production `/login` exposed a guaranteed `system_error` fallback because real auth integration is deferred. | R4 blocker | Superseded in PR3: user chose to expose the dedicated login page in production to satisfy the product spec, while keeping provider-safe generic system-error feedback until real auth integration lands. |
 | Login system failures were user-visible but not observable. | R4 blocker | Fixed: `system_error` outcomes report a scrubbed low-cardinality Sentry exception when DSN is configured. |
 | Failed invalid/system submissions did not prove retry recovery. | R3 warning | Fixed: E2E now verifies the button re-enables and a successful retry can hand off after both invalid-credential and system-error outcomes. |
-| Playwright CI used production `pnpm start` while `/login` is dev/preview-only. | R3 blocker | Fixed: Playwright web server now runs `pnpm dev`; CI still runs `pnpm build:web` before E2E for production build coverage. |
+| Playwright CI used production `pnpm start` while `/login` is dev/preview-only. | R3 blocker | Superseded in PR3: the main adapter-backed E2E suite still runs on `pnpm dev`; a production-build Playwright check now verifies `/login` renders under `pnpm start`. |
 
 Final PR2 4R re-review: risk, resilience, readability, and reliability all PASS.

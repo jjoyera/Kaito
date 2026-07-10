@@ -15,9 +15,9 @@ type LoginStatus =
 	| "system_error";
 
 const INVALID_CREDENTIALS_MESSAGE =
-	"We could not sign you in with that email and password. Check both fields and try again.";
+	"No hemos podido iniciar sesión con ese correo electrónico y contraseña. Comprueba ambos campos e inténtalo de nuevo.";
 const SYSTEM_ERROR_MESSAGE =
-	"Kaito could not reach the sign-in service right now. Try again in a moment or contact support if it continues.";
+	"Kaito no puede conectar con el servicio de inicio de sesión ahora mismo. Inténtalo de nuevo en unos minutos o contacta con soporte si el problema continúa.";
 
 export function LoginForm() {
 	const router = useRouter();
@@ -28,7 +28,7 @@ export function LoginForm() {
 	const pendingSubmission = useRef(false);
 
 	const isSubmitting = status === "submitting";
-	const submitLabel = isSubmitting ? "Signing in…" : "Sign in";
+	const submitLabel = isSubmitting ? "Iniciando sesión…" : "Iniciar sesión";
 	const signIn = createDefaultSignInWithPassword();
 	const emailErrorMessage = getEmailErrorMessage(fieldErrors.email);
 
@@ -73,7 +73,7 @@ export function LoginForm() {
 	return (
 		<form className="login-form" noValidate onSubmit={handleSubmit}>
 			<div className="login-field">
-				<label htmlFor="login-email">Email address</label>
+				<label htmlFor="login-email">Correo electrónico</label>
 				<input
 					autoComplete="email"
 					id="login-email"
@@ -87,14 +87,14 @@ export function LoginForm() {
 					aria-invalid={Boolean(fieldErrors.email)}
 				/>
 				{emailErrorMessage ? (
-					<p className="login-field-error" id="login-email-error">
+					<p className="login-field-error" id="login-email-error" role="alert">
 						{emailErrorMessage}
 					</p>
 				) : null}
 			</div>
 
 			<div className="login-field">
-				<label htmlFor="login-password">Password</label>
+				<label htmlFor="login-password">Contraseña</label>
 				<input
 					autoComplete="current-password"
 					id="login-password"
@@ -110,8 +110,12 @@ export function LoginForm() {
 					aria-invalid={Boolean(fieldErrors.password)}
 				/>
 				{fieldErrors.password ? (
-					<p className="login-field-error" id="login-password-error">
-						Password is required.
+					<p
+						className="login-field-error"
+						id="login-password-error"
+						role="alert"
+					>
+						La contraseña es obligatoria.
 					</p>
 				) : null}
 			</div>
@@ -138,11 +142,11 @@ function getEmailErrorMessage(
 	error: LoginFieldErrors["email"],
 ): string | undefined {
 	if (error === "required") {
-		return "Email is required.";
+		return "El correo electrónico es obligatorio.";
 	}
 
 	if (error === "invalid_format") {
-		return "Enter a valid email address.";
+		return "Introduce un correo electrónico válido.";
 	}
 
 	return undefined;

@@ -11,9 +11,9 @@ Artifact index and status tracking for the `build-login-ui` OpenSpec change.
 | spec | ✅ complete | `specs/web-login-ui/spec.md` |
 | design | ✅ complete | `design.md` |
 | tasks | ✅ complete | `tasks.md` |
-| apply | in progress — PR 2 complete | `apply-progress.md` |
-| verify | pending — blocked until chained PRs complete | not created |
-| sync | pending | not created |
+| apply | complete — PR 3 complete; README review deferred to sync | `apply-progress.md` |
+| verify | ✅ passed — PR 3 verification complete | `verify-report.md` |
+| sync | ✅ complete — canonical web login spec synced; README reviewed and updated | `sync-report.md` |
 
 ## Project context read during init
 
@@ -49,4 +49,8 @@ Artifact index and status tracking for the `build-login-ui` OpenSpec change.
 - PR 1 validation completed: `pnpm test:web-auth`, `pnpm lint:web`, `pnpm build:web`.
 - PR 2 — Functional `/login` UI and E2E behavior: ✅ complete.
 - PR 2 validation completed: `pnpm test:web-auth`, `pnpm lint:web`, `pnpm build:web`, `pnpm test:web-e2e`.
-- PR 3 — Visual polish, accessibility, and reduced-motion hardening: pending.
+- PR 3 — Visual polish, accessibility, and reduced-motion hardening: ✅ complete.
+- PR 3 validation completed: `pnpm test:web-auth` (15/15), `pnpm lint:web`, `pnpm build:web`, and `KAITO_PLAYWRIGHT_PORT=3001 pnpm test:web-e2e` (11 development tests plus 1 production login-page test).
+- PR 3 visual/accessibility implementation: Kaito warm outdoor tokens, CSS mountain/sun depth, a diagonal serpentine orange trail behind the card from the lower-left viewport toward the sun, a text-only `Kaito` wordmark, Spanish (Spain) user-facing copy, decorative motion gated by `prefers-reduced-motion`, field feedback associations/alerts, and responsive overflow checks at 375px and 1440px.
+- Verify passed on 2026-07-10 after the user chose to expose `/login` in production and the stale heading assertion was corrected. See `verify-report.md`.
+- No backend/API files were changed; README review completed during sync and updated the stable `/login` capability plus validation guidance.
