@@ -16,8 +16,9 @@ export default defineConfig({
 		},
 	],
 	webServer: {
-		command: process.env.CI ? "pnpm start" : "pnpm dev",
+		command: "pnpm dev",
 		env: {
+			NEXT_PUBLIC_KAITO_TEST_AUTH_ADAPTER: "1",
 			NEXT_PUBLIC_SENTRY_DSN: "",
 		},
 		reuseExistingServer: false,
