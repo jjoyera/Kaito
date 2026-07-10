@@ -28,6 +28,12 @@ export type ProviderSignInAdapter = (
 	input: SignInInput,
 ) => Promise<ProviderSignInResult>;
 
+export type SignInSystemErrorReporter = (error: unknown) => void;
+
+export type SignInWithPasswordOptions = {
+	onSystemError?: SignInSystemErrorReporter;
+};
+
 const INVALID_CREDENTIAL_CODES = new Set([
 	"invalid_credentials",
 	"invalid_login_credentials",
@@ -49,11 +55,13 @@ export function mapProviderSignInResult(
 
 export function createSignInWithPassword(
 	adapter: ProviderSignInAdapter,
+	options: SignInWithPasswordOptions = {},
 ): SignInWithPassword {
 	return async (input) => {
 		try {
 			return mapProviderSignInResult(await adapter(input));
-		} catch {
+		} catch (error) {
+			options.onSystemError?.(error);
 			return { status: "system_error" };
 		}
 	};

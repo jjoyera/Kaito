@@ -5,7 +5,7 @@
 - Parent-provided SDD status was authoritative: `artifactStore: both` with OpenSpec files authoritative because `openspec/` exists.
 - `applyState/dependencies.apply`: ready.
 - Strict TDD mode: active from `openspec/config.yaml` and parent prompt.
-- Action context: workspace `/home/jjdelarubia/Workspace/BIGschool/Kaito`; no separate edit-root restriction was provided, and all edits stayed inside the workspace.
+- Action context: repository workspace root; no separate edit-root restriction was provided, and all edits stayed inside the workspace.
 - Review workload guard: high 400-line budget risk with chained PRs recommended. User explicitly approved chained PR flow and PR 1 first.
 
 ## Workload / PR boundary

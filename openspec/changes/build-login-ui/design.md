@@ -153,7 +153,7 @@ Guardrail: the form is the primary visual object. Background and motion must rem
 - Mobile: single-column layout, form first, concise copy beneath or above the card, no horizontal overflow, comfortable touch targets.
 - Tablet/desktop: allow a two-column composition where context copy and background depth support the form without competing with it.
 - Use fluid spacing and `clamp()` typography rather than breakpoint-heavy layout.
-- Login card width should remain readable, roughly `min(100%, 28rem-32rem)`.
+- Login card width should remain readable, roughly `min(100%, 32rem)`, with optional `clamp(20rem, 92vw, 32rem)` sizing when a lower bound is useful.
 - Background ornaments should be clipped or simplified on small screens.
 
 ## Testing strategy and expected commands

@@ -93,7 +93,7 @@ No utilizar negro puro salvo necesidad puntual. Este negro verdoso mantiene un t
 
 Usar `#8A8175` para subtítulos, metadatos, información auxiliar, placeholders y descripciones breves.
 
-Debe usarse con cuidado para no perder accesibilidad en textos pequeños.
+Debe usarse con cuidado para no perder accesibilidad en textos pequeños. Para texto normal sobre `#F5F0E6` o `#FFFDF8`, usar la variante accesible `#665F56` cuando el contenido sea informativo, interactivo o necesario para completar una tarea. Reservar `#8A8175` para texto grande, decorativo o de baja criticidad.
 
 ### Color primario
 
@@ -123,11 +123,34 @@ Funciona como toque cálido y aspiracional.
 
 Usar `#4F8A5B` para entrenamientos completados, validaciones correctas, progreso positivo y estados saludables.
 
+Para texto de estado sobre fondos claros, usar `#3A6B45` en lugar de `#4F8A5B` cuando el tamaño sea normal. El token `#4F8A5B` puede mantenerse para iconos, superficies suaves, badges grandes o apoyos visuales.
+
 ### Error / alerta
 
 Usar `#B84A3A` para entrenamientos fallidos, dolor, molestias, advertencias importantes o desviaciones relevantes del plan.
 
 No debe usarse como color dominante. Su función es llamar la atención de forma prudente.
+
+---
+
+## Contraste y accesibilidad
+
+Estas combinaciones son seguras para texto normal en WCAG AA sobre los fondos principales:
+
+| Uso | Texto | Fondo | Contraste aproximado | Regla |
+| --- | --- | --- | --- | --- |
+| Texto principal | `#17211B` | `#F5F0E6` / `#FFFDF8` | 14.5:1+ | Uso general. |
+| Texto secundario accesible | `#665F56` | `#F5F0E6` / `#FFFDF8` | 5.5:1+ | Metadata, labels, placeholders y ayuda. |
+| Éxito textual | `#3A6B45` | `#F5F0E6` / `#FFFDF8` | 5.4:1+ | Mensajes de validación o estado. |
+| Error textual | `#B84A3A` | `#F5F0E6` / `#FFFDF8` | 4.5:1+ | Errores y alertas. |
+| Botón primario | `#FFFDF8` | `#2F5D50` | 7.3:1+ | Acciones principales. |
+
+Restricciones:
+
+- No usar `#8A8175` para labels, placeholders o mensajes necesarios en tamaño normal.
+- No usar `#4F8A5B` como texto normal sobre fondos claros; usar `#3A6B45`.
+- No comunicar estado sólo con color: combinar texto, icono o patrón visual.
+- Los estados de foco deben ser visibles y no depender únicamente de cambiar el color de fondo.
 
 ---
 
@@ -174,6 +197,12 @@ El acento naranja/dorado debe aparecer en momentos importantes, no en todos los 
 
 .button-primary:hover {
   background: #1F3D35;
+}
+
+.button-primary:focus-visible {
+  outline: 3px solid #F2C36B;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 1px #17211B;
 }
 ```
 

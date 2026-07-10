@@ -89,4 +89,23 @@ describe("createSignInWithPassword", () => {
 
 		assert.deepEqual(outcome, { status: "system_error" });
 	});
+
+	it("reports thrown provider failures without changing the user-facing outcome", async () => {
+		const providerError = new Error("provider network failure with raw detail");
+		const reportedErrors: unknown[] = [];
+		const signIn = createSignInWithPassword(
+			async () => {
+				throw providerError;
+			},
+			{ onSystemError: (error) => reportedErrors.push(error) },
+		);
+
+		const outcome = await signIn({
+			email: "runner@kaito.app",
+			password: "trail-pass",
+		});
+
+		assert.deepEqual(outcome, { status: "system_error" });
+		assert.deepEqual(reportedErrors, [providerError]);
+	});
 });

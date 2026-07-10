@@ -6,8 +6,6 @@ export type AuthenticatedFlowNavigator = {
 
 export function continueToAuthenticatedFlow(
 	navigator: AuthenticatedFlowNavigator,
-	state?: unknown,
 ): void {
-	void state;
 	navigator.replace(AUTHENTICATED_FLOW_DESTINATION);
 }

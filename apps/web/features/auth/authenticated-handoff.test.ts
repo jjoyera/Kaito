@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import {
 	AUTHENTICATED_FLOW_DESTINATION,
 	continueToAuthenticatedFlow,
+	type AuthenticatedFlowNavigator,
 } from "./authenticated-handoff";
 
 describe("continueToAuthenticatedFlow", () => {
@@ -30,7 +31,12 @@ describe("continueToAuthenticatedFlow", () => {
 			},
 		);
 
-		continueToAuthenticatedFlow(
+		const handoffWithIgnoredState: (
+			navigator: AuthenticatedFlowNavigator,
+			state?: unknown,
+		) => void = continueToAuthenticatedFlow;
+
+		handoffWithIgnoredState(
 			{ replace: (destination) => destinations.push(destination) },
 			stateThatMustNotBeRead,
 		);
