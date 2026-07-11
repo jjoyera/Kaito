@@ -23,6 +23,14 @@ The web app SHALL classify `/login` as public/auth-aware, `/onboarding` as priva
 - WHEN the user navigates to `/onboarding`
 - THEN the placeholder SHALL render
 
+#### Scenario: Auth provider or configuration is unavailable
+
+- GIVEN protected-route session resolution cannot run because provider access or required configuration is unavailable
+- WHEN the user navigates to `/onboarding`
+- THEN the app SHALL fail closed and SHALL not render onboarding content
+- AND it SHALL present bounded service-unavailable context rather than expired/invalid-session context
+- AND it SHALL not clear, sign out, or otherwise destructively invalidate local auth state
+
 ### Requirement: Minimal onboarding placeholder
 
 The app SHALL provide `/onboarding` as a private, accessible placeholder that clearly identifies the onboarding area. It SHALL contain only simple product copy and SHALL NOT implement forms, workflow steps, persistence, completion state, domain logic, or onboarding APIs.
@@ -109,7 +117,7 @@ This change SHALL NOT introduce `/dashboard`, dashboard selection, real onboardi
 
 ### Requirement: Session-flow acceptance coverage
 
-Automated verification SHALL cover route classification, authenticated and unauthenticated navigation, loading/no-flash behavior, safe return URL rejection, login handoff, expired-session context, token attachment, recoverable API `401`, and backend authority assumptions.
+Automated verification SHALL cover route classification, authenticated and unauthenticated navigation, provider/configuration-unavailable fail-closed behavior without destructive local-auth invalidation, loading/no-flash behavior, safe return URL rejection, login handoff, expired-session context, token attachment, recoverable API `401`, and backend authority assumptions.
 
 #### Scenario: Acceptance suite exercises session states
 

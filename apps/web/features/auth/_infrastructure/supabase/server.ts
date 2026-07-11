@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 import {
+	isExpectedInvalidSessionError,
 	normalizeSessionResult,
 	type SessionResult,
 } from "../../_domain/session-result";
@@ -32,11 +33,7 @@ export function createServerSessionResolver(
 	return async () => {
 		try {
 			const { data, error } = await client.auth.getUser();
-			if (
-				error &&
-				error.status !== 401 &&
-				error.name !== "AuthSessionMissingError"
-			) {
+			if (error && !isExpectedInvalidSessionError(error)) {
 				reportSafely(reportFailure);
 			}
 			return normalizeSessionResult({ user: data.user, error });

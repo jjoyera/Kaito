@@ -10,7 +10,7 @@
 | 400-line budget risk | High |
 | Decision needed before apply | No — user selected `Dividir PR 1` |
 | Chained PRs recommended | Yes |
-| Chain strategy | `feature-branch-chain`: PR 1A → PR 1B → PR 2 |
+| Chain strategy | `feature-branch-chain`: PR 1A → PR 1B → structure correction → PR 2 |
 
 The approved delivery plan is three logical review slices. No commit, stage, push, or PR creation is part of apply.
 
@@ -21,7 +21,7 @@ The approved delivery plan is three logical review slices. No commit, stage, pus
 | Structure correction | Behavior-preserving move into auth underscore scopes; update imports/tests only | Complete | PR 1A source 287/tests 399; PR 1B source 124/tests 108 |
 | PR 2 | Route/login integration: root proxy, `/onboarding`, loading state, login page/form integration, E2E route acceptance, and release docs | **Forbidden; unstarted** | Not implemented |
 
-The structure correction is required after PR 1B and before PR 2. Each separately counted source and test group is below 400 physical lines. PR 1B is based on PR 1A; PR 2 is based on PR 1B.
+The structure correction was completed after PR 1B and before PR 2. Each separately counted source and test group is below 400 physical lines. The current chain is PR 1A → PR 1B → completed structure correction → unstarted PR 2.
 
 ## Implementation Tasks (strict TDD)
 
@@ -49,7 +49,7 @@ The structure correction is required after PR 1B and before PR 2. Each separatel
 
 - [ ] 2.1 **RED — add route acceptance coverage.** Add failing Playwright coverage for anonymous/authenticated `/onboarding`, safe return URL, no flash, delayed loading, authenticated `/login` handoff, expired context, and redirect bounds.
 - [ ] 2.2 **GREEN — implement route policy.** Create root `apps/web/proxy.ts`, private `/onboarding` placeholder/loading boundary, and proxy/server defense-in-depth.
-- [ ] 2.3 **GREEN — integrate login.** Modify `apps/web/app/(auth)/login/page.tsx` and `apps/web/features/auth/login-form.tsx` to use the validated destination, Supabase sign-in, replace navigation, refresh, and user-triggered recovery UI.
+- [ ] 2.3 **GREEN — integrate login.** Modify `apps/web/app/(auth)/login/page.tsx` and `apps/web/features/auth/_components/login-form.tsx` to use the validated destination, Supabase sign-in, replace navigation, refresh, and user-triggered recovery UI.
 - [ ] 2.4 **TRIANGULATE/REFACTOR — exercise browser behavior.** Run focused Playwright and web regression checks; verify redirect/no-flash/cookie/recovery behavior.
 
 ### PR 2 release/docs follow-up (also forbidden in this run)

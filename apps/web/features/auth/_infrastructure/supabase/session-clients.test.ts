@@ -105,6 +105,23 @@ describe("server session resolver", () => {
 		);
 		assert.deepEqual(await resolve(), { status: "invalid" });
 	});
+
+	it("does not report expected 400 and 403 invalid-session responses", async () => {
+		for (const status of [400, 403]) {
+			const reports: string[] = [];
+			const resolve = createServerSessionResolver(
+				{ getAll: () => [], setAll: () => {} },
+				() => ({
+					auth: {
+						getUser: async () => ({ data: { user: null }, error: { status } }),
+					},
+				}),
+				(event) => reports.push(event),
+			);
+			assert.deepEqual(await resolve(), { status: "invalid" });
+			assert.deepEqual(reports, []);
+		}
+	});
 });
 
 describe("proxy session refresher", () => {
@@ -210,5 +227,26 @@ describe("proxy session refresher", () => {
 			}),
 		);
 		assert.deepEqual(await refresh(), { status: "unavailable" });
+	});
+
+	it("does not report expected 400 and 403 invalid-session responses", async () => {
+		for (const status of [400, 403]) {
+			const reports: string[] = [];
+			const refresh = createProxySessionRefresher(
+				{
+					getRequestCookies: () => [],
+					setRequestCookie: () => {},
+					setResponseCookie: () => {},
+				},
+				() => ({
+					auth: {
+						getUser: async () => ({ data: { user: null }, error: { status } }),
+					},
+				}),
+				(event) => reports.push(event),
+			);
+			assert.deepEqual(await refresh(), { status: "invalid" });
+			assert.deepEqual(reports, []);
+		}
 	});
 });

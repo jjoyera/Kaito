@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 import {
+	isExpectedInvalidSessionError,
 	normalizeSessionResult,
 	type SessionResult,
 } from "../../_domain/session-result";
@@ -41,11 +42,7 @@ export function createProxySessionRefresher(
 	return async () => {
 		try {
 			const { data, error } = await client.auth.getUser();
-			if (
-				error &&
-				error.status !== 401 &&
-				error.name !== "AuthSessionMissingError"
-			) {
+			if (error && !isExpectedInvalidSessionError(error)) {
 				reportSafely(reportFailure);
 			}
 			return normalizeSessionResult({ user: data.user, error });

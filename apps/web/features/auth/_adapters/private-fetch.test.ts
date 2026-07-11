@@ -34,8 +34,12 @@ describe("privateFetch", () => {
 
 	it("rejects unsafe caller inputs without a request or token leakage", async () => {
 		let fetchCalls = 0;
+		let tokenCalls = 0;
 		const dependencies = {
-			getAccessToken: async () => "secret-token",
+			getAccessToken: async () => {
+				tokenCalls += 1;
+				return "secret-token";
+			},
 			fetcher: async () => {
 				fetchCalls += 1;
 				return response(200);
@@ -52,6 +56,21 @@ describe("privateFetch", () => {
 			(error: unknown) =>
 				error instanceof PrivateApiError && error.kind === "request_failed",
 		);
+		for (const path of [
+			"/auth/..//attacker.example/steal",
+			"/auth/%2e%2e//attacker.example/steal",
+		]) {
+			await assert.rejects(
+				() =>
+					privateFetch(
+						path,
+						{},
+						{ ...dependencies, apiBaseUrl: "https://api.kaito.test/api/" },
+					),
+				(error: unknown) =>
+					error instanceof PrivateApiError && error.kind === "request_failed",
+			);
+		}
 		await assert.rejects(
 			() =>
 				privateFetch(
@@ -62,6 +81,7 @@ describe("privateFetch", () => {
 			(error: unknown) =>
 				error instanceof PrivateApiError && error.kind === "request_failed",
 		);
+		assert.equal(tokenCalls, 0);
 		assert.equal(fetchCalls, 0);
 	});
 

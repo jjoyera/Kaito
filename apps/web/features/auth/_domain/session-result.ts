@@ -9,6 +9,18 @@ type UserResult = {
 	error?: { name?: string; status?: number } | null;
 };
 
+export function isExpectedInvalidSessionError(error: {
+	name?: string;
+	status?: number;
+}): boolean {
+	return (
+		error.name === "AuthSessionMissingError" ||
+		error.status === 400 ||
+		error.status === 401 ||
+		error.status === 403
+	);
+}
+
 export function normalizeSessionResult({
 	user,
 	error,
@@ -21,7 +33,7 @@ export function normalizeSessionResult({
 		return { status: "anonymous" };
 	}
 
-	if (error.status === 400 || error.status === 401 || error.status === 403) {
+	if (isExpectedInvalidSessionError(error)) {
 		return { status: "invalid" };
 	}
 

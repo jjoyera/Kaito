@@ -132,7 +132,7 @@ Unknown, repeated, or oversized values render no context message. An ordinary an
 
 ## 7. Approved feature ownership correction
 
-The user-approved Screaming Architecture supersedes the earlier `lib/` layout below. Before PR 2, perform a behavior-preserving structural refactor; this design update does **not** claim those moves are complete.
+The user-approved Screaming Architecture supersedes the earlier `lib/` layout below. The behavior-preserving structural refactor was completed after PR 1B and before PR 2; PR 2 remains unstarted.
 
 - `app/` remains Next.js routing/orchestration only. `app/(auth)/login/page.tsx` imports auth feature behavior.
 - Auth uses `_components/`, `_adapters/`, `_use-cases/`, optional warranted `_domain/`, and `_infrastructure/` for provider plumbing.
@@ -206,7 +206,7 @@ Likely additions:
 Likely modifications:
 
 - `apps/web/app/(auth)/login/page.tsx` to resolve auth state, consume bounded query context, and pass destination/context to the form
-- `apps/web/features/auth/login-form.tsx`, `auth-client.ts`, and `authenticated-handoff.ts`
+- `apps/web/features/auth/_components/login-form.tsx` and the feature-owned auth use cases it consumes
 - existing auth unit and login Playwright tests (replace `/` expectations with `/onboarding`)
 - `apps/web/package.json`, lockfile, Playwright development configuration, environment example, web README, and root README
 
@@ -235,7 +235,7 @@ Likely focused command:
 pnpm test:web-auth
 ```
 
-The current glob is `features/auth/*.test.ts`; tests placed under `lib/api` or nested directories require either expanding the script to explicit globs or adding a dedicated script and root alias. That script change should itself be verified in RED/GREEN order.
+> **Superseded planning note:** At design time the glob was `features/auth/*.test.ts`. The completed structure correction now uses recursive `features/auth/**/*.test.ts` discovery for colocated tests.
 
 ### Browser acceptance
 

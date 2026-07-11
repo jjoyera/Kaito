@@ -177,7 +177,7 @@ All future APIs that read or mutate user-owned product data must use the backend
 
 ## Affected areas
 
-The approved architecture correction requires a behavior-preserving structure refactor before PR 2; no application-code move is claimed by this proposal update.
+The approved architecture correction was completed as a behavior-preserving structure refactor after PR 1B. The resulting ownership is the base for the next, unstarted PR 2.
 
 - `apps/web/app`: routing/orchestration only; new private `/onboarding` boundary and auth-aware `/login` behavior arrive in PR 2. `app/(auth)/login/page.tsx` remains a route page importing auth.
 - `apps/web/features/auth`: owns production sign-in, session resolution, handoff, context, return-URL validation, API-`401` recovery, and auth transitions under `_components/`, `_adapters/`, `_use-cases/`, optional warranted `_domain/`, and provider plumbing in `_infrastructure/supabase/`.
@@ -246,4 +246,4 @@ The change is successful when a signed-in user reaches the protected `/onboardin
 
 ## Next step
 
-This revised proposal requires interactive approval or adjustment before spec/design. The user may approve the incorporated `/onboarding` decision, correct an assumption, or request another focused product question round covering business rules, impact, edge cases, or tradeoffs.
+> **Superseded planning note:** This proposal previously awaited approval before spec/design. Those planning artifacts, PR 1A, PR 1B, and the structural refactor are complete. The next unstarted step is PR 2 route/session and login integration, only when separately authorized; it is not yet applied or claimed as approved for execution.

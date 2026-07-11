@@ -22,7 +22,19 @@ export async function privateFetch(
 	init: RequestInit,
 	{ apiBaseUrl, getAccessToken, fetcher }: PrivateFetchDependencies,
 ): Promise<Response> {
-	if (!isRelativeApiPath(path) || hasAuthorizationHeader(init.headers)) {
+	let target: URL;
+	try {
+		const base = new URL(apiBaseUrl);
+		target = new URL(path, base);
+		if (
+			!isRelativeApiPath(path) ||
+			target.origin !== base.origin ||
+			target.pathname.startsWith("//") ||
+			hasAuthorizationHeader(init.headers)
+		) {
+			throw new Error("unsafe request");
+		}
+	} catch {
 		throw new PrivateApiError("request_failed");
 	}
 
@@ -38,7 +50,7 @@ export async function privateFetch(
 
 	let response: Response;
 	try {
-		response = await fetcher(new URL(path, apiBaseUrl), {
+		response = await fetcher(target, {
 			...init,
 			headers: {
 				...Object.fromEntries(new Headers(init.headers)),

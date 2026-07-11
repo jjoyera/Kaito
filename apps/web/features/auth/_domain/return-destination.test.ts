@@ -22,6 +22,8 @@ describe("selectReturnDestination", () => {
 			"/onboarding\nalert",
 			"%2F%2Fattacker.example",
 			"/%252F%252Fattacker.example",
+			"/safe/..//attacker.example/steal",
+			"/safe/%2e%2e//attacker.example/steal",
 			"/login?returnTo=/onboarding",
 			"/login/",
 			"/".repeat(2_049),

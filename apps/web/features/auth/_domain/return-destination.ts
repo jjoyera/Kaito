@@ -20,6 +20,7 @@ export function selectReturnDestination(value: unknown): string {
 		const destination = new URL(value, APP_ORIGIN);
 		if (
 			destination.origin !== APP_ORIGIN ||
+			destination.pathname.startsWith("//") ||
 			isLoginDestination(destination.pathname)
 		) {
 			return DEFAULT_AUTHENTICATED_DESTINATION;

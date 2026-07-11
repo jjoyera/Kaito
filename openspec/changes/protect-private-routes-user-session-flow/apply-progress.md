@@ -18,7 +18,7 @@ taskProgress: { total: 6, complete: 2, remaining: 4 }
 applyState: ready
 actionContext:
   mode: repo-local
-  workspaceRoot: /home/jjdelarubia/Workspace/BIGschool/Kaito
+  workspaceRoot: <repo-root>
   allowedEditRoots: [apps/web, pnpm-lock.yaml, openspec/changes/protect-private-routes-user-session-flow]
   warnings: ["Parent did not supply structured status; this authoritative OpenSpec status was produced from disk."]
 ```
@@ -84,7 +84,7 @@ PR boundary remains Work Unit 1 only; do not start Work Unit 2. Source/test/pack
 schemaName: spec-driven
 changeName: protect-private-routes-user-session-flow
 artifactStore: both
-planningHome: { root: /home/jjdelarubia/Workspace/BIGschool/Kaito, changesDir: openspec/changes }
+planningHome: { root: <repo-root>, changesDir: openspec/changes }
 changeRoot: openspec/changes/protect-private-routes-user-session-flow
 artifacts: { proposal: done, specs: done, design: done, tasks: done, applyProgress: partial, verifyReport: missing, syncReport: missing }
 taskProgress: { total: 11, complete: 6, remaining: 5, unchecked: ["2.1 RED — add route acceptance coverage", "2.2 GREEN — implement route policy", "2.3 GREEN — integrate login", "2.4 TRIANGULATE/REFACTOR — exercise browser behavior", "2.5 Update environment and concise web/root documentation and run API regression evidence"] }
@@ -92,7 +92,7 @@ applyState: ready
 dependencies: { apply: ready, verify: ready, sync: blocked, archive: blocked }
 actionContext:
   mode: repo-local
-  workspaceRoot: /home/jjdelarubia/Workspace/BIGschool/Kaito
+  workspaceRoot: <repo-root>
   allowedEditRoots: [apps/web, pnpm-lock.yaml, openspec/changes/protect-private-routes-user-session-flow]
   warnings: ["Parent did not supply structured status; authoritative OpenSpec status was produced from disk.", "PR 2 route/login integration is forbidden in this run."]
 nextRecommended: verify PR 1A and PR 1B foundation, then apply PR 2 only in a separately authorized run
