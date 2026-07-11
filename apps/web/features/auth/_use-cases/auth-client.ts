@@ -61,7 +61,11 @@ export function createSignInWithPassword(
 		try {
 			return mapProviderSignInResult(await adapter(input));
 		} catch (error) {
-			options.onSystemError?.(error);
+			try {
+				options.onSystemError?.(error);
+			} catch {
+				// Reporting is best-effort and must not change the normalized outcome.
+			}
 			return { status: "system_error" };
 		}
 	};

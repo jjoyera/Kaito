@@ -3,10 +3,16 @@
 import * as Sentry from "@sentry/nextjs";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getSentryDsn } from "../../lib/sentry-scrubbing";
-import type { SignInOutcome, SignInWithPassword } from "./auth-client";
-import { continueToAuthenticatedFlow } from "./authenticated-handoff";
-import { validateLoginInput, type LoginFieldErrors } from "./login-validation";
+import { getSentryDsn } from "../../../lib/sentry-scrubbing";
+import type {
+	SignInOutcome,
+	SignInWithPassword,
+} from "../_use-cases/auth-client";
+import { continueToAuthenticatedFlow } from "../_use-cases/authenticated-handoff";
+import {
+	validateLoginInput,
+	type LoginFieldErrors,
+} from "../_domain/login-validation";
 
 type LoginStatus =
 	| "idle"

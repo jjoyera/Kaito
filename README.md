@@ -149,6 +149,10 @@ uv run pytest
 normalización de resultados de auth y handoff autenticado centralizado. No requiere
 cuentas reales de Supabase.
 
+## Arquitectura frontend
+
+La web sigue Screaming Architecture: `app/` solo orquesta Next.js y cada capacidad real vive en `features/`. El código solo pasa a `shared/` cuando lo consumen dos features reales distintas. Consulta las reglas y el árbol vigente en [`docs/08-architecture.md`](docs/08-architecture.md) y la guía de contribución en [`apps/web/README.md`](apps/web/README.md).
+
 ## Estructura del proyecto
 
 ```text
