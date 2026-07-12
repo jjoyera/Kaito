@@ -18,7 +18,7 @@ funcional de acceso para usuarios finales.
 | --- | --- |
 | Web | Next.js App Router con home scaffold y pantalla `/login`. |
 | API | FastAPI con health check y verificación JWT Supabase vía JWKS. |
-| Auth | Backend protegido con `GET /auth/me`; pantalla `/login` disponible en producción. |
+| Auth | Backend protegido con `GET /auth/me`; `/login` auth-aware y `/onboarding` privado con sesión Supabase. |
 | Marca | Paleta y assets iniciales bajo `docs/` y `apps/web/public/`. |
 | SDD | Cambios guiados por OpenSpec en `openspec/changes/`. |
 
@@ -93,6 +93,11 @@ Compose solo define `web` y `api`; no es configuración de despliegue ni CD.
 El backend tiene un límite de autenticación independiente del proveedor. El código
 de dominio consume `UserContext` y `AuthVerifier`; los detalles de Supabase quedan
 aislados en el adaptador de infraestructura.
+
+La web requiere `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+para el inicio de sesión y las rutas privadas. Son configuración pública de Supabase,
+no secretos: no añadas `SUPABASE_SERVICE_ROLE_KEY`, tokens ni secretos JWT a la web.
+En producción, despliega detrás de HTTPS: el proxy de sesión fuerza cookies `Secure`.
 
 La verificación JWT usa las Signing Keys/JWKS de Supabase mediante una URL
 explícita:
@@ -175,10 +180,11 @@ openspec/              Artefactos SDD/OpenSpec.
 - API FastAPI con `GET /health`.
 - Backend auth con `GET /auth/me`, verificación JWKS, cache de claves y errores
   seguros para configuración ausente.
-- Pantalla `/login` para usuarios existentes con validación local, estados de
-  carga y errores seguros, y handoff autenticado centralizado; el copy de la
-  interfaz está en español (España) y no incluye signup ni recuperación de
-  contraseña.
+- Pantalla `/login` auth-aware para usuarios existentes, con validación local,
+  estados de carga y errores seguros; el handoff autenticado usa una URL local
+  validada o `/onboarding`.
+- Placeholder privado `/onboarding`, protegido por proxy y comprobación de servidor;
+  no implementa ningún flujo ni persistencia de onboarding.
 - Contratos frontend de login para validar email/password, mapear resultados de
   proveedor a estados propios de Kaito y centralizar el handoff autenticado.
 - Validación básica: lint/build de web, tests unitarios auth, E2E Playwright de

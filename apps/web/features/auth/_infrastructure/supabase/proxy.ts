@@ -7,12 +7,24 @@ import {
 	type SessionResult,
 } from "../../_domain/session-result";
 import { getSupabaseConfig } from "./config";
+import {
+	SESSION_RESOLUTION_TIMEOUT_MS,
+	withSessionTimeout,
+} from "./session-telemetry";
 
-type Cookie = { name: string; value: string; options?: object };
+type Cookie = {
+	name: string;
+	value: string;
+	options?: Record<string, unknown>;
+};
 type ProxyCookieStore = {
 	getRequestCookies(): Cookie[];
 	setRequestCookie(name: string, value: string): void;
-	setResponseCookie(name: string, value: string, options?: object): void;
+	setResponseCookie(
+		name: string,
+		value: string,
+		options?: Record<string, unknown>,
+	): void;
 };
 type CookieAdapter = { getAll(): Cookie[]; setAll(cookies: Cookie[]): void };
 type SessionFailureReporter = (event: "supabase_get_user_failed") => void;
@@ -29,6 +41,7 @@ export function createProxySessionRefresher(
 	cookieStore: ProxyCookieStore,
 	createClient: (cookies: CookieAdapter) => SessionClient,
 	reportFailure: SessionFailureReporter = () => {},
+	timeoutMs = SESSION_RESOLUTION_TIMEOUT_MS,
 ): () => Promise<SessionResult> {
 	const client = createClient({
 		getAll: () => cookieStore.getRequestCookies(),
@@ -41,7 +54,10 @@ export function createProxySessionRefresher(
 	});
 	return async () => {
 		try {
-			const { data, error } = await client.auth.getUser();
+			const { data, error } = await withSessionTimeout(
+				client.auth.getUser(),
+				timeoutMs,
+			);
 			if (error && !isExpectedInvalidSessionError(error)) {
 				reportSafely(reportFailure);
 			}
@@ -61,13 +77,18 @@ function reportSafely(reportFailure: SessionFailureReporter): void {
 	}
 }
 
-export async function refreshProxySession(request: NextRequest) {
+export async function refreshProxySession(
+	request: NextRequest,
+	reportFailure: SessionFailureReporter = () => {},
+) {
 	const config = getSupabaseConfig();
-	if (!config)
+	if (!config) {
+		reportSafely(reportFailure);
 		return {
 			response: NextResponse.next({ request }),
 			session: { status: "unavailable" } as const,
 		};
+	}
 	const responseCookies: Cookie[] = [];
 
 	const refresh = createProxySessionRefresher(
@@ -81,13 +102,21 @@ export async function refreshProxySession(request: NextRequest) {
 			createServerClient(config.url, config.publishableKey, {
 				cookies: cookieAdapter,
 			}),
+		reportFailure,
 	);
 	const session = await refresh();
 	// Create the continuation only after request cookies are refreshed so Next.js
 	// forwards the current cookie header downstream as request overrides.
 	const response = NextResponse.next({ request });
 	responseCookies.forEach(({ name, value, options }) =>
-		response.cookies.set(name, value, options),
+		response.cookies.set(name, value, enforceSecureCookieOptions(options)),
 	);
 	return { response, session };
+}
+
+export function enforceSecureCookieOptions(
+	options: Record<string, unknown> = {},
+	environment = process.env.NODE_ENV,
+): Record<string, unknown> {
+	return environment === "production" ? { ...options, secure: true } : options;
 }

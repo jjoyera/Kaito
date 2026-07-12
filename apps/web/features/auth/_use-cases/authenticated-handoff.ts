@@ -1,6 +1,6 @@
 import { selectReturnDestination } from "../_domain/return-destination";
 
-export const AUTHENTICATED_FLOW_DESTINATION = "/";
+export const AUTHENTICATED_FLOW_DESTINATION = "/onboarding";
 
 export type AuthenticatedFlowNavigator = {
 	replace(destination: string): void;

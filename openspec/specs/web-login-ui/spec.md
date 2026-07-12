@@ -120,18 +120,35 @@ When authentication cannot complete for non-user reasons, the login page MUST sh
 
 ### Requirement: Authenticated handoff only after successful login
 
-After a successful email/password sign-in, the web app SHALL hand control to the authenticated app flow without deciding this slice's downstream onboarding-versus-dashboard routing.
+After a successful sign-in, the web app SHALL hand control to the authenticated flow by replacing the login history entry with a validated local return destination when present, or `/onboarding` otherwise. An already-authenticated visit to `/login` SHALL use the same destination rules.
 
-- The login page MUST treat successful authentication as the boundary of this change.
-- The login page MUST NOT implement onboarding/dashboard decision logic, route guards for wider app areas, backend auth contract changes, or end-to-end domain integration in this change.
-- The handoff MUST preserve the authenticated session required by the existing Supabase-oriented frontend auth direction.
+- `/login` SHALL remain public and auth-aware.
+- The app MUST NOT use `/` as the authenticated fallback.
+- The app MUST NOT infer onboarding completion, select `/dashboard`, or implement dashboard routing.
+- The handoff MUST preserve the authenticated Supabase session.
 
-#### Scenario: Login succeeds
+(Previously: Successful login handed control to an authenticated-flow boundary without deciding whether the next destination was onboarding or dashboard.)
 
-- GIVEN the user has entered valid credentials for an existing account
-- WHEN authentication succeeds and a session is established
-- THEN the web app SHALL leave the login page through the authenticated-flow handoff
-- AND this change SHALL NOT decide whether the next product destination is onboarding or dashboard
+#### Scenario: Login succeeds without a valid return URL
+
+- GIVEN an unauthenticated user submits valid credentials
+- WHEN Supabase establishes a valid session
+- THEN the app SHALL replace the login entry with `/onboarding`
+- AND `/onboarding` SHALL be protected by the private-route session flow
+
+#### Scenario: Login succeeds with a valid return URL
+
+- GIVEN an unauthenticated user arrived with a valid local return destination
+- WHEN Supabase establishes a valid session
+- THEN the app SHALL replace the login entry with that destination
+- AND it SHALL NOT redirect to an external or malformed destination
+
+#### Scenario: Already-authenticated user opens login
+
+- GIVEN session resolution confirms a valid authenticated session
+- WHEN the user opens `/login`
+- THEN the app SHALL replace the login entry with a valid local return destination when present
+- AND otherwise SHALL replace it with `/onboarding`
 
 ### Requirement: Kaito-aligned visual treatment and restrained motion
 

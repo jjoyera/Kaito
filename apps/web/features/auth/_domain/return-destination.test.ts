@@ -37,11 +37,11 @@ describe("getLoginContextMessage", () => {
 	it("maps only trusted session context values to fixed copy", () => {
 		assert.equal(
 			getLoginContextMessage("session_expired"),
-			"Your session expired. Sign in again.",
+			"Tu sesión ha caducado. Inicia sesión de nuevo.",
 		);
 		assert.equal(
 			getLoginContextMessage("auth_unavailable"),
-			"Sign-in is temporarily unavailable. Please try again later.",
+			"El inicio de sesión no está disponible temporalmente. Inténtalo de nuevo más tarde.",
 		);
 	});
 

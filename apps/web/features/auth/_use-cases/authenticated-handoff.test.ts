@@ -8,15 +8,15 @@ import {
 } from "./authenticated-handoff";
 
 describe("continueToAuthenticatedFlow", () => {
-	it("keeps the live successful-login destination at the existing root route", () => {
+	it("uses onboarding as the default successful-login destination", () => {
 		const destinations: string[] = [];
 
 		continueToAuthenticatedFlow({
 			replace: (destination) => destinations.push(destination),
 		});
 
-		assert.equal(AUTHENTICATED_FLOW_DESTINATION, "/");
-		assert.deepEqual(destinations, ["/"]);
+		assert.equal(AUTHENTICATED_FLOW_DESTINATION, "/onboarding");
+		assert.deepEqual(destinations, ["/onboarding"]);
 	});
 
 	it("prefers a validated local return destination", () => {
