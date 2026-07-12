@@ -9,7 +9,7 @@ PASS — implementation satisfies the `setup-playwright` spec/design/tasks and c
 - Change: `setup-playwright`
 - Artifact store: both OpenSpec + Engram
 - Authoritative store: OpenSpec files present under `openspec/changes/setup-playwright/`; Engram artifacts for spec, tasks, and apply-progress were also read.
-- Action context: repo-local workspace `/home/jjdelarubia/Workspace/BIGschool/Kaito`; implementation files are under the workspace root.
+- Action context: repo-local workspace `<repo-root>`; implementation files are under the workspace root.
 - Strict TDD: inactive (`strict_tdd: false` in `openspec/config.yaml`; no strict-TDD evidence required).
 - OpenSpec CLI: unavailable in this environment (`openspec` command not found via `pnpm exec openspec validate setup-playwright`). Manual artifact consistency review was performed instead.
 

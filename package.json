@@ -13,6 +13,8 @@
     "dev:web": "pnpm --filter web dev",
     "build:web": "pnpm --filter web build",
     "lint:web": "pnpm --filter web lint",
+    "check:portable-paths": "node scripts/check-portable-paths.mjs",
+    "test:portable-paths": "node --test scripts/check-portable-paths.test.mjs",
     "test:web-sentry-scrubbing": "pnpm --filter web test:sentry-scrubbing",
     "test:web-auth": "pnpm --filter web test:auth",
     "test:web-docker-build": "docker compose build web && docker compose run --rm --no-deps web sh -lc 'test -f apps/web/instrumentation.ts && test -f apps/web/instrumentation-client.ts'",

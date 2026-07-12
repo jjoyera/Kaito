@@ -18,7 +18,7 @@ schemaName: spec-driven
 changeName: frontend-sentry-observability
 artifactStore: both
 planningHome:
-  root: /home/jjdelarubia/Workspace/BIGschool/Kaito/openspec
+  root: <repo-root>/openspec
   changesDir: openspec/changes
 changeRoot: openspec/changes/frontend-sentry-observability
 artifactPaths:
@@ -53,8 +53,8 @@ dependencies:
   archive: ready
 actionContext:
   mode: repo-local
-  workspaceRoot: /home/jjdelarubia/Workspace/BIGschool/Kaito
-  allowedEditRoots: [/home/jjdelarubia/Workspace/BIGschool/Kaito]
+  workspaceRoot: <repo-root>
+  allowedEditRoots: [<repo-root>]
   warnings: []
 nextRecommended: sdd-archive
 isNonAuthoritative: false
@@ -155,7 +155,7 @@ schemaName: spec-driven
 changeName: frontend-sentry-observability
 artifactStore: both
 planningHome:
-  root: /home/jjdelarubia/Workspace/BIGschool/Kaito/openspec
+  root: <repo-root>/openspec
   changesDir: openspec/changes
 changeRoot: openspec/changes/archive/2026-07-08-frontend-sentry-observability
 artifactPaths:
@@ -191,8 +191,8 @@ dependencies:
   archive: all_done
 actionContext:
   mode: repo-local
-  workspaceRoot: /home/jjdelarubia/Workspace/BIGschool/Kaito
-  allowedEditRoots: [/home/jjdelarubia/Workspace/BIGschool/Kaito]
+  workspaceRoot: <repo-root>
+  allowedEditRoots: [<repo-root>]
   warnings:
     - Active change directory is absent because the change is already archived; parent identified the archived path as authoritative for this corrective sync.
 nextRecommended: none

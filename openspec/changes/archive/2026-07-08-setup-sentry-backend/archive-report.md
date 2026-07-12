@@ -23,9 +23,9 @@
 - Status source authoritative: `true`
 - `nextRecommended` from parent status: `sdd-archive`
 - Action context mode: `repo-local`
-- Workspace root: `/home/jjdelarubia/Workspace/BIGschool/Kaito`
+- Workspace root: `<repo-root>`
 - Allowed edit roots:
-  - `/home/jjdelarubia/Workspace/BIGschool/Kaito`
+  - `<repo-root>`
 - Warnings: none
 
 ## Verification / Sync Gates
