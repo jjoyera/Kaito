@@ -2,7 +2,7 @@
 
 ## Status
 
-**SYNCED** — canonical OpenSpec specs were reconciled exactly as authorized. The change remains active and was not archived.
+**COMPLETED, MERGED, SYNCED, AND ARCHIVED** — canonical OpenSpec specs were reconciled exactly as authorized, and the archived change is documented in [`archive-report.md`](archive-report.md).
 
 ## Structured status and action context
 
@@ -38,7 +38,7 @@ dependencies:
   apply: all_done
   verify: all_done
   sync: all_done
-  archive: ready
+  archive: all_done
 actionContext:
   mode: repo-local
   workspaceRoot: <workspace-root>
@@ -49,7 +49,7 @@ actionContext:
   warnings:
     - User explicitly authorized openspec/specs canonical reconciliation for this rerun.
     - Existing unrelated working-tree modifications were not changed.
-nextRecommended: sdd-archive
+nextRecommended: none; archive complete
 isNonAuthoritative: false
 ```
 
@@ -79,4 +79,4 @@ isNonAuthoritative: false
 
 ## Next phase
 
-Canonical sync is complete. Run `sdd-archive` when archive is explicitly requested; do not archive as part of this sync.
+Canonical sync and archive are complete. `/onboarding` remains a protected placeholder fallback, not evidence of onboarding completion or product-state routing; `/dashboard` and onboarding-completion selection remain out of scope. See [`archive-report.md`](archive-report.md).

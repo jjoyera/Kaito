@@ -5,7 +5,7 @@ Artifact index and phase tracking for the
 
 ## Current status
 
-All implementation slices are complete: PR 1A/1B foundation, ownership refactor, and PR 2 `/onboarding` route/protection/handoff activation. Current PR 2 correctness and GREEN verification pass. The maintainer explicitly accepted the historical strict-TDD evidence exception for foundational tasks 1–2 and the PR 2 single-PR size exception.
+The change and PR 2 are complete, merged, synced, and archived. `/onboarding` is the protected placeholder fallback, not evidence of onboarding completion or product-state routing. The maintainer explicitly accepted the historical strict-TDD evidence exception for foundational tasks 1–2 and the PR 2 single-PR size exception.
 
 ## Phase status
 
@@ -19,7 +19,7 @@ All implementation slices are complete: PR 1A/1B foundation, ownership refactor,
 | apply | complete | `apply-progress.md` |
 | verify | complete with explicit maintainer exceptions | `verify-report.md` |
 | sync | complete | `sync-report.md`, `openspec/specs/web-session-flow/spec.md`, `openspec/specs/web-login-ui/spec.md` |
-| archive | ready when requested | — |
+| archive | complete | [`archive-report.md`](archive-report.md) |
 
 ## Superseded init-time project snapshot
 
@@ -82,11 +82,10 @@ All implementation slices are complete: PR 1A/1B foundation, ownership refactor,
 
 ## Phase boundary
 
-Design and tasks were explicitly approved by the user. The tasks phase is complete
-with strict-TDD work units, verification commands, and a high-risk 400-line forecast.
-The user resolved the workload blocker with `Dividir PR 1`. The delivery chain is now
-**PR 1A → PR 1B → PR 2**: PR 1A owns pure auth/navigation/private-fetch contracts;
-PR 1B owns Supabase browser/server/proxy session factories and cookie coverage; PR 2
-owns route/login integration and is explicitly forbidden in the current apply run.
+The approved delivery sequence completed as **PR 1A → PR 1B → PR 2**. PR 1A delivered
+pure auth/navigation/private-fetch contracts, PR 1B delivered Supabase
+browser/server/proxy session factories and cookie coverage, and PR 2 followed those
+foundations with route/login integration. This sequencing preserved the historical
+apply boundary while allowing the full change to reach verification, sync, and archive.
 
-Apply has completed the PR 1A and PR 1B foundation with strict-TDD evidence and separate source/test physical-line counts below 400 per slice. The user subsequently approved Screaming Architecture: `app/` only orchestrates Next.js; auth owns underscore-scoped modules, including Supabase under `_infrastructure/supabase/` and authenticated fetch under `_adapters/`; `shared/` requires two distinct real features. The behavior-preserving structure correction is complete: auth implementation and colocated tests now use the approved underscore scopes, with Supabase under `_infrastructure/supabase/` and authenticated fetch under `_adapters/`. The focused suite remained 36/36 green before and after the move. PR 2 behavior is complete and verification is green. Historical RED evidence for tasks 1–2 remains unavailable but is explicitly accepted as a transparent maintainer exception; the ~490-line PR 2 delivery has an explicit single-PR size exception. Sync/archive may proceed when requested.
+Apply has completed the PR 1A and PR 1B foundation with strict-TDD evidence and separate source/test physical-line counts below 400 per slice. The user subsequently approved Screaming Architecture: `app/` only orchestrates Next.js; auth owns underscore-scoped modules, including Supabase under `_infrastructure/supabase/` and authenticated fetch under `_adapters/`; `shared/` requires two distinct real features. The behavior-preserving structure correction is complete: auth implementation and colocated tests now use the approved underscore scopes, with Supabase under `_infrastructure/supabase/` and authenticated fetch under `_adapters/`. The focused suite remained 36/36 green before and after the move. PR 2 behavior is complete and verification is green. Historical RED evidence for tasks 1–2 remains unavailable but is explicitly accepted as a transparent maintainer exception; the ~490-line PR 2 delivery has an explicit single-PR size exception. Sync and archive are complete; see [`archive-report.md`](archive-report.md).

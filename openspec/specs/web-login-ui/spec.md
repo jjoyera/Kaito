@@ -124,6 +124,7 @@ After a successful sign-in, the web app SHALL hand control to the authenticated 
 
 - `/login` SHALL remain public and auth-aware.
 - The app MUST NOT use `/` as the authenticated fallback.
+- `/onboarding` MUST remain a protected placeholder fallback and MUST NOT be treated as evidence of onboarding completion or product-state routing.
 - The app MUST NOT infer onboarding completion, select `/dashboard`, or implement dashboard routing.
 - The handoff MUST preserve the authenticated Supabase session.
 

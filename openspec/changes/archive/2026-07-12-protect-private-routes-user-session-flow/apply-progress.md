@@ -2,7 +2,7 @@
 
 ## Current status
 
-PR 1A/1B foundation and the behavior-preserving auth ownership refactor are complete. The live login handoff intentionally remains `/`. PR 2—creating/protecting `/onboarding` and activating that handoff—is unstarted.
+The change and PR 2 are complete, merged, synced, and archived. `/onboarding` is the protected placeholder fallback after authenticated login; it is not evidence of onboarding completion or product-state routing. `/dashboard` and onboarding-completion selection remain out of scope. See [`archive-report.md`](archive-report.md).
 
 Earlier snapshots and path/count records below are retained as historical evidence. Where they conflict with this status or final underscore-scoped ownership, they are explicitly superseded.
 
@@ -379,7 +379,9 @@ There is no design deviation. The exact unchecked persisted task list is empty. 
 
 ---
 
-## Maintainer dispositions and generated-drift restoration — 2026-07-12
+## Superseded snapshot — maintainer dispositions and generated-drift restoration — 2026-07-12
+
+> Historical pre-sync/archive status retained as evidence; the current lifecycle status is recorded at the top of this file.
 
 ### Structured status consumed/produced
 
