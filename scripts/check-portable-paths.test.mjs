@@ -3,6 +3,8 @@ import test from "node:test";
 
 import {
 	findPortablePathMatches,
+	resolveTrustedGit,
+	runGitScan,
 	scanBuffer,
 	scanPathname,
 	scanText,
@@ -48,7 +50,10 @@ test("findPortablePathMatches detects file URIs without flagging web URLs", () =
 	for (const sample of fileUris) {
 		assert.equal(findPortablePathMatches(sample).length, 1);
 	}
-	assert.deepEqual(findPortablePathMatches(`https://example.com${macPath}`), []);
+	assert.deepEqual(
+		findPortablePathMatches(`https://example.com${macPath}`),
+		[],
+	);
 });
 
 test("findPortablePathMatches detects Unicode profile names", () => {
@@ -60,6 +65,118 @@ test("findPortablePathMatches detects Unicode profile names", () => {
 	for (const sample of samples) {
 		assert.deepEqual(findPortablePathMatches(sample), [sample]);
 	}
+});
+
+test("findPortablePathMatches handles adversarial near-matches and exact boundaries", () => {
+	const nearMatch = `${"file://localhost/homX/".repeat(100_000)} `;
+	assert.deepEqual(findPortablePathMatches(nearMatch), []);
+	assert.deepEqual(findPortablePathMatches(`x${linuxPath}`), []);
+	assert.deepEqual(findPortablePathMatches(`:${linuxPath}`), []);
+	assert.deepEqual(findPortablePathMatches(`(${linuxPath})`), [linuxPath]);
+});
+
+test("findPortablePathMatches keeps adjacent matches ordered and unique", () => {
+	assert.deepEqual(
+		findPortablePathMatches(`${linuxPath},${macPath} ${linuxPath}`),
+		[linuxPath, macPath, linuxPath],
+	);
+});
+
+test("findPortablePathMatches iterates over 10,000 punctuation-separated matches", () => {
+	const expected = Array.from(
+		{ length: 10_000 },
+		(_, index) => ["", "home", "developer", `project-${index}`].join("/"),
+	);
+	assert.deepEqual(findPortablePathMatches(expected.join(",")), expected);
+});
+
+test("trusted git resolution accepts root-owned 0755 git for effective UID 0", () => {
+	const stats = new Map([
+		["/usr/bin/git", { isFile: () => true, mode: 0o100755, uid: 0 }],
+		["/usr/bin", { isFile: () => false, mode: 0o40755, uid: 0 }],
+		["/usr", { isFile: () => false, mode: 0o40755, uid: 0 }],
+		["/", { isFile: () => false, mode: 0o40755, uid: 0 }],
+	]);
+	assert.equal(
+		resolveTrustedGit({
+			realpathSync: (path) => path,
+			statSync: (path) => stats.get(path),
+			getuid: () => 0,
+		}),
+		"/usr/bin/git",
+	);
+});
+
+test("trusted git resolution accepts fixed safe candidates and rejects writable ones", () => {
+	const stats = new Map([
+		["/usr/bin/git", { isFile: () => true, mode: 0o100755, uid: 0 }],
+		["/usr/bin", { isFile: () => false, mode: 0o40755, uid: 0 }],
+		["/usr", { isFile: () => false, mode: 0o40755, uid: 0 }],
+		["/", { isFile: () => false, mode: 0o40755, uid: 0 }],
+	]);
+	const deps = {
+		realpathSync: (path) => path,
+		statSync: (path) => stats.get(path),
+		getuid: () => 1000,
+	};
+	assert.equal(resolveTrustedGit(deps), "/usr/bin/git");
+	stats.get("/usr/bin").mode = 0o40777;
+	assert.throws(() => resolveTrustedGit(deps), /No trusted Git executable/);
+	stats.get("/usr/bin").mode = 0o40755;
+	stats.get("/usr/bin").uid = 1000;
+	assert.throws(() => resolveTrustedGit(deps), /No trusted Git executable/);
+	stats.get("/usr/bin").uid = 1234;
+	assert.throws(() => resolveTrustedGit(deps), /No trusted Git executable/);
+});
+
+test("scanner ignores PATH and reuses the resolved absolute git", () => {
+	const calls = [];
+	const spawn = (executable, args) => {
+		calls.push([executable, args]);
+		if (args[0] === "ls-files")
+			return {
+				status: 0,
+				stdout: Buffer.from("100644 abc 0\tnotes.md\0"),
+				stderr: Buffer.alloc(0),
+			};
+		return { status: 0, stdout: Buffer.from("safe"), stderr: Buffer.alloc(0) };
+	};
+	assert.deepEqual(runGitScan("/usr/bin/git", spawn), []);
+	assert.deepEqual(
+		calls.map(([executable]) => executable),
+		["/usr/bin/git", "/usr/bin/git"],
+	);
+});
+
+test("git resolution fails closed when no fixed candidate is trusted", () => {
+	assert.throws(
+		() =>
+			resolveTrustedGit({
+				realpathSync: () => {
+					throw new Error("missing");
+				},
+				statSync: () => {
+					throw new Error("missing");
+				},
+			}),
+		/No trusted Git executable/,
+	);
+});
+
+test("runGitScan fails closed for process and repository failures", () => {
+	const index = Buffer.from("100644 abc 0\tnotes.md\0");
+	assert.throws(() => runGitScan("/usr/bin/git", () => ({ status: null, error: new Error("spawn") })), /Unable to list/);
+	assert.throws(() => runGitScan("/usr/bin/git", () => ({ status: 1, stdout: Buffer.alloc(0) })), /Unable to list/);
+	assert.throws(() => runGitScan("/usr/bin/git", () => ({ status: 0, stdout: Buffer.from("malformed\0") })), /Unable to parse/);
+	assert.throws(
+		() => runGitScan("/usr/bin/git", (_git, args) => args[0] === "ls-files" ? { status: 0, stdout: index } : { status: 1, stdout: Buffer.alloc(0) }),
+		/unable to read tracked blob/,
+	);
+	const oversized = Buffer.alloc(32 * 1024 * 1024 + 1);
+	assert.throws(
+		() => runGitScan("/usr/bin/git", (_git, args) => args[0] === "ls-files" ? { status: 0, stdout: index } : { status: 0, stdout: oversized }),
+		/exceeds .* scan limit/,
+	);
 });
 
 test("scanText reports each finding with its one-based line number", () => {
