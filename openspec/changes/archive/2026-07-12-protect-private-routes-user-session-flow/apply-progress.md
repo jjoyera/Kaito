@@ -208,7 +208,7 @@ taskProgress: { total: 13, complete: 12, remaining: 1, unchecked: ["2.5 Update e
 applyState: ready
 actionContext:
   mode: repo-local
-  workspaceRoot: /home/jjdelarubia/Workspace/BIGschool/Kaito
+  workspaceRoot: <workspace-root>
   allowedEditRoots: [apps/web, README.md, pnpm-lock.yaml, openspec/changes/protect-private-routes-user-session-flow]
   warnings: ["Parent omitted structured status; authoritative OpenSpec status was produced from disk.", "The environment-example edit was blocked by the safety layer; no bypass was attempted."]
 nextRecommended: update apps/web/.env.example, then verify
@@ -258,7 +258,7 @@ schemaName: spec-driven
 changeName: protect-private-routes-user-session-flow
 artifactStore: both
 planningHome:
-  root: /home/jjdelarubia/Workspace/BIGschool/Kaito
+  root: <workspace-root>
   changesDir: openspec/changes
 changeRoot: openspec/changes/protect-private-routes-user-session-flow
 artifacts:
@@ -282,12 +282,12 @@ dependencies:
   archive: blocked
 actionContext:
   mode: repo-local
-  workspaceRoot: /home/jjdelarubia/Workspace/BIGschool/Kaito
+  workspaceRoot: <workspace-root>
   allowedEditRoots:
-    - /home/jjdelarubia/Workspace/BIGschool/Kaito/apps/web
-    - /home/jjdelarubia/Workspace/BIGschool/Kaito/README.md
-    - /home/jjdelarubia/Workspace/BIGschool/Kaito/pnpm-lock.yaml
-    - /home/jjdelarubia/Workspace/BIGschool/Kaito/openspec/changes/protect-private-routes-user-session-flow
+    - <workspace-root>/apps/web
+    - <workspace-root>/README.md
+    - <workspace-root>/pnpm-lock.yaml
+    - <workspace-root>/openspec/changes/protect-private-routes-user-session-flow
   warnings:
     - Parent omitted structured status; authoritative OpenSpec status was produced from disk.
     - User explicitly authorized apps/web/.env.example; the direct artifact write API denied the path, so the approved non-secret example was written through the workspace shell.
@@ -335,10 +335,10 @@ artifactStore: both
 applyState: all_done
 actionContext:
   mode: repo-local
-  workspaceRoot: /home/jjdelarubia/Workspace/BIGschool/Kaito
+  workspaceRoot: <workspace-root>
   allowedEditRoots:
-    - /home/jjdelarubia/Workspace/BIGschool/Kaito/apps/web
-    - /home/jjdelarubia/Workspace/BIGschool/Kaito/openspec/changes/protect-private-routes-user-session-flow
+    - <workspace-root>/apps/web
+    - <workspace-root>/openspec/changes/protect-private-routes-user-session-flow
 warnings:
   - Parent explicitly authorized this narrowly scoped correction despite completed task markers.
   - Historical RED output for foundation tasks 1–2 remains unavailable and is not reconstructed or fabricated.
@@ -393,10 +393,10 @@ applyState: all_done
 dependencies: { apply: all_done, verify: complete-with-explicit-exceptions, sync: ready, archive: ready }
 actionContext:
   mode: repo-local
-  workspaceRoot: /home/jjdelarubia/Workspace/BIGschool/Kaito
+  workspaceRoot: <workspace-root>
   allowedEditRoots:
-    - /home/jjdelarubia/Workspace/BIGschool/Kaito/apps/web
-    - /home/jjdelarubia/Workspace/BIGschool/Kaito/openspec/changes/protect-private-routes-user-session-flow
+    - <workspace-root>/apps/web
+    - <workspace-root>/openspec/changes/protect-private-routes-user-session-flow
   warnings:
     - Historical RED evidence for foundational tasks 1–2 is unavailable and was not fabricated.
     - Current PR 2 reviewable size is ~490 lines, above the 400-line session budget.

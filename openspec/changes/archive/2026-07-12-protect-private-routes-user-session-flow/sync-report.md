@@ -11,7 +11,7 @@ schemaName: spec-driven
 changeName: protect-private-routes-user-session-flow
 artifactStore: both
 planningHome:
-  root: /home/jjdelarubia/Workspace/BIGschool/Kaito
+  root: <workspace-root>
   changesDir: openspec/changes
 changeRoot: openspec/changes/protect-private-routes-user-session-flow
 artifactPaths:
@@ -41,11 +41,11 @@ dependencies:
   archive: ready
 actionContext:
   mode: repo-local
-  workspaceRoot: /home/jjdelarubia/Workspace/BIGschool/Kaito
+  workspaceRoot: <workspace-root>
   allowedEditRoots:
-    - /home/jjdelarubia/Workspace/BIGschool/Kaito/openspec/specs
-    - /home/jjdelarubia/Workspace/BIGschool/Kaito/openspec/changes/protect-private-routes-user-session-flow
-    - /home/jjdelarubia/Workspace/BIGschool/Kaito/README.md
+    - <workspace-root>/openspec/specs
+    - <workspace-root>/openspec/changes/protect-private-routes-user-session-flow
+    - <workspace-root>/README.md
   warnings:
     - User explicitly authorized openspec/specs canonical reconciliation for this rerun.
     - Existing unrelated working-tree modifications were not changed.

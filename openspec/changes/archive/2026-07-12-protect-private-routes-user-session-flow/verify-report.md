@@ -15,7 +15,7 @@ schemaName: spec-driven
 changeName: protect-private-routes-user-session-flow
 artifactStore: both
 planningHome:
-  root: /home/jjdelarubia/Workspace/BIGschool/Kaito
+  root: <workspace-root>
   changesDir: openspec/changes
 changeRoot: openspec/changes/protect-private-routes-user-session-flow
 artifactPaths:
@@ -50,12 +50,12 @@ dependencies:
   archive: blocked
 actionContext:
   mode: repo-local
-  workspaceRoot: /home/jjdelarubia/Workspace/BIGschool/Kaito
+  workspaceRoot: <workspace-root>
   allowedEditRoots:
-    - /home/jjdelarubia/Workspace/BIGschool/Kaito/apps/web
-    - /home/jjdelarubia/Workspace/BIGschool/Kaito/README.md
-    - /home/jjdelarubia/Workspace/BIGschool/Kaito/pnpm-lock.yaml
-    - /home/jjdelarubia/Workspace/BIGschool/Kaito/openspec/changes/protect-private-routes-user-session-flow
+    - <workspace-root>/apps/web
+    - <workspace-root>/README.md
+    - <workspace-root>/pnpm-lock.yaml
+    - <workspace-root>/openspec/changes/protect-private-routes-user-session-flow
   warnings:
     - Parent omitted structured status; authoritative status was reconstructed from OpenSpec and confirmed against Engram inputs.
     - Build-generated apps/web/next-env.d.ts drift was restored to its branch/base (`HEAD`) state under explicit maintainer authorization; no product file was changed.

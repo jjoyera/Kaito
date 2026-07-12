@@ -31,7 +31,7 @@ The completed OpenSpec change passed verification, canonical sync, archive preco
 - `verify`: `PASS_WITH_EXPLICIT_EXCEPTIONS`
 - `sync`: complete; canonical specs reconciled
 - `actionContext.mode`: `repo-local`
-- `workspaceRoot`: `/home/jjdelarubia/Workspace/BIGschool/Kaito`
+- `workspaceRoot`: `<workspace-root>`
 - `allowedEditRoots`: workspace OpenSpec change/canonical-spec roots as recorded by the sync status
 - branch validated: `feature/protect-private-routes-session-flow-19-pr2`
 
