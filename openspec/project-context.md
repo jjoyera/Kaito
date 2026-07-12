@@ -15,6 +15,13 @@ modular monorepo architecture.
 - Technical SDD/OpenSpec artifacts should be written in English unless extending
   existing Spanish documentation.
 
+## Frontend architecture convention
+
+- `apps/web/app/` is Next.js routing/orchestration only; product logic belongs to `apps/web/features/<capability>/`.
+- Auth uses `_components/`, `_adapters/`, `_use-cases/`, optional justified `_domain/`, and `_infrastructure/` for provider plumbing. Containers are optional only for genuine multi-concern orchestration.
+- `shared/` promotion requires two distinct real feature consumers; multiple auth runtime callers still count as one feature. No speculative shared abstractions, generic utils/helpers, or empty future-feature folders.
+- Current ownership keeps Supabase clients in `features/auth/_infrastructure/supabase/` and authenticated fetch in `features/auth/_adapters/`. The behavior-preserving underscore ownership refactor is complete; PR 2 is unstarted.
+
 ## SDD preferences
 
 - Execution mode: interactive.
@@ -30,6 +37,7 @@ modular monorepo architecture.
 
 ## OpenSpec state
 
+- Active change: `protect-private-routes-user-session-flow`; PR 1A/1B primitives and the underscore ownership correction are complete in the worktree. This final-review fix batch keeps live successful-login handoff at `/`; PR 2 remains unstarted and requires separate authorization.
 - Archived changes exist:
   - `2026-07-07-initial-project-scaffolding`
   - `2026-07-08-setup-playwright`

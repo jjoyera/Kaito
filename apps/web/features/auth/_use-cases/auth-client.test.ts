@@ -90,6 +90,24 @@ describe("createSignInWithPassword", () => {
 		assert.deepEqual(outcome, { status: "system_error" });
 	});
 
+	it("keeps the normalized outcome when the failure reporter throws", async () => {
+		const signIn = createSignInWithPassword(
+			async () => {
+				throw new Error("provider failure");
+			},
+			{
+				onSystemError: () => {
+					throw new Error("reporter failure");
+				},
+			},
+		);
+
+		assert.deepEqual(
+			await signIn({ email: "runner@kaito.app", password: "trail-pass" }),
+			{ status: "system_error" },
+		);
+	});
+
 	it("reports thrown provider failures without changing the user-facing outcome", async () => {
 		const providerError = new Error("provider network failure with raw detail");
 		const reportedErrors: unknown[] = [];

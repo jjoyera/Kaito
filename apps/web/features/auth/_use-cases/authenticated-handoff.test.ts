@@ -8,14 +8,26 @@ import {
 } from "./authenticated-handoff";
 
 describe("continueToAuthenticatedFlow", () => {
-	it("delegates successful login to the centralized authenticated-flow destination", () => {
+	it("keeps the live successful-login destination at the existing root route", () => {
 		const destinations: string[] = [];
 
 		continueToAuthenticatedFlow({
 			replace: (destination) => destinations.push(destination),
 		});
 
-		assert.deepEqual(destinations, [AUTHENTICATED_FLOW_DESTINATION]);
+		assert.equal(AUTHENTICATED_FLOW_DESTINATION, "/");
+		assert.deepEqual(destinations, ["/"]);
+	});
+
+	it("prefers a validated local return destination", () => {
+		const destinations: string[] = [];
+
+		continueToAuthenticatedFlow(
+			{ replace: (destination) => destinations.push(destination) },
+			"/training?week=2",
+		);
+
+		assert.deepEqual(destinations, ["/training?week=2"]);
 	});
 
 	it("does not inspect onboarding or dashboard state while handing off", () => {

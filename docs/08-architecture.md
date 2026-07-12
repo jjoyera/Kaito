@@ -11,7 +11,7 @@ Se centra en **cómo se organiza el sistema** (fronteras, responsabilidades, flu
 ## 2) Resumen de decisiones arquitectónicas
 
 | Decisión | Se adopta | Motivo |
-|---|---|---|
+| --- | --- | --- |
 | Forma del repositorio | Monorepo modular | Mantener cohesión del producto y separar responsabilidades por aplicación/módulo sin sobrecoste de microservicios. |
 | Aplicaciones | `apps/web` (Next.js) + `apps/api` (FastAPI) | Separar UX/web de casos de uso de negocio y motor de planificación IA. |
 | Estilo backend | Monolito modular por dominios + Clean/Hexagonal pragmático por módulo | Aplicar puertos/adaptadores donde la complejidad lo justifique, evitando sobreingeniería homogénea. |
@@ -57,27 +57,45 @@ Observabilidad transversal:
 
 ---
 
-## 4) Layout conceptual del monorepo (no creado todavía)
+## 4) Layout del monorepo
+
+La regla de organización es **Screaming Architecture**: la estructura comunica capacidades reales del producto. Primero se separa por aplicación (`web`/`api`) y, dentro de la web, por capacidad; no se crean carpetas para futuros hipotéticos.
+
+### Estructura frontend actual
+
+```text
+apps/web/
+├── app/                             # Solo rutas y orquestación Next.js
+│   └── (auth)/login/page.tsx        # Compone/importa la feature auth
+└── features/
+    └── auth/                        # Única capacidad real actual
+```
+
+El traslado a los destinos con prefijo `_` está completo. PR 2 permanece sin iniciar y añadirá las fronteras de ruta únicamente con autorización separada.
+
+### Forma ilustrativa cuando existan consumidores reales
+
+```text
+apps/web/
+├── app/                             # routes, layouts, loading/error, metadata, route policy
+├── features/
+│   ├── auth/
+│   │   ├── _components/
+│   │   ├── _adapters/               # incluye authenticated fetch actual
+│   │   ├── _use-cases/
+│   │   ├── _domain/                 # solo reglas/tipos puros, si se justifica
+│   │   └── _infrastructure/
+│   │       └── supabase/            # construcción de clientes actual
+│   └── <otra-capacidad-real>/       # solo cuando se implemente
+└── shared/                          # solo tras dos features reales consumidoras
+```
+
+No se crean árboles vacíos a partir de este ejemplo.
 
 ```text
 /
 ├── apps/
-│   ├── web/                         # Next.js
-│   │   ├── app/                     # App Router
-│   │   │   ├── (auth)/
-│   │   │   ├── onboarding/
-│   │   │   ├── dashboard/
-│   │   │   └── training/
-│   │   ├── features/                # Funcionalidades de frontend
-│   │   │   ├── auth/
-│   │   │   ├── onboarding/
-│   │   │   ├── training-plan/
-│   │   │   ├── training-log/
-│   │   │   └── dashboard/
-│   │   ├── components/
-│   │   ├── lib/
-│   │   └── tests/
-│   │
+│   ├── web/                         # Next.js (detalle anterior)
 │   └── api/                         # FastAPI
 │       ├── app/
 │       │   ├── main.py
@@ -110,17 +128,23 @@ Principio: separar por **frontera de aplicación** primero (`web` vs `api`) y po
 
 `apps/web` resuelve experiencia de usuario: registro/login, onboarding, dashboard, detalle de sesión, carga de logs y visualización de KPIs.
 
-### Enfoque estructural
+### Decisión y reglas de ownership
 
-- Modular por features (ejemplo conceptual: `auth`, `onboarding`, `plan`, `dashboard`, `training-log`).
-- Componentes/páginas orientados a flujo de producto, no a capas Clean rígidas.
-- Validación de entrada en cliente con Zod para feedback inmediato y reducción de errores de UX.
+- `apps/web/app/` contiene exclusivamente routing y orquestación de Next.js: rutas, layouts, `loading`/`error`, metadata y cableado de políticas de ruta. No contiene lógica de producto.
+- `apps/web/features/<capability>/` posee cada capacidad real. En auth se usa el vocabulario `_components/`, `_adapters/`, `_use-cases/` y, solo si existen reglas/tipos puros que lo justifiquen, `_domain/`.
+- `<feature>.container.tsx` es opcional y solo existe para orquestación genuina de múltiples concerns; nunca se añade mecánicamente.
+- `_infrastructure/` identifica plumbing de proveedores. En el alcance actual, los clientes Supabase pertenecen a `features/auth/_infrastructure/supabase/` y el fetch autenticado a `features/auth/_adapters/`.
+- `apps/web/shared/` solo recibe código consumido por **al menos dos features reales distintas**. Login, guard de servidor y proxy son varios consumidores en runtime de auth, pero cuentan como una sola feature.
+- Se prohíben abstracciones compartidas especulativas, carpetas vacías de features futuras y cajones genéricos `utils`/`helpers`.
+- `app/(auth)/login/page.tsx` permanece como orquestación de ruta e importa la feature auth.
 
-### Reglas clave
+La promoción a `shared/` se reconsiderará cuando onboarding u otra capacidad real sea el segundo consumidor. Hasta entonces, repetir una frontera pequeña es preferible a anticipar una abstracción.
+
+### Reglas funcionales
 
 - El frontend **no decide reglas de negocio críticas** (elegibilidad final, reajustes, versionado, invariantes).
 - El frontend consume contratos API versionados y muestra estados de carga/error claros.
-- La sesión del usuario se apoya en Supabase Auth; el frontend transmite token JWT al backend para operaciones de dominio.
+- La sesión se apoya en Supabase Auth; el frontend transmite el JWT al backend para operaciones de dominio.
 
 ---
 

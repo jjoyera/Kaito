@@ -1,3 +1,5 @@
+import { selectReturnDestination } from "../_domain/return-destination";
+
 export const AUTHENTICATED_FLOW_DESTINATION = "/";
 
 export type AuthenticatedFlowNavigator = {
@@ -6,6 +8,11 @@ export type AuthenticatedFlowNavigator = {
 
 export function continueToAuthenticatedFlow(
 	navigator: AuthenticatedFlowNavigator,
+	returnTo?: unknown,
 ): void {
-	navigator.replace(AUTHENTICATED_FLOW_DESTINATION);
+	navigator.replace(
+		typeof returnTo === "string"
+			? selectReturnDestination(returnTo)
+			: AUTHENTICATED_FLOW_DESTINATION,
+	);
 }

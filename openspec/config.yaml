@@ -92,3 +92,21 @@ conventions:
   commits: conventional-commits-in-english
   docs: >-
     Spanish TFM docs; English technical artifacts unless extending Spanish docs
+  frontend:
+    architecture: screaming-by-real-capability
+    app_directory: nextjs-routing-and-orchestration-only
+    feature_root: apps/web/features/<capability>
+    auth_scopes:
+      - _components
+      - _adapters
+      - _use-cases
+      - _infrastructure
+      - _domain-when-pure-rules-warrant-it
+    container_policy: genuine-multi-concern-orchestration-only
+    shared_promotion_minimum_distinct_real_features: 2
+    same_feature_runtime_consumers_count_as_distinct_features: false
+    current_supabase_owner: apps/web/features/auth/_infrastructure/supabase
+    current_authenticated_fetch_owner: apps/web/features/auth/_adapters
+    forbid_speculative_shared_abstractions: true
+    forbid_empty_future_feature_folders: true
+    forbid_generic_utils_helpers: true
