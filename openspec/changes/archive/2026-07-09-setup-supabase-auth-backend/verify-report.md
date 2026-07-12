@@ -9,7 +9,7 @@
 - Active change: `setup-supabase-auth-backend` — unambiguous from parent prompt and OpenSpec paths.
 - Artifact store: `both` per `openspec/config.yaml`; OpenSpec artifacts and Engram artifact observations were read directly.
 - Strict TDD: active via `openspec/config.yaml` and `apply-progress.md`.
-- Workspace/action context: verification ran in `/home/jjdelarubia/Workspace/BIGschool/Kaito`; no `workspace-planning` edit constraint was provided or needed because only the verify report was updated.
+- Workspace/action context: verification ran in `<repo-root>`; no `workspace-planning` edit constraint was provided or needed because only the verify report was updated.
 - Implementation ownership: changed implementation/test/doc files are inside the repository workspace under `apps/api/`; verify artifact is under `openspec/changes/setup-supabase-auth-backend/`.
 - External strict-TDD verify guidance: project-local override not present; global guidance loaded from `~/.pi/agent/gentle-ai/support/strict-tdd-verify.md`.
 

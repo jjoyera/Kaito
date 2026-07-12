@@ -125,7 +125,7 @@ PR 1 implementation is complete and validated for its assigned scope. The broade
 
 - Parent-provided SDD status was authoritative: OpenSpec files are authoritative because `openspec/` exists and artifact store is `both`.
 - Active change: `build-login-ui`.
-- Strict TDD mode: active from `openspec/config.yaml` and parent prompt; global strict-TDD guidance was read from `/home/jjdelarubia/.pi/agent/gentle-ai/support/strict-tdd.md`.
+- Strict TDD mode: active from `openspec/config.yaml` and parent prompt; global strict-TDD guidance was read from `$HOME/.pi/agent/gentle-ai/support/strict-tdd.md`.
 - Action context: repository workspace root; all edits stayed inside this workspace.
 - Review workload guard: high 400-line budget risk and chained PRs recommended. Parent explicitly assigned the resolved chained slice: **PR 2 / Tasks 3–4 only**.
 
@@ -247,7 +247,7 @@ remains unchecked.
 ### Status consumed
 
 - Parent-provided structured status was authoritative: `artifactStore: both`, OpenSpec authoritative because `openspec/` exists, active change `build-login-ui`, and PR 1/PR 2 dependencies ready.
-- Strict TDD mode was active from `openspec/config.yaml` and the parent prompt. Global strict-TDD guidance was consumed from `/home/jjdelarubia/.pi/agent/gentle-ai/support/strict-tdd.md`.
+- Strict TDD mode was active from `openspec/config.yaml` and the parent prompt. Global strict-TDD guidance was consumed from `$HOME/.pi/agent/gentle-ai/support/strict-tdd.md`.
 - Action context warning: no separate `allowedEditRoots` was supplied; mode was not workspace-planning and every edit stayed in the authoritative repository workspace.
 - Review-workload guard was resolved by the parent: `auto-chain`/assigned PR 3 slice only. No commit or push was made.
 

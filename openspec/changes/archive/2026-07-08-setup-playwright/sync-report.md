@@ -11,7 +11,7 @@ Post-4R cleanup resync completed. The active `setup-playwright` OpenSpec change 
 - Change: `setup-playwright`
 - Artifact store: both OpenSpec + Engram
 - Authoritative sync mode: file-backed OpenSpec sync, with Engram report persistence completed by this phase (Engram observation `311`)
-- Workspace root: `/home/jjdelarubia/Workspace/BIGschool/Kaito`
+- Workspace root: `<repo-root>`
 - Action context: repo-local / interactive; edits stayed under `openspec/`
 - Verification status consumed: PASS from `openspec/changes/setup-playwright/verify-report.md`
 - Verify blocker scan: no unresolved `FAIL`, `BLOCKED`, `CRITICAL`, or verification blockers found; the OpenSpec CLI unavailability is recorded as a known environment limitation

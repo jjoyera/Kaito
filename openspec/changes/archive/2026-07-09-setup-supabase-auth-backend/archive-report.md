@@ -36,7 +36,7 @@ schemaName: spec-driven
 changeName: setup-supabase-auth-backend
 artifactStore: both
 planningHome:
-  root: /home/jjdelarubia/Workspace/BIGschool/Kaito
+  root: <repo-root>
   changesDir: openspec/changes
 changeRoot: openspec/changes/setup-supabase-auth-backend
 artifactPaths:
@@ -94,9 +94,9 @@ dependencies:
   archive: ready
 actionContext:
   mode: repo-local
-  workspaceRoot: /home/jjdelarubia/Workspace/BIGschool/Kaito
+  workspaceRoot: <repo-root>
   allowedEditRoots:
-    - /home/jjdelarubia/Workspace/BIGschool/Kaito
+    - <repo-root>
   warnings: []
 nextRecommended: archive-complete
 isNonAuthoritative: false

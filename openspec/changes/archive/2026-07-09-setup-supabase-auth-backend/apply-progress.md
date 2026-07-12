@@ -472,5 +472,5 @@ Warnings are FastAPI/Starlette deprecations under the local Python runtime.
 - Active change: archived `setup-supabase-auth-backend` at `openspec/changes/archive/2026-07-09-setup-supabase-auth-backend/`.
 - Artifact store: `both`; OpenSpec archived files used as authoritative for this delegated post-archive correction.
 - Strict TDD: active from `openspec/config.yaml` and parent prompt.
-- Action context: workspace `/home/jjdelarubia/Workspace/BIGschool/Kaito`; edits stayed inside workspace; no commit/push/PR.
+- Action context: workspace `<repo-root>`; edits stayed inside workspace; no commit/push/PR.
 - Workload/PR boundary: delegated as one post-archive 4R correction slice; no chained PR/commit created by request.

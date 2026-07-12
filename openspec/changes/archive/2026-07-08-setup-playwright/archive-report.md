@@ -11,9 +11,9 @@ PASS
 - Change: `setup-playwright`
 - Date: `2026-07-08`
 - Artifact store: `both` (OpenSpec + Engram)
-- Authoritative workspace: `/home/jjdelarubia/Workspace/BIGschool/Kaito`
+- Authoritative workspace: `<repo-root>`
 - Action context mode: `repo-local` / interactive
-- Allowed edit roots: `/home/jjdelarubia/Workspace/BIGschool/Kaito`
+- Allowed edit roots: `<repo-root>`
 - OpenSpec CLI availability: unavailable (`openspec` command not found); treated as a known environment limitation, not a new blocker because verify/sync manual consistency checks already passed
 - Non-authoritative status carve-out: not applicable; OpenSpec filesystem is authoritative for this change
 

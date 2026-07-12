@@ -9,8 +9,8 @@
 - Change: `setup-sentry-backend`
 - Artifact store used for verification: `openspec`
 - Mode: `repo-local`
-- Workspace root: `/home/jjdelarubia/Workspace/BIGschool/Kaito`
-- Allowed edit roots: `/home/jjdelarubia/Workspace/BIGschool/Kaito`
+- Workspace root: `<repo-root>`
+- Allowed edit roots: `<repo-root>`
 - Apply state from parent/status: `all_done`
 - Implementation ownership: changed files are inside the authoritative workspace and expected roots/files (`apps/api`, `.github/workflows/ci.yml`, `.gitignore`, `pyrightconfig.json`, OpenSpec artifacts).
 
@@ -35,7 +35,7 @@
 
 ## Test / Validation Commands
 
-Executed from `/home/jjdelarubia/Workspace/BIGschool/Kaito`:
+Executed from `<repo-root>`:
 
 ```text
 git status --short && git diff --stat && cd apps/api && uv sync --frozen && uv run ruff check . && uv run pytest tests/ -q && uv run python -c "from app.main import app; print(app.title)" && uv run python -c "from fastapi.testclient import TestClient; from app.main import app; r = TestClient(app).get('/health'); assert r.status_code == 200; assert r.json() == {'status': 'ok'}; print('health OK')"

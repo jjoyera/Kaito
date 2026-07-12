@@ -13,7 +13,7 @@ schemaName: spec-driven
 changeName: build-login-ui
 artifactStore: both
 planningHome:
-  root: /home/jjdelarubia/Workspace/BIGschool/Kaito
+  root: <repo-root>
   changesDir: openspec/changes
 changeRoot: openspec/changes/build-login-ui
 artifacts:
@@ -37,9 +37,9 @@ dependencies:
   archive: all_done
 actionContext:
   mode: repo-local
-  workspaceRoot: /home/jjdelarubia/Workspace/BIGschool/Kaito
+  workspaceRoot: <repo-root>
   allowedEditRoots:
-    - /home/jjdelarubia/Workspace/BIGschool/Kaito
+    - <repo-root>
   warnings: []
 nextRecommended: continue-development
 isNonAuthoritative: false

@@ -44,7 +44,7 @@ Because this is a new canonical domain spec, the following requirements are now 
 - Active same-domain collision check: no other active `openspec/changes/*/specs/backend-observability/spec.md` files found.
 - Legacy flat spec check: no `openspec/changes/setup-sentry-backend/spec.md` legacy flat spec found.
 - Destructive sync check: no REMOVED requirements and no large MODIFIED blocks; explicit destructive approval was not required.
-- Canonical path check: `openspec/specs/backend-observability/spec.md` is inside the authoritative workspace `/home/jjdelarubia/Workspace/BIGschool/Kaito` and allowed edit root.
+- Canonical path check: `openspec/specs/backend-observability/spec.md` is inside the authoritative workspace `<repo-root>` and allowed edit root.
 - Archive/move check: change folder was not moved to archive.
 
 ## Verification Gate
@@ -76,9 +76,9 @@ grep '^### Requirement:' openspec/changes/setup-sentry-backend/specs/backend-obs
 - Change: `setup-sentry-backend`
 - Artifact store for this phase: `openspec`
 - Mode: `repo-local`
-- Workspace root: `/home/jjdelarubia/Workspace/BIGschool/Kaito`
+- Workspace root: `<repo-root>`
 - Allowed edit roots:
-  - `/home/jjdelarubia/Workspace/BIGschool/Kaito`
+  - `<repo-root>`
 - Status from parent: authoritative (`isNonAuthoritative: false`)
 - Apply dependency: `all_done`
 - Verify dependency: `all_done`

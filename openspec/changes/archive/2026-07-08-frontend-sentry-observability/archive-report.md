@@ -21,11 +21,11 @@ The archived implementation facts preserved here are:
 
 - Active change: `frontend-sentry-observability` present and unambiguous.
 - Artifact store: `both`.
-- OpenSpec workspace is authoritative and present under `/home/jjdelarubia/Workspace/BIGschool/Kaito/openspec`.
+- OpenSpec workspace is authoritative and present under `<repo-root>/openspec`.
 - Execution mode from parent preflight: `interactive`.
 - Chained PR strategy: `ask-always`.
 - Review budget context: parent accepted single-PR delivery despite the 400-line review budget.
-- Allowed edit root: `/home/jjdelarubia/Workspace/BIGschool/Kaito`.
+- Allowed edit root: `<repo-root>`.
 - Archive action stayed within the authoritative workspace and archive target root.
 - `openspec/config.yaml`: `sdd.strict_tdd: false`, `sdd.artifact_store: both`; no additional `rules.archive` override found.
 

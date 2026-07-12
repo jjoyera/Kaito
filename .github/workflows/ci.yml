@@ -25,6 +25,12 @@ jobs:
         with:
           node-version: "24.18"
 
+      - name: Test non-portable path checker
+        run: node --test scripts/check-portable-paths.test.mjs
+
+      - name: Check for non-portable paths
+        run: node scripts/check-portable-paths.mjs
+
       - name: Set up pnpm
         uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
         with:

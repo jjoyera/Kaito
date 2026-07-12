@@ -21,20 +21,20 @@ schemaName: spec-driven
 changeName: setup-supabase-auth-backend
 artifactStore: both
 planningHome:
-  root: /home/jjdelarubia/Workspace/BIGschool/Kaito
+  root: <repo-root>
   changesDir: openspec/changes
 changeRoot: openspec/changes/setup-supabase-auth-backend
 actionContext:
   mode: repo-local
-  workspaceRoot: /home/jjdelarubia/Workspace/BIGschool/Kaito
+  workspaceRoot: <repo-root>
   allowedEditRoots:
-    - /home/jjdelarubia/Workspace/BIGschool/Kaito
+    - <repo-root>
 verifyReportStatus: PASS
 syncDecision: proceed; verify-report.md is clearly passing with no blockers
 ```
 
 - Active change selection: unambiguous (`setup-supabase-auth-backend`).
-- Workspace/action context: repo-local sync inside `/home/jjdelarubia/Workspace/BIGschool/Kaito`; canonical spec path is inside the workspace.
+- Workspace/action context: repo-local sync inside `<repo-root>`; canonical spec path is inside the workspace.
 - Artifact store: `both` per `openspec/config.yaml`; filesystem sync was performed and Engram persistence was attempted/completed by the sync executor.
 - `workspace-planning` mode was not requested; no external allowed-edit-root restriction was needed.
 

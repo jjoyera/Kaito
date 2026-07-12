@@ -14,7 +14,7 @@ schemaName: spec-driven
 changeName: setup-playwright
 artifactStore: both
 planningHome:
-  root: /home/jjdelarubia/Workspace/BIGschool/Kaito
+  root: <repo-root>
   changesDir: openspec/changes
 changeRoot: openspec/changes/setup-playwright
 artifactPaths:
@@ -54,9 +54,9 @@ dependencies:
   archive: blocked
 actionContext:
   mode: repo-local
-  workspaceRoot: /home/jjdelarubia/Workspace/BIGschool/Kaito
+  workspaceRoot: <repo-root>
   allowedEditRoots:
-    - /home/jjdelarubia/Workspace/BIGschool/Kaito
+    - <repo-root>
   warnings: []
 nextRecommended: sdd-verify setup-playwright
 isNonAuthoritative: false

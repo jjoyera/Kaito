@@ -10,7 +10,7 @@
 - `artifactStore`: openspec
 - `applyState`: ready (authoritative)
 - `actionContext.mode`: repo-local
-- `allowedEditRoots`: `/home/jjdelarubia/Workspace/BIGschool/Kaito`
+- `allowedEditRoots`: `<repo-root>`
 - **Warnings consumed**:
   - Review workload forecast is 450–700 changed lines, above the 400-line review budget.
   - Tasks record a single-PR size exception for this session (delivery decision: `size:exception / exception-ok`).
