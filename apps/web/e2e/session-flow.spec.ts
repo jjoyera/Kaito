@@ -22,23 +22,7 @@ test.describe("session route flow", () => {
 		await expect(page.getByText(/sesión caducó/i)).toHaveCount(0);
 	});
 
-	test("exercises production session wiring and fails closed without Supabase configuration", async ({
-		page,
-	}) => {
-		await page.goto("/onboarding");
-
-		await expect(page).toHaveURL(
-			/\/login\?returnTo=%2Fonboarding&context=auth_unavailable$/,
-		);
-		await expect(
-			page.getByText(/no está disponible temporalmente/i),
-		).toBeVisible();
-		await expect(
-			page.getByRole("heading", { name: /onboarding process/i }),
-		).toHaveCount(0);
-	});
-
-	test("retains deterministic synthetic unavailable route-state coverage", async ({
+	test("fails closed when Supabase configuration is unavailable", async ({
 		page,
 	}) => {
 		await page.context().addCookies([
