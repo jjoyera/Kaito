@@ -8,7 +8,9 @@ export default async function OnboardingPage() {
 		const context =
 			session.status === "invalid"
 				? "&context=session_expired"
-				: "&context=auth_unavailable";
+				: session.status === "unavailable"
+					? "&context=auth_unavailable"
+					: "";
 		redirect(`/login?returnTo=%2Fonboarding${context}`);
 	}
 

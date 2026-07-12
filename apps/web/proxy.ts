@@ -70,6 +70,7 @@ export function redirectWithSessionCookies(
 function getE2ESession(request: NextRequest) {
 	if (
 		process.env.NODE_ENV === "production" ||
+		!isLoopbackRequest(request) ||
 		process.env.KAITO_E2E_AUTH_ADAPTER !== "1" ||
 		!process.env.KAITO_E2E_AUTH_SECRET ||
 		request.headers.get("x-kaito-e2e-auth") !==
@@ -91,6 +92,42 @@ function getE2ESession(request: NextRequest) {
 		response: NextResponse.next({ request }),
 		session: { status },
 	} as const;
+}
+
+export function isLoopbackRequest(request: NextRequest): boolean {
+	const hosts = [
+		request.nextUrl.hostname,
+		request.headers.get("host"),
+		...(request.headers.get("x-forwarded-host")?.split(",") ?? []),
+	]
+		.filter((host): host is string => Boolean(host))
+		.map((host) => hostnameFromHeader(host));
+
+	return hosts.length > 0 && hosts.every(isLoopbackHostname);
+}
+
+function hostnameFromHeader(host: string): string {
+	const value = host.trim().toLowerCase();
+	if (value.startsWith("[")) {
+		const closingBracket = value.indexOf("]");
+		if (closingBracket < 0) return "";
+		const suffix = value.slice(closingBracket + 1);
+		if (suffix && !/^:\d{1,5}$/.test(suffix)) return "";
+		if (suffix && Number(suffix.slice(1)) > 65535) return "";
+		return value.slice(1, closingBracket);
+	}
+	return value.split(":", 1)[0];
+}
+
+function isLoopbackHostname(hostname: string): boolean {
+	if (hostname === "localhost" || hostname === "::1") return true;
+
+	const octets = hostname.split(".");
+	return (
+		octets.length === 4 &&
+		octets[0] === "127" &&
+		octets.every((octet) => /^\d{1,3}$/.test(octet) && Number(octet) <= 255)
+	);
 }
 
 export const config = { matcher: ["/login", "/onboarding"] };
