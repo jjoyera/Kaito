@@ -134,7 +134,7 @@ test.describe("/login", () => {
 
 		await page.getByLabel("Correo electrónico").fill("runner@example.com");
 		await page.getByRole("button", { name: "Iniciar sesión" }).click();
-		await expect(page).toHaveURL("/");
+		await expect(page).toHaveURL("/onboarding");
 	});
 
 	test("shows separate technical/system error feedback", async ({ page }) => {
@@ -158,7 +158,7 @@ test.describe("/login", () => {
 
 		await page.getByLabel("Correo electrónico").fill("runner@example.com");
 		await page.getByRole("button", { name: "Iniciar sesión" }).click();
-		await expect(page).toHaveURL("/");
+		await expect(page).toHaveURL("/onboarding");
 	});
 
 	test("hands off successful authentication to the authenticated flow", async ({
@@ -170,9 +170,9 @@ test.describe("/login", () => {
 		await page.getByLabel("Contraseña").fill("trail-password");
 		await page.getByRole("button", { name: "Iniciar sesión" }).click();
 
-		await expect(page).toHaveURL("/");
+		await expect(page).toHaveURL("/onboarding");
 		await expect(
-			page.getByRole("heading", { name: "Project scaffold is running." }),
+			page.getByRole("heading", { name: "Onboarding process" }),
 		).toBeVisible();
 	});
 

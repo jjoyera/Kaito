@@ -34,11 +34,11 @@ export function selectReturnDestination(value: unknown): string {
 
 export function getLoginContextMessage(value: unknown): string | undefined {
 	if (value === "session_expired") {
-		return "Your session expired. Sign in again.";
+		return "Tu sesión ha caducado. Inicia sesión de nuevo.";
 	}
 
 	if (value === "auth_unavailable") {
-		return "Sign-in is temporarily unavailable. Please try again later.";
+		return "El inicio de sesión no está disponible temporalmente. Inténtalo de nuevo más tarde.";
 	}
 }
 

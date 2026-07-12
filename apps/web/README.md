@@ -12,7 +12,9 @@ See `docs/08-architecture.md` for the authoritative architecture.
 
 ## Supabase SSR cookie security
 
-Supabase SSR owns session-cookie storage and rotation. Do not independently force `HttpOnly`, because supported browser flows may require browser-readable cookies. Secure cookies are **not currently enforced** by this worktree. PR 2 activation must verify the concrete Next.js request/response cookie boundary, require HTTPS and an appropriate `Secure` policy in production, preserve supported SameSite behavior, and wire telemetry for refresh/session failures. CSP, output encoding, dependency hygiene, and XSS prevention remain required defenses.
+Supabase SSR owns session-cookie storage and rotation. Do not independently force `HttpOnly`, because supported browser flows may require browser-readable cookies. The root `proxy.ts` applies route policy only to `/login` and `/onboarding`; it refreshes the session, preserves refresh cookies, and forces `Secure` on response session cookies in production. Deploy production behind HTTPS. Refresh/provider failures emit only the stable `auth_session_resolution_failed` telemetry event, without provider details, tokens, or cookie values. CSP, output encoding, dependency hygiene, and XSS prevention remain required defenses.
+
+Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for production sign-in. They are public browser configuration, not service-role credentials; never expose access tokens, refresh tokens, JWT secrets, or `SUPABASE_SERVICE_ROLE_KEY`.
 
 ## Frontend observability (Sentry)
 

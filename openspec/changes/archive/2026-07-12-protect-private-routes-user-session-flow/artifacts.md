@@ -5,7 +5,7 @@ Artifact index and phase tracking for the
 
 ## Current status
 
-PR 1A/1B foundation and the behavior-preserving ownership refactor are complete. The live handoff intentionally remains `/`. PR 2 `/onboarding` route/protection/handoff activation is unstarted; proposal/spec/design statements describing it remain future requirements.
+All implementation slices are complete: PR 1A/1B foundation, ownership refactor, and PR 2 `/onboarding` route/protection/handoff activation. Current PR 2 correctness and GREEN verification pass. The maintainer explicitly accepted the historical strict-TDD evidence exception for foundational tasks 1–2 and the PR 2 single-PR size exception.
 
 ## Phase status
 
@@ -16,10 +16,10 @@ PR 1A/1B foundation and the behavior-preserving ownership refactor are complete.
 | spec | complete | `specs/web-session-flow/spec.md`, `specs/web-login-ui/spec.md` |
 | design | approved | `design.md` |
 | tasks | complete | `tasks.md` |
-| apply | partial — PR 1A + PR 1B and structure correction complete; PR 2 unstarted | `apply-progress.md` |
-| verify | not started | — |
-| sync | not started | — |
-| archive | not started | — |
+| apply | complete | `apply-progress.md` |
+| verify | complete with explicit maintainer exceptions | `verify-report.md` |
+| sync | complete | `sync-report.md`, `openspec/specs/web-session-flow/spec.md`, `openspec/specs/web-login-ui/spec.md` |
+| archive | ready when requested | — |
 
 ## Superseded init-time project snapshot
 
@@ -89,4 +89,4 @@ The user resolved the workload blocker with `Dividir PR 1`. The delivery chain i
 PR 1B owns Supabase browser/server/proxy session factories and cookie coverage; PR 2
 owns route/login integration and is explicitly forbidden in the current apply run.
 
-Apply has completed the PR 1A and PR 1B foundation with strict-TDD evidence and separate source/test physical-line counts below 400 per slice. The user subsequently approved Screaming Architecture: `app/` only orchestrates Next.js; auth owns underscore-scoped modules, including Supabase under `_infrastructure/supabase/` and authenticated fetch under `_adapters/`; `shared/` requires two distinct real features. The behavior-preserving structure correction is complete: auth implementation and colocated tests now use the approved underscore scopes, with Supabase under `_infrastructure/supabase/` and authenticated fetch under `_adapters/`. The focused suite remained 36/36 green before and after the move. PR 2 behavior has not started; final verification, sync, and archive remain pending.
+Apply has completed the PR 1A and PR 1B foundation with strict-TDD evidence and separate source/test physical-line counts below 400 per slice. The user subsequently approved Screaming Architecture: `app/` only orchestrates Next.js; auth owns underscore-scoped modules, including Supabase under `_infrastructure/supabase/` and authenticated fetch under `_adapters/`; `shared/` requires two distinct real features. The behavior-preserving structure correction is complete: auth implementation and colocated tests now use the approved underscore scopes, with Supabase under `_infrastructure/supabase/` and authenticated fetch under `_adapters/`. The focused suite remained 36/36 green before and after the move. PR 2 behavior is complete and verification is green. Historical RED evidence for tasks 1–2 remains unavailable but is explicitly accepted as a transparent maintainer exception; the ~490-line PR 2 delivery has an explicit single-PR size exception. Sync/archive may proceed when requested.

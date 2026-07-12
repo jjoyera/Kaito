@@ -4,11 +4,14 @@ import * as Sentry from "@sentry/nextjs";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getSentryDsn } from "../../../lib/sentry-scrubbing";
-import type {
-	SignInOutcome,
-	SignInWithPassword,
+import {
+	createSignInWithPassword,
+	type SignInOutcome,
+	type SignInWithPassword,
 } from "../_use-cases/auth-client";
 import { continueToAuthenticatedFlow } from "../_use-cases/authenticated-handoff";
+import { createSupabaseSignInAdapter } from "../_adapters/supabase-sign-in";
+import { getBrowserSupabaseClient } from "../_infrastructure/supabase/browser";
 import {
 	validateLoginInput,
 	type LoginFieldErrors,
@@ -25,7 +28,9 @@ const INVALID_CREDENTIALS_MESSAGE =
 const SYSTEM_ERROR_MESSAGE =
 	"Kaito no puede conectar con el servicio de inicio de sesión ahora mismo. Inténtalo de nuevo en unos minutos o contacta con soporte si el problema continúa.";
 
-export function LoginForm() {
+type LoginFormProps = { returnTo: string };
+
+export function LoginForm({ returnTo }: LoginFormProps) {
 	const router = useRouter();
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
@@ -60,7 +65,8 @@ export function LoginForm() {
 			});
 
 			if (outcome.status === "success") {
-				continueToAuthenticatedFlow(router);
+				continueToAuthenticatedFlow(router, returnTo);
+				router.refresh();
 				return;
 			}
 
@@ -170,7 +176,9 @@ function createDefaultSignInWithPassword(): SignInWithPassword {
 		};
 	}
 
-	return () => Promise.resolve({ status: "system_error" });
+	const client = getBrowserSupabaseClient();
+	if (!client) return () => Promise.resolve({ status: "system_error" });
+	return createSignInWithPassword(createSupabaseSignInAdapter(client));
 }
 
 async function resolveTestAuthOutcome(email: string): Promise<SignInOutcome> {
@@ -187,6 +195,8 @@ async function resolveTestAuthOutcome(email: string): Promise<SignInOutcome> {
 		return { status: "system_error" };
 	}
 
+	window.document.cookie =
+		"kaito-e2e-session=authenticated; Path=/; SameSite=Lax";
 	return { status: "success" };
 }
 
