@@ -71,7 +71,7 @@ test("findPortablePathMatches handles adversarial near-matches and exact boundar
 	const nearMatch = `${"file://localhost/homX/".repeat(100_000)} `;
 	assert.deepEqual(findPortablePathMatches(nearMatch), []);
 	assert.deepEqual(findPortablePathMatches(`x${linuxPath}`), []);
-	assert.deepEqual(findPortablePathMatches(`:${linuxPath}`), []);
+	assert.deepEqual(findPortablePathMatches(`:${linuxPath}`), [linuxPath]);
 	assert.deepEqual(findPortablePathMatches(`(${linuxPath})`), [linuxPath]);
 });
 
@@ -83,11 +83,36 @@ test("findPortablePathMatches keeps adjacent matches ordered and unique", () => 
 });
 
 test("findPortablePathMatches iterates over 10,000 punctuation-separated matches", () => {
-	const expected = Array.from(
-		{ length: 10_000 },
-		(_, index) => ["", "home", "developer", `project-${index}`].join("/"),
+	const expected = Array.from({ length: 10_000 }, (_, index) =>
+		["", "home", "developer", `project-${index}`].join("/"),
 	);
 	assert.deepEqual(findPortablePathMatches(expected.join(",")), expected);
+});
+
+test("short colon path-list entries do not hide following profile paths", () => {
+	for (const prefix of ["/x", "x", "./x", "ab", "../ab"])
+		assert.deepEqual(findPortablePathMatches(`PATH=${prefix}:${linuxPath}`), [
+			linuxPath,
+		]);
+	assert.deepEqual(
+		findPortablePathMatches(`PATH=/x:/bin:${linuxPath}:ab:${macPath}`),
+		[linuxPath, macPath],
+	);
+});
+
+test("complete HTTP(S) URL tokens remain ignored", () => {
+	for (const protocol of ["http", "https"])
+		for (const path of [linuxPath, macPath, `/${windowsSlashPath}`])
+			assert.deepEqual(
+				findPortablePathMatches(`${protocol}://example.test${path}`),
+				[],
+			);
+	assert.deepEqual(findPortablePathMatches(`PATH=/usr/bin:${linuxPath}`), [
+		linuxPath,
+	]);
+	assert.deepEqual(findPortablePathMatches(`PATH=C:\\tools;${windowsPath}`), [
+		windowsPath,
+	]);
 });
 
 test("trusted git resolution accepts root-owned 0755 git for effective UID 0", () => {
@@ -129,6 +154,51 @@ test("trusted git resolution accepts fixed safe candidates and rejects writable 
 	assert.throws(() => resolveTrustedGit(deps), /No trusted Git executable/);
 });
 
+test("trusted git resolution is deterministic across supported platforms", () => {
+	const posixStats = (path) => ({
+		isFile: () => path.endsWith("/git"),
+		mode: path.endsWith("/git") ? 0o100755 : 0o40755,
+		uid: 0,
+	});
+	for (const platform of ["linux", "darwin"])
+		assert.equal(
+			resolveTrustedGit({
+				platform,
+				candidates: ["/opt/git"],
+				realpathSync: (p) => p,
+				statSync: posixStats,
+				getuid: () => 1000,
+			}),
+			"/opt/git",
+		);
+	assert.equal(
+		resolveTrustedGit({
+			platform: "win32",
+			candidates: ["C:\\Program Files\\Git\\cmd\\git.exe"],
+			approvedRoots: ["C:\\Program Files\\Git"],
+			realpathSync: (p) => p,
+			statSync: () => ({ isFile: () => true }),
+		}),
+		"C:\\Program Files\\Git\\cmd\\git.exe",
+	);
+	assert.throws(
+		() =>
+			resolveTrustedGit({
+				platform: "win32",
+				candidates: ["C:\\evil\\git.exe"],
+				approvedRoots: ["C:\\Program Files\\Git"],
+				realpathSync: (p) => p,
+				statSync: () => ({ isFile: () => true }),
+				env: { PATH: "C:\\evil" },
+			}),
+		/No trusted Git/,
+	);
+	assert.throws(
+		() => resolveTrustedGit({ platform: "freebsd", candidates: [] }),
+		/unsupported platform/,
+	);
+});
+
 test("scanner ignores PATH and reuses the resolved absolute git", () => {
 	const calls = [];
 	const spawn = (executable, args) => {
@@ -163,19 +233,146 @@ test("git resolution fails closed when no fixed candidate is trusted", () => {
 	);
 });
 
+test("runGitScan skips gitlink content but scans names and following blobs", () => {
+	const leak = `module-${linuxPath}`;
+	const calls = [];
+	const spawn = (_git, args) => {
+		calls.push(args);
+		if (args[0] === "ls-files")
+			return {
+				status: 0,
+				stdout: Buffer.from(
+					`160000 aaa 0\t${leak}\0 100644 bbb 0\tnote.md\0`.replace(
+						"\0 ",
+						"\0",
+					),
+				),
+			};
+		return { status: 0, stdout: Buffer.from(linuxPath) };
+	};
+	const findings = runGitScan("/usr/bin/git", spawn);
+	assert.equal(calls.filter((args) => args[0] === "cat-file").length, 1);
+	assert.ok(findings.some((finding) => finding.location === "pathname"));
+	assert.ok(findings.some((finding) => finding.file === "note.md"));
+});
+
 test("runGitScan fails closed for process and repository failures", () => {
 	const index = Buffer.from("100644 abc 0\tnotes.md\0");
-	assert.throws(() => runGitScan("/usr/bin/git", () => ({ status: null, error: new Error("spawn") })), /Unable to list/);
-	assert.throws(() => runGitScan("/usr/bin/git", () => ({ status: 1, stdout: Buffer.alloc(0) })), /Unable to list/);
-	assert.throws(() => runGitScan("/usr/bin/git", () => ({ status: 0, stdout: Buffer.from("malformed\0") })), /Unable to parse/);
 	assert.throws(
-		() => runGitScan("/usr/bin/git", (_git, args) => args[0] === "ls-files" ? { status: 0, stdout: index } : { status: 1, stdout: Buffer.alloc(0) }),
+		() =>
+			runGitScan("/usr/bin/git", () => ({
+				status: null,
+				error: new Error("spawn"),
+			})),
+		/Unable to list/,
+	);
+	assert.throws(
+		() =>
+			runGitScan("/usr/bin/git", () => ({
+				status: 1,
+				stdout: Buffer.alloc(0),
+			})),
+		/Unable to list/,
+	);
+	assert.throws(
+		() =>
+			runGitScan("/usr/bin/git", () => ({
+				status: 0,
+				stdout: Buffer.from("malformed\0"),
+			})),
+		/Unable to parse/,
+	);
+	assert.throws(
+		() =>
+			runGitScan("/usr/bin/git", (_git, args) =>
+				args[0] === "ls-files"
+					? { status: 0, stdout: index }
+					: { status: 1, stdout: Buffer.alloc(0) },
+			),
 		/unable to read tracked blob/,
 	);
 	const oversized = Buffer.alloc(32 * 1024 * 1024 + 1);
 	assert.throws(
-		() => runGitScan("/usr/bin/git", (_git, args) => args[0] === "ls-files" ? { status: 0, stdout: index } : { status: 0, stdout: oversized }),
+		() =>
+			runGitScan("/usr/bin/git", (_git, args) =>
+				args[0] === "ls-files"
+					? { status: 0, stdout: index }
+					: { status: 0, stdout: oversized },
+			),
 		/exceeds .* scan limit/,
+	);
+});
+
+test("runGitScan aggregates blob errors and later findings in index order", () => {
+	const oversized = Buffer.alloc(32 * 1024 * 1024 + 1);
+	const index = Buffer.from(
+		"100644 aaa 0\tlarge.bin\0 100644 bbb 0\tleak.md\0 100644 ccc 0\tbroken.md\0".replaceAll(
+			"\0 ",
+			"\0",
+		),
+	);
+	const spawn = (_git, args) => {
+		if (args[0] === "ls-files") return { status: 0, stdout: index };
+		if (args[2] === "aaa") return { status: 0, stdout: oversized };
+		if (args[2] === "bbb") return { status: 0, stdout: Buffer.from(linuxPath) };
+		return { status: 1, stdout: Buffer.alloc(0) };
+	};
+	assert.throws(
+		() => runGitScan("/usr/bin/git", spawn),
+		(error) => {
+			assert.match(error.message, /large\.bin: tracked blob exceeds/);
+			assert.match(
+				error.message,
+				/leak\.md:1: \/home\/developer\/work\/project/,
+			);
+			assert.match(
+				error.message,
+				/broken\.md: unable to read tracked blob ccc/,
+			);
+			assert.ok(
+				error.message.indexOf("large.bin") < error.message.indexOf("leak.md"),
+			);
+			assert.ok(
+				error.message.indexOf("leak.md") < error.message.indexOf("broken.md"),
+			);
+			assert.equal(error.findings.length, 1);
+			assert.equal(error.errors.length, 2);
+			return true;
+		},
+	);
+});
+
+test("runGitScan continues after a failed first blob read", () => {
+	const index = Buffer.from(
+		"100644 aaa 0\tbroken.md\0 100644 bbb 0\tlater.md\0".replace("\0 ", "\0"),
+	);
+	assert.throws(
+		() =>
+			runGitScan("/usr/bin/git", (_git, args) =>
+				args[0] === "ls-files"
+					? { status: 0, stdout: index }
+					: args[2] === "aaa"
+						? {
+								status: null,
+								error: new Error("spawn"),
+								stdout: Buffer.alloc(0),
+							}
+						: { status: 0, stdout: Buffer.from(macPath) },
+			),
+		(error) =>
+			error.findings?.[0]?.file === "later.md" && error.errors?.length === 1,
+	);
+});
+
+test("runGitScan clean scan behavior remains unchanged", () => {
+	const index = Buffer.from("100644 aaa 0\tsafe.md\0");
+	assert.deepEqual(
+		runGitScan("/usr/bin/git", (_git, args) =>
+			args[0] === "ls-files"
+				? { status: 0, stdout: index }
+				: { status: 0, stdout: Buffer.from("safe") },
+		),
+		[],
 	);
 });
 
