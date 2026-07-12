@@ -1,12 +1,12 @@
 # Technical Design — Protect Private Routes and Define the User Session Flow
 
-> **Current implementation status:** PR 1A/1B foundation and the behavior-preserving ownership refactor are complete. The live handoff intentionally remains `/`. PR 2 route creation/protection and `/onboarding` handoff activation are unstarted; prescriptive route behavior below remains the approved future design.
+> **Current implementation status:** The change and PR 2 are complete, merged, synced, and archived. `/onboarding` is the protected placeholder fallback, not evidence of onboarding completion or product-state routing. `/dashboard` and onboarding-completion selection remain out of scope. See [`archive-report.md`](archive-report.md).
 
 ## 1. Design summary
 
 This change introduces a cookie-backed Supabase session boundary for the Next.js App Router. Next.js `proxy.ts` refreshes/resolves the session for `/login` and `/onboarding`, applies explicit route policy, and performs the earliest redirect. Server pages repeat the authorization-sensitive decision before rendering. Client code owns password sign-in, post-login replacement navigation, and recoverable API-authentication UX.
 
-The default authenticated destination is `/onboarding`. `/` remains public and is not part of the authenticated handoff. FastAPI remains unchanged and independently validates every bearer token used by a private API.
+The default authenticated fallback is the protected `/onboarding` placeholder. It does not indicate onboarding completion or select product state. `/` remains public and is not part of the authenticated handoff; `/dashboard` and onboarding-completion selection remain out of scope. FastAPI remains unchanged and independently validates every bearer token used by a private API.
 
 ## 2. Superseded design-time architecture snapshot
 
@@ -132,7 +132,7 @@ Unknown, repeated, or oversized values render no context message. An ordinary an
 
 ## 7. Approved feature ownership correction
 
-The user-approved Screaming Architecture supersedes the earlier `lib/` layout below. The behavior-preserving structural refactor was completed after PR 1B and before PR 2; PR 2 remains unstarted.
+The user-approved Screaming Architecture supersedes the earlier `lib/` layout below. The behavior-preserving structural refactor was completed after PR 1B and before the now-completed PR 2.
 
 - `app/` remains Next.js routing/orchestration only. `app/(auth)/login/page.tsx` imports auth feature behavior.
 - Auth uses `_components/`, `_adapters/`, `_use-cases/`, optional warranted `_domain/`, and `_infrastructure/` for provider plumbing.
@@ -294,7 +294,7 @@ The complete implementation is forecast at roughly **550–750 changed lines**, 
 1. **PR 1A — Pure auth contracts:** completed in historical paths.
 2. **PR 1B — Supabase session boundaries:** completed in historical paths.
 3. **Structure refactor — approved correction before PR 2:** move PR 1A/1B modules into auth underscore scopes, update imports/tests, and prove behavior unchanged. It introduces no route behavior.
-4. **PR 2 — Route/UI integration:** remains forbidden and unstarted until separately authorized; it consumes the corrected auth feature boundaries.
+4. **PR 2 — Route/UI integration:** completed using the corrected auth feature boundaries.
 
 Recalculate PR 2 after the structure-only slice. Split further rather than exceeding the review budget or weakening tests. Generated lockfile churn should be identified separately in review metrics.
 

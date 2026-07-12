@@ -1,6 +1,6 @@
 # Proposal — Protect Private Routes and Define the User Session Flow
 
-> **Current implementation status:** PR 1A/1B foundation and the auth ownership refactor are complete. The live handoff intentionally remains `/`. All `/onboarding` route, protection, and handoff behavior below is an approved **future PR 2 requirement** and is unstarted.
+> **Current implementation status:** The change and PR 2 are complete, merged, synced, and archived. `/onboarding` is the protected placeholder fallback, not evidence of onboarding completion or product-state routing. `/dashboard` and onboarding-completion selection remain out of scope. See [`archive-report.md`](archive-report.md).
 
 ## Intent
 
@@ -65,7 +65,7 @@ The latest user decision supersedes the previous temporary-fallback assumption:
 | Route | Current state | First-slice classification and behavior | Future product direction |
 | --- | --- | --- | --- |
 | `/login` | Implemented | Public and auth-aware. Unauthenticated users can sign in. It shows trusted context after an expired/invalid session. An authenticated user continues to a safe internal return URL or `/onboarding`. | Remains an auth-flow route. |
-| `/onboarding` | Not implemented | Create as a private, session-protected route. Render only a minimal placeholder such as “Onboarding process”; do not add workflow or domain state. It is the default post-login destination. | May later host the real onboarding experience. |
+| `/onboarding` | Implemented protected placeholder | Private, session-protected fallback. It renders only a minimal placeholder such as “Onboarding process”; it does not indicate completion, workflow, or domain state. | May later host the real onboarding experience. |
 | `/` | Implemented public scaffold | Not the private post-login fallback. It may remain as-is; this slice does not depend on changing or protecting it as authenticated product content. | Expected to become a public `kaito.dev/` landing page. |
 | `/dashboard` | Not implemented | Out of scope and not selected after login. | Expected to become a private destination after later product-state rules exist. |
 
@@ -177,9 +177,9 @@ All future APIs that read or mutate user-owned product data must use the backend
 
 ## Affected areas
 
-The approved architecture correction was completed as a behavior-preserving structure refactor after PR 1B. The resulting ownership is the base for the next, unstarted PR 2.
+The approved architecture correction was completed as a behavior-preserving structure refactor after PR 1B. The resulting ownership was used by the completed PR 2.
 
-- `apps/web/app`: routing/orchestration only; new private `/onboarding` boundary and auth-aware `/login` behavior arrive in PR 2. `app/(auth)/login/page.tsx` remains a route page importing auth.
+- `apps/web/app`: routing/orchestration only; the private `/onboarding` boundary and auth-aware `/login` behavior were completed in PR 2. `app/(auth)/login/page.tsx` remains a route page importing auth.
 - `apps/web/features/auth`: owns production sign-in, session resolution, handoff, context, return-URL validation, API-`401` recovery, and auth transitions under `_components/`, `_adapters/`, `_use-cases/`, optional warranted `_domain/`, and provider plumbing in `_infrastructure/supabase/`.
 - Authenticated fetch remains feature-owned in `features/auth/_adapters/`; Supabase construction remains in `features/auth/_infrastructure/supabase/` until a second distinct real feature warrants promotion.
 - `apps/web/shared` is not introduced: multiple runtime auth consumers do not satisfy the two-real-feature rule.
@@ -246,4 +246,4 @@ The change is successful when a signed-in user reaches the protected `/onboardin
 
 ## Next step
 
-> **Superseded planning note:** This proposal previously awaited approval before spec/design. Those planning artifacts, PR 1A, PR 1B, and the structural refactor are complete. The next unstarted step is PR 2 route/session and login integration, only when separately authorized; it is not yet applied or claimed as approved for execution.
+> **Superseded planning note:** This proposal previously awaited approval before spec/design and later awaited PR 2 authorization. Those planning artifacts, PR 1A, PR 1B, the structural refactor, and PR 2 are now complete; the change was merged, synced, and archived.

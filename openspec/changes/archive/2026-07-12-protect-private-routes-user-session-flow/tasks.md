@@ -1,6 +1,6 @@
 # Tasks — Protect Private Routes and Define the User Session Flow
 
-> **Current status:** All PR 1A/1B, ownership-refactor, and PR 2 implementation tasks are complete. Current PR 2 correctness/GREEN evidence passes. The maintainer accepted the documented historical strict-TDD evidence exception for foundational tasks 1–2 and the single-PR size exception below.
+> **Current status:** The change and PR 2 are complete, merged, synced, and archived. Current PR 2 correctness/GREEN evidence passes. `/onboarding` is the protected placeholder fallback; `/dashboard` and onboarding-completion selection remain out of scope. See [`archive-report.md`](archive-report.md). The maintainer accepted the documented historical strict-TDD evidence exception for foundational tasks 1–2 and the single-PR size exception below.
 
 ## Review Workload Forecast and approved delivery plan
 
@@ -45,14 +45,14 @@ The structure correction was completed after PR 1B and before PR 2. PR 1A/1B sou
 - [x] S.1 **RED/GREEN characterization — preserve contracts while moving ownership.** The pre-move focused suite passed 36/36. Modules and colocated tests now live under `_components/`, `_domain/`, `_adapters/`, `_use-cases/`, and `_infrastructure/supabase/`; imports and the recursive test glob were updated without behavior changes.
 - [x] S.2 **TRIANGULATE/REFACTOR — verify structure and behavior.** The post-move focused suite passed 36/36, TypeScript/lint/build/diff checks passed, and no stale auth `lib` ownership, shared/container scaffolding, or PR 2 route behavior was introduced.
 
-### PR 2 — Route/session and login integration (forbidden in this run)
+### PR 2 — Route/session and login integration (complete)
 
 - [x] 2.1 **RED — add route acceptance coverage.** Added failing-first Playwright coverage for anonymous/authenticated `/onboarding`, safe return URL fallback, unavailable and invalid-session context, and authenticated `/login` handoff. The guarded test-session seam keeps the acceptance coverage non-production and loopback-only.
 - [x] 2.2 **GREEN — implement route policy.** Created root `apps/web/proxy.ts`, private `/onboarding` placeholder/loading boundary, and proxy/server defense-in-depth.
 - [x] 2.3 **GREEN — integrate login.** Modified `apps/web/app/(auth)/login/page.tsx` and `apps/web/features/auth/_components/login-form.tsx` to use the validated destination, Supabase sign-in, replace navigation, refresh, and bounded session context.
 - [x] 2.4 **TRIANGULATE/REFACTOR — exercise browser behavior.** Focused Playwright and complete web regression checks pass; coverage verifies redirects, no private-content flash, safe handoff, unavailable-vs-invalid context, and cookie policy.
 
-### PR 2 release/docs follow-up (also forbidden in this run)
+### PR 2 release/docs follow-up (complete)
 
 - [x] 2.5 Update environment and concise web/root documentation and run API regression evidence; retain the frontend-only/backend-unchanged boundary.
 
