@@ -4,7 +4,7 @@
 
 | Field | Value |
 |---|---|
-| Estimated authored changed lines | PR 0: 377 planning-only; PR 1: 387 Slice 1; PR 2: 360–395 Slice 2; total 1,124–1,159 |
+| Estimated authored changed lines | PR 0: 377 planning-only; PR 1: 399 Slice 1; PR 2: 360–395 Slice 2; total 1,136–1,171 |
 | 400-line budget risk | High |
 | Chained PRs recommended | Yes |
 | Suggested split | PR 0 planning artifacts → PR 1 foundation → PR 2 runtime |

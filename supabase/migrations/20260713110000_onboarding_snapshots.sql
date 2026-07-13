@@ -10,7 +10,7 @@ BEGIN
     SELECT 1 FROM pg_auth_members membership JOIN pg_roles member ON member.oid = membership.member
     WHERE member.rolname = 'kaito_api_login'
       AND (membership.roleid <> (SELECT oid FROM pg_roles WHERE rolname = 'authenticated')
-        OR NOT membership.set_option
+        OR membership.inherit_option OR NOT membership.set_option
         OR membership.admin_option)
   ) THEN
     RAISE EXCEPTION 'unsafe kaito_api_login role configuration';
@@ -18,13 +18,13 @@ BEGIN
 END
 $$;
 
-GRANT authenticated TO kaito_api_login;
+GRANT authenticated TO kaito_api_login WITH INHERIT FALSE, SET TRUE;
 
 CREATE TABLE IF NOT EXISTS public.onboarding_snapshots (
   owner_id uuid PRIMARY KEY REFERENCES auth.users (id) ON DELETE CASCADE,
   snapshot jsonb NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT timezone('utc', now()),
-  updated_at timestamptz NOT NULL DEFAULT timezone('utc', now())
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
 );
 
 DO $$
@@ -47,7 +47,7 @@ $$;
 CREATE OR REPLACE FUNCTION public.set_onboarding_snapshot_updated_at() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
   IF NEW.snapshot IS DISTINCT FROM OLD.snapshot THEN
-    NEW.updated_at = timezone('utc', now());
+    NEW.updated_at = now();
   ELSE
     NEW.updated_at = OLD.updated_at;
   END IF;

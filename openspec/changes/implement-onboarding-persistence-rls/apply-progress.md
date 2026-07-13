@@ -16,7 +16,7 @@
 | Absent-row insert | Test was written before migration edits, but the first Docker reset returned transient 502; no valid behavior RED was captured. | Focused Docker harness: `15 passed in 3.04s`. | Split absent-row INSERT from foreign-row data-access matrix. |
 | Partial setup cleanup | Failure-injection test was written first; it passes after immediate recording and aggregate cleanup helper. | `15 passed in 3.04s`; tests prove actions after a failure run and error text omits opaque identity. | Compact action-list helper. |
 | Role hardening | Attribute/membership tests were written first; transient reset blocked the first execution. This proof-isolation correction records no reconstructed RED. | Docker focused harness: `18 passed in 3.91s`. | Safe baseline/reset helper plus temporary connection login. |
-| Budget | N/A — nonbehavioral review limit. | 387 authored additions+deletions; generated lockfile excluded. | Compacted integration helpers. |
+| Budget | N/A — nonbehavioral review limit. | 399 authored additions+deletions; generated lockfile excluded. | Compacted integration helpers. |
 
 **Strict-TDD gate:** Maintainer exception accepted on 2026-07-13 only for the missing historical RED in absent-row insert and role hardening after a transient Supabase reset 502. No RED was reconstructed; all current GREEN, isolation, cleanup, and safety-net evidence remains mandatory, and strict TDD stays active for every other task.
 
@@ -32,8 +32,8 @@
 ## Delivery and Budget
 - Stacked-to-main PR 1: Slice 1 only; PR 2 remains runtime-only.
 - PR 0 planning: 377 authored additions (exploration 96, proposal 62, design 85, spec 93, tasks 41).
-- PR 1: 397 authored additions+deletions: migration 85, test 238, config 1, CI 17, ignore 2, API config 5, task-state 10, progress 39. `uv.lock`: 161 generated additions, separately reported and excluded.
-- No commit, push, PR, review, archive, agent, product-scope change, or Slice 2 work occurred.
+- PR 1: 399 authored additions+deletions: migration 85, test 238, config 1, CI 17, ignore 2, API config 5, task-state 12, progress 39. `uv.lock`: 161 generated additions, separately reported and excluded.
+- Reviews include corrections `review-4213e0b0b813b578` and `review-7e808ebfd3998846`; the latter RED was `2 failed, 19 passed` for inherited membership/non-UTC accuracy and GREEN was `21 passed in 4.07s` with retry preservation. No new commit, push, PR, archive, agent, product-scope change, or Slice 2 work occurred.
 
 ## Historical Evidence Correction
 The prior `8 passed` correction and its claimed raw RED are retained as historical records but superseded: the old cross-insert used `ON CONFLICT`, cleanup did not retain partial users, and role coverage was incomplete. This artifact does not represent its RED as evidence for this remediation.

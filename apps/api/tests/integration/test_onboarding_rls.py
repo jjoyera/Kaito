@@ -26,7 +26,6 @@ class RlsFixture:
     def __repr__(self) -> str:
         return "RlsFixture(redacted)"
 
-
 def _status() -> dict[str, str]:
     result = subprocess.run(["npx", "supabase@2.39.2", "--workdir", "../..", "status", "-o", "json"], check=True, capture_output=True, text=True)
     return json.loads(result.stdout)
@@ -43,7 +42,6 @@ def _create_user(client: httpx.Client) -> str:
 
 def _create_users(create: Callable[[], str], users: list[str]) -> None:
     users.extend(create() for _ in range(2))
-
 def _cleanup(actions: list[Callable[[], object]]) -> None:
     failures = 0
     for action in actions:
@@ -148,7 +146,7 @@ def test_migration_rerun_rejects_unsafe_extra_membership(identities: RlsFixture)
         finally:
             _reset_safe_role(admin)
             admin.execute(SQL("DROP ROLE IF EXISTS {}").format(Identifier(temporary_role)))
-@pytest.mark.parametrize("option", ["WITH ADMIN OPTION", "WITH SET FALSE"])
+@pytest.mark.parametrize("option", ["WITH ADMIN OPTION", "WITH SET FALSE", "WITH INHERIT TRUE"])
 def test_migration_rerun_rejects_unsafe_membership_option(identities: RlsFixture, option: str) -> None:
     with _role_admin(identities.db_url) as admin:
         _reset_safe_role(admin)
@@ -184,15 +182,17 @@ def test_schema_rejects_missing_or_null_contract_fields(identities: RlsFixture, 
 
 def test_equivalent_retry_preserves_updated_at(identities: RlsFixture) -> None:
     with _as_user(identities, identities.first_user) as connection:
+        connection.execute("SET TIME ZONE 'Pacific/Auckland'")
         _insert(connection, identities.first_user)
+        original = connection.execute("SELECT created_at, updated_at, clock_timestamp() FROM public.onboarding_snapshots WHERE owner_id = %s", (identities.first_user,)).fetchone()
+        assert original[0] == original[1] and abs((original[2] - original[0]).total_seconds()) < 1
         connection.commit()
         _adopt_claims(connection, identities.first_user)
-        original = connection.execute("SELECT updated_at FROM public.onboarding_snapshots WHERE owner_id = %s", (identities.first_user,)).fetchone()
         _insert(connection, identities.first_user)
         connection.commit()
         _adopt_claims(connection, identities.first_user)
         retried = connection.execute("SELECT updated_at FROM public.onboarding_snapshots WHERE owner_id = %s", (identities.first_user,)).fetchone()
-    assert original == retried
+    assert original[1:2] == retried
 
 
 @pytest.mark.parametrize("actor", ["first_user", "second_user"])
