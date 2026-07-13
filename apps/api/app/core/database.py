@@ -12,6 +12,10 @@ from app.modules.auth.context import UserContext
 class DatabaseConfigurationError(Exception):
     """Raised without connection details when the database boundary is unsafe."""
 
+    def __init__(self, code: str, *, reported: bool = False) -> None:
+        super().__init__(code)
+        self.reported = reported
+
 
 _GUARD = text("""SELECT session_user = :expected, current_user = session_user,
 NOT r.rolsuper, NOT r.rolbypassrls,
@@ -20,7 +24,9 @@ FROM pg_catalog.pg_roles r WHERE r.rolname = session_user""")
 
 
 def create_engine_for_url(url: str) -> Engine:
-    return create_engine(url, pool_reset_on_return="rollback")
+    return create_engine(
+        url, connect_args={"connect_timeout": 5}, pool_reset_on_return="rollback"
+    )
 
 
 def guard_connection(connection: Connection, expected_role: str) -> None:
@@ -43,7 +49,7 @@ def _invalidate(connection: Connection) -> None:
 
 def _fail(connection: Connection) -> None:
     _invalidate(connection)
-    raise DatabaseConfigurationError("database_unavailable")
+    raise DatabaseConfigurationError("database_unavailable", reported=True)
 
 
 def configure_owner_transaction(
@@ -76,6 +82,8 @@ def owner_connection(
     with engine.begin() as connection:
         try:
             configure_owner_transaction(connection, expected_role, user)
+        except DatabaseConfigurationError:
+            raise
         except Exception:
             failed = True
             _invalidate(connection)

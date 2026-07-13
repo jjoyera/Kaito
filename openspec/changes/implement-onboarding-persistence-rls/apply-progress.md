@@ -47,5 +47,5 @@ The prior `8 passed` correction and its claimed raw RED are retained as historic
 | 2.2 | Logging `1 failed`; disposal `2 failed, 2 passed`; traceback chains `2 failed, 23 passed`. | Focused suite passes. | Shared fakes. |
 | Work unit | Exact result |
 |---|---|
-| Focused/runtime | `cd apps/api && uv run pytest tests/runner_profile/test_database.py tests/test_main.py -q` → `25 passed, 156 warnings`; TestClient startup/shutdown plus fake owner transaction; non-integration API suite → `86 passed, 391 warnings`; frozen sync/Ruff/portable paths/diff check pass. |
+| Focused/runtime | PR2A follow-up RED: `3 failed, 27 passed`; GREEN: focused `30 passed, 196 warnings`, non-integration `91 passed, 431 warnings`; TestClient/fake owner exercise startup and transactions; frozen sync/Ruff/portable paths/diff check pass. |
 | Rollback/delivery | Revert PR2A core/config/main/env/tests/artifacts only; stacked-to-main after PR1, no PR2B/2C behavior. |

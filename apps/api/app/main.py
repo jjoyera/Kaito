@@ -35,18 +35,25 @@ def _dispose_safely(candidate) -> None:
 async def lifespan(_: FastAPI):
     global database_settings, engine
     failed = False
+    reported_failure = None
     try:
         database_settings = get_database_settings()
         engine = create_engine_for_url(database_settings.url)
         with engine.connect() as connection:
             guard_connection(connection, database_settings.expected_role)
+    except DatabaseConfigurationError as error:
+        failed = True
+        reported_failure = error
     except Exception:
         failed = True
     if failed:
         if engine:
             _dispose_safely(engine)
             engine = None
-        logger.error("database_failure")
+        if reported_failure is None or not reported_failure.reported:
+            logger.error("database_failure")
+        if reported_failure is not None:
+            raise reported_failure
         raise DatabaseConfigurationError("database_unavailable")
     try:
         yield
