@@ -6,12 +6,47 @@ Sentry DSN or make any Sentry network calls.
 """
 
 import logging
+import traceback
+from contextlib import nullcontext
 from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
 
 from tests.conftest import clear_sentry_env, reload_main
+
+
+class _StartupEngine:
+    def __init__(self, dispose_error: Exception | None = None):
+        self.connected = self.disposed = False
+        self.dispose_error = dispose_error
+
+    def connect(self):
+        self.connected = True
+        return nullcontext()
+
+    def dispose(self):
+        self.disposed = True
+        if self.dispose_error:
+            raise self.dispose_error
+
+
+def _database_lifespan(
+    monkeypatch, *, dispose_error=None, guard_error=None, url="safe"
+):
+    from app.core import database
+
+    monkeypatch.setenv("DATABASE_URL", f"postgresql+psycopg://{url}")
+    monkeypatch.setenv("DATABASE_EXPECTED_ROLE", "kaito_api_login")
+    engine = _StartupEngine(dispose_error)
+    monkeypatch.setattr(database, "create_engine_for_url", lambda _: engine)
+    if guard_error:
+        monkeypatch.setattr(
+            database, "guard_connection", lambda *_: (_ for _ in ()).throw(guard_error)
+        )
+    else:
+        monkeypatch.setattr(database, "guard_connection", lambda *_: None)
+    return database, engine
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -58,6 +93,69 @@ def test_health_returns_ok_without_sentry_env(monkeypatch: pytest.MonkeyPatch) -
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+def test_lifespan_eagerly_guards_and_disposes_database(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    clear_sentry_env(monkeypatch)
+    database, engine = _database_lifespan(monkeypatch)
+    guarded = []
+    monkeypatch.setattr(database, "guard_connection", lambda *_: guarded.append(True))
+    with TestClient(reload_main().app) as client:
+        assert client.get("/health").status_code == 200
+    assert engine.connected and engine.disposed and guarded == [True]
+
+
+def test_database_failures_are_generic_and_logs_redact_connection_secrets(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    database, _ = _database_lifespan(
+        monkeypatch,
+        guard_error=RuntimeError("RAW_SQL_MARKER"),
+        url="user:secret@db/private",
+    )
+    with caplog.at_level(logging.ERROR, logger="app.main"):
+        with pytest.raises(database.DatabaseConfigurationError) as raised:
+            with TestClient(reload_main().app):
+                pass
+    trace = "".join(traceback.format_exception(raised.value))
+    assert "RAW_SQL_MARKER" not in trace
+    assert raised.value.__cause__ is raised.value.__context__ is None
+    assert any(record.message == "database_failure" for record in caplog.records)
+    assert all(
+        "secret" not in record.message and "postgresql" not in record.message
+        for record in caplog.records
+    )
+    response = reload_main()._handle_database_error(
+        None, database.DatabaseConfigurationError("secret")
+    )
+    assert response.status_code == 503
+    assert response.body == b'{"detail":"Service unavailable"}'
+
+
+@pytest.mark.parametrize("guard_error", [RuntimeError("root"), None])
+def test_disposal_failure_is_safely_logged(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    guard_error: Exception | None,
+) -> None:
+    _, engine = _database_lifespan(
+        monkeypatch, dispose_error=RuntimeError("secret"), guard_error=guard_error
+    )
+    with caplog.at_level(logging.ERROR, logger="app.main"):
+        if guard_error:
+            with pytest.raises(Exception, match="database_unavailable"):
+                with TestClient(reload_main().app):
+                    pass
+        else:
+            with TestClient(reload_main().app) as client:
+                assert client.get("/health").status_code == 200
+    assert engine.disposed
+    assert any(
+        record.message == "database_disposal_failure" for record in caplog.records
+    )
+    assert all("secret" not in record.message for record in caplog.records)
 
 
 # ---------------------------------------------------------------------------

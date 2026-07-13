@@ -36,6 +36,12 @@ class AuthSettings:
     jwks_cache_ttl_seconds: int = DEFAULT_JWKS_CACHE_TTL_SECONDS
 
 
+@dataclass(frozen=True)
+class DatabaseSettings:
+    url: str
+    expected_role: str
+
+
 def get_auth_settings() -> AuthSettings:
     """Read auth settings from environment at call time.
 
@@ -77,3 +83,11 @@ def get_auth_settings() -> AuthSettings:
         jwt_issuer=issuer,
         jwks_cache_ttl_seconds=ttl,
     )
+
+
+def get_database_settings() -> DatabaseSettings:
+    url = (os.getenv("DATABASE_URL") or "").strip()
+    role = (os.getenv("DATABASE_EXPECTED_ROLE") or "").strip()
+    if not url or role != "kaito_api_login":
+        raise ValueError("database_unavailable")
+    return DatabaseSettings(url=url, expected_role=role)

@@ -1,11 +1,18 @@
 import logging
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
 
 from app.core.auth.errors import AuthConfigError
+from app.core.config import get_database_settings
+from app.core.database import (
+    DatabaseConfigurationError,
+    create_engine_for_url,
+    guard_connection,
+)
 from app.modules.auth.router import router as auth_router
 from app.observability.sentry import init_sentry
 
@@ -13,7 +20,43 @@ logger = logging.getLogger(__name__)
 
 init_sentry()
 
-app = FastAPI(title="Kaito API")
+engine = None
+database_settings = None
+
+
+def _dispose_safely(candidate) -> None:
+    try:
+        candidate.dispose()
+    except Exception:
+        logger.error("database_disposal_failure")
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    global database_settings, engine
+    failed = False
+    try:
+        database_settings = get_database_settings()
+        engine = create_engine_for_url(database_settings.url)
+        with engine.connect() as connection:
+            guard_connection(connection, database_settings.expected_role)
+    except Exception:
+        failed = True
+    if failed:
+        if engine:
+            _dispose_safely(engine)
+            engine = None
+        logger.error("database_failure")
+        raise DatabaseConfigurationError("database_unavailable")
+    try:
+        yield
+    finally:
+        if engine:
+            _dispose_safely(engine)
+        engine = database_settings = None
+
+
+app = FastAPI(title="Kaito API", lifespan=lifespan)
 
 app.include_router(auth_router)
 
@@ -25,6 +68,13 @@ def _handle_auth_config_error(request: Request, exc: AuthConfigError) -> JSONRes
         status_code=503,
         content={"detail": "Authentication is not configured"},
     )
+
+
+@app.exception_handler(DatabaseConfigurationError)
+def _handle_database_error(
+    request: Request, exc: DatabaseConfigurationError
+) -> JSONResponse:
+    return JSONResponse(status_code=503, content={"detail": "Service unavailable"})
 
 
 @app.get("/health")

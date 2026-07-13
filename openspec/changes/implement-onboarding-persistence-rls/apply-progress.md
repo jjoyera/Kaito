@@ -2,7 +2,8 @@
 
 ## Cumulative Tasks
 - [x] 1.1–1.5 Slice 1 foundation and executable RLS proof (historical state retained).
-- [ ] 2.1–2.6 Slice 2 guarded runner-profile runtime.
+- [x] 2.1–2.2 PR2A guarded database runtime (post-remediation evidence passes).
+- [ ] 2.3–2.6 PR2B/2C-only runtime work.
 
 ## Focused Remediation (Slice 1)
 - Cross-owner insert uses a plain `INSERT` while the foreign row is absent, verifies denial and admin-visible zero rows; separate data-present tests cover select/update/delete.
@@ -37,3 +38,14 @@
 
 ## Historical Evidence Correction
 The prior `8 passed` correction and its claimed raw RED are retained as historical records but superseded: the old cross-insert used `ON CONFLICT`, cleanup did not retain partial users, and role coverage was incomplete. This artifact does not represent its RED as evidence for this remediation.
+
+## PR 2A Remediation (2026-07-13)
+- Slice 1 history retained. [x] 2.1/2.2 guard/reuse, sanitized 503/logs/disposal; [ ] 2.3–2.6 PR2B/2C-only.
+| TDD task | RED | GREEN | REFACTOR |
+|---|---|---|---|
+| 2.1 | Dirty reuse already passed; no RED fabricated. | Focused suite passes. | One connection proof. |
+| 2.2 | Logging `1 failed`; disposal `2 failed, 2 passed`; traceback chains `2 failed, 23 passed`. | Focused suite passes. | Shared fakes. |
+| Work unit | Exact result |
+|---|---|
+| Focused/runtime | `cd apps/api && uv run pytest tests/runner_profile/test_database.py tests/test_main.py -q` → `25 passed, 156 warnings`; TestClient startup/shutdown plus fake owner transaction; non-integration API suite → `86 passed, 391 warnings`; frozen sync/Ruff/portable paths/diff check pass. |
+| Rollback/delivery | Revert PR2A core/config/main/env/tests/artifacts only; stacked-to-main after PR1, no PR2B/2C behavior. |
