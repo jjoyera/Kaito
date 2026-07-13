@@ -48,6 +48,11 @@ Instala las dependencias JavaScript/TypeScript desde la raíz:
 pnpm install
 ```
 
+Esto también instala el hook versionado de pre-commit, que comprueba si el
+contenido preparado contiene rutas no portables. Solo para diagnóstico local
+excepcional, puede omitirse con `HUSKY=0 git commit`; CI mantiene la misma
+comprobación como protección autoritativa.
+
 Instala las dependencias de la API desde `apps/api`:
 
 ```bash
