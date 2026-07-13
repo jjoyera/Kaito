@@ -78,6 +78,11 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e
 
+      - name: Set up Node for pinned Supabase CLI
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24.18"
+
       - name: Install API dependencies
         working-directory: apps/api
         run: uv sync --frozen
@@ -88,7 +93,17 @@ jobs:
 
       - name: Run API tests
         working-directory: apps/api
-        run: uv run pytest tests/
+        run: uv run pytest tests/ --ignore=tests/integration
+
+      - name: Prove onboarding RLS with local Supabase
+        run: >-
+          npx supabase@2.39.2 start >/dev/null &&
+          npx supabase@2.39.2 db reset --local >/dev/null &&
+          (cd apps/api && uv run pytest tests/integration/test_onboarding_rls.py -q)
+
+      - name: Stop local Supabase
+        if: always()
+        run: npx supabase@2.39.2 stop --no-backup >/dev/null
 
       - name: Smoke-load FastAPI app
         working-directory: apps/api

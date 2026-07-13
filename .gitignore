@@ -17,3 +17,5 @@ __pycache__/
 .atl/
 /apps/web/.env
 /apps/api/.env
+/supabase/.branches/
+/supabase/.temp/
