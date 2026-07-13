@@ -10,7 +10,7 @@ Archived on 2026-07-13 after the OpenSpec source-of-truth specification was crea
 | --- | --- | --- |
 | Action context | Passed | Repo-local edits remained within `<repo-root>`. |
 | Task completion | Passed | `tasks.md` records 6/6 completed implementation tasks and no unchecked tasks. |
-| Verification | Passed with warnings | `verify-report.md` reports 9/9 requirements, 19/19 scenarios, zero blockers, and zero critical findings. |
+| Verification | Passed with one follow-up | `verify-report.md` reports 9/9 requirements, 19/19 scenarios, zero blockers, zero critical findings, and a deferred decimal representation policy. |
 | Native review | Allowed | Approved bound lineage `review-9e146f1009276394`; supported post-apply validation returned `allow`. No archive review gate was run because Gentle AI 2.1.0 does not support it. |
 
 ## Specification Sync
@@ -21,11 +21,11 @@ Archived on 2026-07-13 after the OpenSpec source-of-truth specification was crea
 
 ## Preserved Scope Exclusions
 
-The archived specification continues to exclude persistence, migrations, database schema, UI sequencing, endpoints, plan generation, eligibility, approach selection, and Backyard rest-margin strategy. No canonical-document reconciliation or application implementation was introduced during archive.
+The archived specification continues to exclude persistence, migrations, database schema, UI sequencing, endpoints, plan generation, eligibility, approach selection, and Backyard rest-margin strategy. Archive sync created `openspec/specs/onboarding-contract/spec.md`; no other canonical-document reconciliation or application implementation was introduced.
 
-## Accepted Warnings
+## Remaining Follow-up
 
-The user explicitly approved archiving with the non-critical verification warnings: stale phase metadata in `README.md` and `artifacts.md`, an inaccurate workload forecast, and an unspecified initial supported `contract_version`. These warnings do not invalidate the normative specification, task completion, verification evidence, or review gate.
+The stale phase metadata, realized workload annotation, and initial `contract_version` findings were corrected after archive. JSON number-versus-string encoding and decimal scale/serialization policy remain intentionally deferred to API and persistence implementation; this follow-up does not change the normative numeric ranges or invalidate the contract, task completion, verification evidence, or review gate.
 
 ## Archive Contents
 

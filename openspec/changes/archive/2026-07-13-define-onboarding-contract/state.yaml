@@ -19,5 +19,13 @@ archive:
   report: archive-report.md
   specification_sync:
     onboarding-contract: created
-  warnings_explicitly_accepted: true
+  corrected_findings:
+    - phase_status_metadata
+    - realized_workload_annotation
+    - initial_contract_version
+    - logical_transport_names
+    - sparse_availability_shape
+    - explicit_local_validation_date
+  remaining_follow_up:
+    - decimal_representation_and_scale_policy_deferred_to_api_and_persistence
   application_code_modified: false

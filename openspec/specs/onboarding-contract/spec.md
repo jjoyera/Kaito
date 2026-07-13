@@ -8,7 +8,7 @@ Define the provider-agnostic, versioned onboarding contract for an authenticated
 
 ### Requirement: Versioned profile-and-goal payload
 
-The system MUST define one payload with `contract_version` (string), `state` (enum: `incomplete` or `completed`), `profile`, and `goal` blocks. The payload MUST NOT contain owner identity, UI-step concepts, or storage concepts. Ownership MUST come from verified `UserContext.user_id`.
+The system MUST define one payload with `contract_version` (string), `state` (enum: `incomplete` or `completed`), `profile`, and `goal` blocks. The initial supported `contract_version` MUST be exactly the string `"1"`. Unknown versions MUST be rejected or handled by an explicit version translator before contract validation. The payload MUST NOT contain owner identity, UI-step concepts, or storage concepts. Ownership MUST come from verified `UserContext.user_id`.
 
 #### Scenario: Payload is presentation-independent
 
@@ -32,7 +32,7 @@ The contract MUST use the following stable identifiers, answer types, requiredne
 | profile | `profile.baseline_4_weeks.distance_km` | non-negative number | completion-required; kilometres in preceding 4 calendar weeks |
 | profile | `profile.baseline_4_weeks.positive_elevation_m` | non-negative number | completion-required; metres in preceding 4 calendar weeks |
 | profile | `profile.baseline_4_weeks.longest_outing_km` | non-negative number | completion-required; kilometres in preceding 4 calendar weeks |
-| profile | `profile.availability.minutes_by_day` | object keyed by `monday`…`sunday`, values integer 15–300 | completion-required for at least 3 days; minutes per available day |
+| profile | `profile.availability.minutes_by_day` | sparse object; only `monday`, `tuesday`, `wednesday`, `thursday`, `friday`, `saturday`, and `sunday` keys are allowed; present values are integers 15–300 | completion-required for at least 3 present days; omitted day means unavailable; null values and unknown keys are invalid |
 | profile | `profile.restrictions.has_restrictions` | boolean | completion-required |
 | profile | `profile.restrictions.detail` | trimmed string, length 1–500 | conditional-required when `has_restrictions=true`; otherwise absent and cleared |
 | goal | `goal.modality` | enum: `trail`, `ultra_trail`, `ocr`, `backyard` | completion-required |
@@ -161,11 +161,11 @@ Prior history MUST remain observable and separate from the previous four calenda
 
 ### Requirement: Availability threshold
 
-Available-day values MUST be integer minutes from 15 through 300 inclusive. Completion MUST require at least 3 available days and at least 150 total minutes per week.
+`profile.availability.minutes_by_day` MUST be a sparse object whose only allowed keys are `monday`, `tuesday`, `wednesday`, `thursday`, `friday`, `saturday`, and `sunday`. A present key means that day is available and its value MUST be an integer from 15 through 300 inclusive. An unavailable day MUST be omitted. Null values and unknown keys are invalid. Completion MUST require at least 3 present available days and at least 150 total minutes per week.
 
 #### Scenario: Availability is insufficient
 
-- GIVEN fewer than 3 days or fewer than 150 total minutes
+- GIVEN fewer than 3 present days, fewer than 150 total minutes, a null day value, or an unknown day key
 - WHEN completion is requested
 - THEN a blocking validation error is returned.
 
@@ -181,13 +181,13 @@ The contract MUST validate only boolean presence, conditional detail presence, t
 
 ### Requirement: Dates, modality goals, and outcomes
 
-Target dates MUST be local date-only `YYYY-MM-DD` values; today and past dates are blocking errors, while every future date is contract-valid. Trail/ultra-trail require positive distance, positive elevation, and technicality; OCR requires positive distance and obstacle count while obstacle difficulty remains optional; Backyard requires positive loops. Blocking errors MUST be separate from non-blocking planning warnings and keyed by stable identifiers.
+Target dates MUST be local date-only `YYYY-MM-DD` values. Validation MUST receive an explicit runner-facing local validation date and compare `goal.target_date` with that date as date-only values; it MUST NOT derive today from the server timezone. A target date equal to or before the supplied validation date is a blocking error, while every later date is contract-valid. Trail/ultra-trail require positive distance, positive elevation, and technicality; OCR requires positive distance and obstacle count while obstacle difficulty remains optional; Backyard requires positive loops. Blocking errors MUST be separate from non-blocking planning warnings and keyed by stable identifiers.
 
 #### Scenario: Date and modality validation is testable
 
-- GIVEN an OCR goal with a future date but missing obstacle count
-- WHEN completion is requested
-- THEN a blocking error is keyed to `goal.obstacle_count`, while a near-date warning, if any, does not block completion.
+- GIVEN runner-facing local validation date `2026-07-13`, one OCR goal with `target_date=2026-07-13`, and another with `target_date=2026-07-14` but missing obstacle count
+- WHEN completion is requested with that explicit validation date
+- THEN the equal date produces a blocking `goal.target_date` error, the later date does not produce a date error regardless of server timezone, its missing count produces a blocking `goal.obstacle_count` error, and a near-date warning, if any, does not block completion.
 
 ### Requirement: Scope exclusions
 

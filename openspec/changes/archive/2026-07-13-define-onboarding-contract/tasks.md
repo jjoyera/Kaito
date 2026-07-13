@@ -1,6 +1,6 @@
 # Tasks: Define the Onboarding Contract
 
-## Review Workload Forecast
+## Historical Review Workload Forecast
 
 | Field | Value |
 |---|---|
@@ -15,6 +15,16 @@ Decision needed before apply: No
 Chained PRs recommended: No
 Chain strategy: pending
 400-line budget risk: Low
+
+### Actual Outcome
+
+| Field | Value |
+|---|---|
+| Actual changed lines | 560 authored source-candidate lines |
+| Realized 400-line budget risk | High; the candidate exceeded the 400-line review budget |
+| Variance explanation | The forecast estimated incremental apply corrections, while final review counted the complete seven-artifact SDD source set produced across exploration, proposal, specification, design, tasks, and closure. |
+
+The 20–80-line estimate and low-risk classification above are preserved as the historical pre-apply forecast; they did not describe the realized review workload.
 
 ### Suggested Work Units
 

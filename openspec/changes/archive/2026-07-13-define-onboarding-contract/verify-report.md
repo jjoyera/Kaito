@@ -1,30 +1,30 @@
 ```yaml
 schema: gentle-ai.verify-result/v1
-evidence_revision: sha256:3e7d91968912bfe1d8b88f7c51233e4dd8ac10ddcf7d897b685853cce49fff0c
+evidence_revision: sha256:1ba6cebc48ed942b727442910bc2aa47fce1411ffdd9e2feb119812245018817
 verdict: pass
 blockers: 0
 critical_findings: 0
 requirements: 9/9
 scenarios: 19/19
-test_command: git diff --check -- openspec/changes/define-onboarding-contract
+test_command: git diff --check -- openspec/changes/archive/2026-07-13-define-onboarding-contract openspec/specs/onboarding-contract
 test_exit_code: 0
 test_output_hash: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-build_command: python3 -c 'from pathlib import Path; import re; root=Path("openspec/changes/define-onboarding-contract"); files=[root/"proposal.md",root/"specs/onboarding-contract/spec.md",root/"design.md",root/"tasks.md",root/"explore.md",root/"README.md",root/"artifacts.md"]; texts=dict((p,p.read_bytes().decode("utf-8")) for p in files); assert all(not re.search(r"(?m)[ \t]+$", text) for text in texts.values()); spec=texts[root/"specs/onboarding-contract/spec.md"]; requirements=len(re.findall(r"^### Requirement:",spec,re.M)); scenarios=len(re.findall(r"^#### Scenario:",spec,re.M)); tasks=re.findall(r"^- \[([ xX])\] \d+\.\d+ ",texts[root/"tasks.md"],re.M); completed=sum(mark.lower()=="x" for mark in tasks); links=[]; [links.extend(re.findall(r"\[[^\]]+\]\(([^)]+)\)",texts[p])) for p in (root/"README.md",root/"artifacts.md")]; assert all((root/link).exists() for link in links); assert (requirements,scenarios,len(tasks),completed)==(9,19,6,6); lines=sum(len(text.splitlines()) for text in texts.values()); print("source_markdown_files=%d requirements=%d scenarios=%d tasks=%d/%d pending=%d candidate_lines=%d utf8=pass trailing_whitespace=pass relative_links=pass" % (len(files),requirements,scenarios,completed,len(tasks),len(tasks)-completed,lines))'
+build_command: python3 -c 'from pathlib import Path; import re; root=Path("openspec/changes/archive/2026-07-13-define-onboarding-contract"); files=[root/"proposal.md",root/"specs/onboarding-contract/spec.md",root/"design.md",root/"tasks.md",root/"explore.md",root/"README.md",root/"artifacts.md"]; texts=dict((p,p.read_bytes().decode("utf-8")) for p in files); assert all(not re.search(r"(?m)[ \t]+$", text) for text in texts.values()); spec=texts[root/"specs/onboarding-contract/spec.md"]; requirements=len(re.findall(r"^### Requirement:",spec,re.M)); scenarios=len(re.findall(r"^#### Scenario:",spec,re.M)); tasks=re.findall(r"^- \[([ xX])\] \d+\.\d+ ",texts[root/"tasks.md"],re.M); completed=sum(mark.lower()=="x" for mark in tasks); links=[]; [links.extend(re.findall(r"\[[^\]]+\]\(([^)]+)\)",texts[p])) for p in (root/"README.md",root/"artifacts.md")]; assert all((root/link).exists() for link in links); assert (requirements,scenarios,len(tasks),completed)==(9,19,6,6); lines=sum(len(text.splitlines()) for text in texts.values()); print("source_markdown_files=%d requirements=%d scenarios=%d tasks=%d/%d pending=%d candidate_lines=%d utf8=pass trailing_whitespace=pass relative_links=pass" % (len(files),requirements,scenarios,completed,len(tasks),len(tasks)-completed,lines))'
 build_exit_code: 0
-build_output_hash: sha256:c69a6606ee8592b3306cb3d1d450e248805472e597b096c9f72e1f4903988ad2
+build_output_hash: sha256:f46319dd2010f50a3785f00428eed30459fff4c7effe1524d7986489c6d53404
 ```
 
 ## Verification Report
 
 **Change**: `define-onboarding-contract`
 
-**Version**: Initial supported `contract_version` value not specified
+**Version**: Initial supported `contract_version` is exactly `"1"`
 
 **Mode**: Strict TDD — documentation-only exception
 
 **Artifact store**: OpenSpec
 
-**Final verdict**: **PASS WITH WARNINGS**
+**Final verdict**: **PASS WITH ONE DEFERRED FOLLOW-UP**
 
 The change is documentation-only and defines no executable runtime boundary. Runtime tests, coverage, and runtime harness execution are therefore not applicable. Native status reported verification as ready, all six tasks complete, and no blockers. Review lineage `review-9e146f1009276394` was treated as the approved bounded review supplied to this phase; no additional review was started.
 
@@ -50,7 +50,7 @@ The evidence revision hashes the exact bytes of the seven source Markdown artifa
 | Tasks complete | 6 |
 | Tasks incomplete | 0 |
 | Source documentation files | 7 |
-| Source candidate lines | 560 |
+| Source candidate lines | 577 |
 
 All task checkboxes are complete. The task evidence records the documentation-only Strict TDD exception, focused whitespace check, runtime-harness N/A rationale, and rollback boundary.
 
@@ -65,15 +65,15 @@ exact output: <empty>
 output SHA-256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
 ```
 
-The change directory is currently untracked, so `git diff --check` alone does not inspect its contents. The independent structural command compensates by reading all seven source Markdown files directly.
+This command and its active change path are preserved as historical source-phase evidence. Correction verification inspected the archived files directly and did not rewrite the original command path.
 
 #### Read-only structural command
 
 ```text
 exit code: 0
 exact output:
-source_markdown_files=7 requirements=9 scenarios=19 tasks=6/6 pending=0 candidate_lines=560 utf8=pass trailing_whitespace=pass relative_links=pass
-output SHA-256: c69a6606ee8592b3306cb3d1d450e248805472e597b096c9f72e1f4903988ad2
+source_markdown_files=7 requirements=9 scenarios=19 tasks=6/6 pending=0 candidate_lines=577 utf8=pass trailing_whitespace=pass relative_links=pass
+output SHA-256: f46319dd2010f50a3785f00428eed30459fff4c7effe1524d7986489c6d53404
 ```
 
 **Runtime tests**: N/A — no production code, endpoint, persistence, UI, migration, or runtime behavior is part of this change.
@@ -89,9 +89,9 @@ output SHA-256: c69a6606ee8592b3306cb3d1d450e248805472e597b096c9f72e1f4903988ad2
 | Check | Result | Evidence |
 |---|---|---|
 | Executable production behavior introduced | N/A | All seven candidate files are Markdown under the OpenSpec change. |
-| Runtime boundary available to test | N/A | Proposal lines 42–52 and design lines 69–71 defer implementation. |
-| Runtime tests required for this phase | N/A | The launch instruction explicitly identifies the change as documentation-only; tasks lines 40–61 record the same exception. |
-| Future runtime test strategy defined | Yes | Design lines 57–63 specify unit and contract tests for later implementation. |
+| Runtime boundary available to test | N/A | Proposal lines 42–52 and design lines 71–73 defer implementation. |
+| Runtime tests required for this phase | N/A | The launch instruction explicitly identifies the change as documentation-only; tasks lines 50–71 record the same exception. |
+| Future runtime test strategy defined | Yes | Design lines 59–65 specify unit and contract tests for later implementation. |
 
 ### Spec Compliance Matrix
 
@@ -99,7 +99,7 @@ Because there is no executable implementation, results below establish static co
 
 | # | Requirement | Scenario | Static evidence | Result |
 |---:|---|---|---|---|
-| 1 | Versioned profile-and-goal payload | Payload is presentation-independent | Spec lines 9–17; design lines 42–55 | Documented; version-value warning |
+| 1 | Versioned profile-and-goal payload | Payload is presentation-independent | Spec lines 9–17; design lines 42–57 | Documented; initial version and translation boundary explicit |
 | 2 | Canonical field catalog and answer types | Race-count ranges are stable | Spec lines 19–70 | Documented |
 | 3 | Canonical field catalog and answer types | New runner can explicitly report no practiced modalities | Spec lines 72–76 | Documented |
 | 4 | Canonical field catalog and answer types | Training history uses whole and half-years | Spec lines 78–82 | Documented |
@@ -125,14 +125,14 @@ Because there is no executable implementation, results below establish static co
 
 | Requirement | Status | Notes |
 |---|---|---|
-| Versioned profile-and-goal payload | Documented with warning | Shape, ownership, and separation are defined; the initial accepted version string is not. |
+| Versioned profile-and-goal payload | Documented | Shape, ownership, separation, initial version `"1"`, and unknown-version handling are explicit. |
 | Canonical field catalog and answer types | Documented | Stable identifiers, types, units, requiredness, and modality rules are explicit. |
 | Resumable lifecycle and authoritative completion | Documented | Typed drafts, malformed input, completion validation, and automatic demotion are distinguished. |
 | Deterministic conditional clearing | Documented | Restriction and modality-controlled stale values are cleared. |
 | Objective history and separate baseline | Documented | Observable history and four-week baseline remain independently addressable and do not select an approach. |
-| Availability threshold | Documented | Per-day and weekly completion thresholds are explicit. |
+| Availability threshold | Documented | Sparse weekday keys, omitted unavailable days, invalid null/unknown keys, and weekly completion thresholds are explicit. |
 | Restrictions boundary | Documented | Validation is structural; medical-risk wording is accepted and any safety notice is separate. |
-| Dates, modality goals, and outcomes | Documented | Date-only semantics, modality rules, stable diagnostics, and warning/error separation are explicit. |
+| Dates, modality goals, and outcomes | Documented | Date-only semantics use an explicit runner-facing local validation date rather than server timezone; modality rules, stable diagnostics, and warning/error separation are explicit. |
 | Scope exclusions | Documented | Persistence, UI, endpoints, planning decisions, and canonical-document reconciliation remain deferred. |
 
 ### Scope Exclusions
@@ -153,7 +153,7 @@ Because there is no executable implementation, results below establish static co
 |---|---|---|
 | Separate permissive draft from strict completed projection | Yes | Matches lifecycle and completion requirements. |
 | Separate parsing, normalization, completion validation, and lifecycle resolution | Yes | Matches malformed-versus-correctable draft semantics. |
-| Exact contract version with unknown-version rejection | Partial | Mechanism is coherent, but no concrete initial accepted value is defined. |
+| Exact contract version with unknown-version rejection | Yes | Initial version is exactly `"1"`; unknown versions are rejected or translated explicitly before validation. |
 | Decimal quantities and integral counts/minutes | Yes | Consistent with the field catalog and numeric invariants. |
 | Ownership outside payload | Yes | Consistent across proposal, spec, and design. |
 | Stable diagnostics with non-blocking warning seams | Yes | Consistent with date and restriction safety semantics. |
@@ -201,29 +201,31 @@ Assertion quality audit is N/A because the candidate contains no test files.
 
 **Type checker**: N/A — no typed source files changed
 
-### Review Observation Assessment
+### Correction Assessment
 
 | Observation | Classification | Evidence and rationale |
 |---|---|---|
-| `README.md` and `artifacts.md` may have stale phase status | **WARNING** | Confirmed. README lines 9–11 and artifacts lines 10–16 say the spec awaits approval and design/tasks have not started, while `design.md` exists and tasks lines 27–38 show 6/6 complete. This harms documentation closure but does not invalidate the normative contract. |
-| Task forecast says 20–80 lines while the candidate is 560 lines | **WARNING** | Confirmed. The direct structural count is 560 lines, above the 400-line review budget, while tasks lines 7–17 report low risk and recommend one PR. The forecast is materially inaccurate, but this is review-planning metadata rather than a requirements/runtime failure. |
-| `contract_version` lacks a concrete initial supported value | **WARNING** | Confirmed. Spec line 11 requires a string, design line 16 requires exact supported-version handling, and proposal line 33 scopes a version identifier, but no accepted initial value such as `1` is named. Future consumers would need an additional coordination decision; no current runtime exists to fail. |
-| “Non-diagnostic” restriction detail conflicts with accepting medical wording | **Resolved / not an issue** | Proposal line 76 defines non-diagnostic interpretation, not lexical rejection. Spec lines 172–180 explicitly prohibit semantic rejection and design line 53 keeps any safety notice non-blocking. The normative rule is internally consistent: preserve bounded self-reported text without treating it as diagnosis. |
+| Archived phase status and scope guard | **Corrected** | README and artifacts now record approved spec, completed design/tasks, verification, archive, canonical spec sync, and the preserved Issue #20 exclusions. |
+| Task forecast says 20–80 lines while the candidate was 560 lines | **Corrected by historical annotation** | Tasks preserves the original forecast and commands, records the actual 560-line outcome, explains the variance, and marks the realized 400-line risk high. The corrected seven-file evidence set is now 577 lines. |
+| Logical transport names and draft containers | **Corrected** | Design uses normative `contract_version`, `state`, `profile`, and `goal`; top-level containers remain present while draft answers may be partial or absent, and only completion-valid data reaches `CompletedOnboarding`. |
+| Initial `contract_version` value and unknown versions | **Corrected** | Both byte-identical specs define exactly `"1"`; unknown versions are rejected or translated explicitly before validation. |
+| Sparse availability representation | **Corrected** | Both specs allow only weekday keys, treat present keys as available, require integer 15–300 values, omit unavailable days, reject null/unknown keys, and preserve the 3-day/150-minute completion minimum. |
+| Runner-local target-date validation | **Corrected** | Both specs and design require an explicit runner-facing local validation date, date-only comparison, and no server-timezone derivation. |
+| Decimal JSON representation and scale | **Deferred follow-up** | API and persistence implementation must choose JSON number-versus-string encoding and decimal scale/serialization policy. This contract does not invent that policy. |
+| “Non-diagnostic” restriction detail conflicts with accepting medical wording | **Resolved / not an issue** | Proposal line 76 defines non-diagnostic interpretation, not lexical rejection. Spec lines 172–180 prohibit semantic rejection and design line 55 keeps safety notices non-blocking. |
 
 ### Issues Found
 
 **CRITICAL**: None.
 
-**WARNING**:
+**WARNING / FOLLOW-UP**:
 
-1. Phase-status metadata in `README.md` and `artifacts.md` is stale.
-2. The 20–80-line workload forecast understates the 560-line candidate and incorrectly reports low 400-line budget risk.
-3. The initial supported `contract_version` value is unspecified.
+1. JSON number-versus-string encoding and decimal scale/serialization policy remain deferred to API and persistence implementation.
 
 **SUGGESTION**: None.
 
 ### Verdict
 
-**PASS WITH WARNINGS**
+**PASS WITH ONE DEFERRED FOLLOW-UP**
 
-No requirements/runtime failure blocks archive. The contract's nine requirements and nineteen scenarios are present, all six tasks are complete, scope exclusions are preserved, and read-only checks pass. The three warnings should be corrected or explicitly accepted before final delivery to improve documentation closure and downstream interoperability.
+No requirements/runtime failure blocks archive. The contract's nine requirements and nineteen scenarios are present, all six tasks are complete, scope exclusions are preserved, the archived and canonical specifications are byte-identical, and read-only checks pass. The corrected findings are closed; decimal representation and scale remain an explicit API/persistence follow-up.
