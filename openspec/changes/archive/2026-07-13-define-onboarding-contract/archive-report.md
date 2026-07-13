@@ -8,7 +8,7 @@ Archived on 2026-07-13 after the OpenSpec source-of-truth specification was crea
 
 | Gate | Result | Evidence |
 | --- | --- | --- |
-| Action context | Passed | Repo-local edits remained within `/home/jjdelarubia/Workspace/BIGschool/Kaito`. |
+| Action context | Passed | Repo-local edits remained within `<repo-root>`. |
 | Task completion | Passed | `tasks.md` records 6/6 completed implementation tasks and no unchecked tasks. |
 | Verification | Passed with warnings | `verify-report.md` reports 9/9 requirements, 19/19 scenarios, zero blockers, and zero critical findings. |
 | Native review | Allowed | Approved bound lineage `review-9e146f1009276394`; supported post-apply validation returned `allow`. No archive review gate was run because Gentle AI 2.1.0 does not support it. |
