@@ -1,0 +1,31 @@
+schema: gentle-ai.sdd-state/v1
+change: define-onboarding-contract
+artifact_store: openspec
+mode: interactive
+status: archived
+task_progress:
+  total: 6
+  completed: 6
+  pending: 0
+verification:
+  verdict: pass_with_warnings
+  blockers: 0
+  critical_findings: 0
+review:
+  gate: allow
+  lineage: review-9e146f1009276394
+archive:
+  date: 2026-07-13
+  report: archive-report.md
+  specification_sync:
+    onboarding-contract: created
+  corrected_findings:
+    - phase_status_metadata
+    - realized_workload_annotation
+    - initial_contract_version
+    - logical_transport_names
+    - sparse_availability_shape
+    - explicit_local_validation_date
+  remaining_follow_up:
+    - decimal_representation_and_scale_policy_deferred_to_api_and_persistence
+  application_code_modified: false
