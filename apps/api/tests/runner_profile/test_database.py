@@ -2,9 +2,7 @@
 import traceback
 
 import pytest
-
 from app.modules.auth.context import UserContext
-
 
 class FakeResult:
     def __init__(self, value): self.value = value
@@ -50,8 +48,6 @@ def test_guard_fails_closed_for_no_row_or_execution_error(guard):
     with pytest.raises(DatabaseConfigurationError, match="database_unavailable"):
         guard_connection(connection, "kaito_api_login")
     assert connection.rolled_back and connection.invalidated
-
-
 def test_owner_transaction_sets_local_role_and_parameterized_claims():
     from app.core.database import configure_owner_transaction
     user, connection = UserContext("owner-id"), FakeConnection()
@@ -59,8 +55,6 @@ def test_owner_transaction_sets_local_role_and_parameterized_claims():
     sql = " ".join(call[0] for call in connection.calls)
     assert "SET LOCAL ROLE authenticated" in sql and "set_config('request.jwt.claims'" in sql
     assert user.user_id not in sql and "session_user = :expected" in sql
-
-
 def test_owner_transaction_generic_failure_invalidates_and_redacts_traceback():
     from app.core import database
     connection = FakeConnection(reset=True, error=RuntimeError("RAW_SQL_MARKER"))
@@ -71,6 +65,14 @@ def test_owner_transaction_generic_failure_invalidates_and_redacts_traceback():
     assert raised.value.__cause__ is raised.value.__context__ is None
 
 
+def test_owner_body_failure_is_sanitized_once(caplog):
+    from app.core import database
+    connection = FakeConnection(reset=True)
+    with caplog.at_level("ERROR", logger="app.core.database"), pytest.raises(database.DatabaseConfigurationError) as raised:
+        with database.owner_connection(FakeEngine(connection), "kaito_api_login", UserContext("owner-id")):
+            raise RuntimeError("RAW_SQL_MARKER RAW_PAYLOAD_MARKER RAW_OWNER_MARKER")
+    chain = "".join(traceback.format_exception(raised.value))
+    assert connection.rolled_back == connection.invalidated == 1 and [record.message for record in caplog.records] == ["database_failure"] and not any(marker in chain for marker in ("RAW_SQL_MARKER", "RAW_PAYLOAD_MARKER", "RAW_OWNER_MARKER")) and raised.value.__cause__ is raised.value.__context__ is None
 def test_dirty_pooled_connection_is_rejected_on_reuse():
     from app.core.database import DatabaseConfigurationError, owner_connection
     connection, owner = FakeConnection(), UserContext("owner-id")
@@ -79,16 +81,12 @@ def test_dirty_pooled_connection_is_rejected_on_reuse():
     with pytest.raises(DatabaseConfigurationError):
         with owner_connection(FakeEngine(connection), "kaito_api_login", owner): pass
     assert connection.invalidated
-
-
 def test_database_engine_uses_timeout_and_rollback_reset(monkeypatch):
     from app.core import database
     options = {}
     monkeypatch.setattr(database, "create_engine", lambda _, **kwargs: options.update(kwargs))
     database.create_engine_for_url("postgresql+psycopg://localhost/test")
     assert options == {"connect_args": {"connect_timeout": 5}, "pool_reset_on_return": "rollback"}
-
-
 def test_owner_transaction_does_not_repeat_core_failure_side_effects(caplog):
     from app.core import database
     connection = FakeConnection(guard=(False,) + (True,) * 4)
@@ -98,8 +96,6 @@ def test_owner_transaction_does_not_repeat_core_failure_side_effects(caplog):
     assert connection.rolled_back == connection.invalidated == 1
     assert [record.message for record in caplog.records] == ["database_failure"]
     assert raised.value.__cause__ is raised.value.__context__ is None
-
-
 def test_database_configuration_requires_literal_expected_role(monkeypatch):
     from app.core.config import get_database_settings
     monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg://safe")

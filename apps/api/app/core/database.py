@@ -89,4 +89,11 @@ def owner_connection(
             _invalidate(connection)
         if failed:
             raise DatabaseConfigurationError("database_unavailable")
-        yield connection
+        try:
+            yield connection
+        except Exception:
+            failed = True
+            _invalidate(connection)
+    if failed:
+        try: raise DatabaseConfigurationError("database_unavailable")  # noqa: E701
+        except DatabaseConfigurationError as error: error.__context__ = None; raise  # noqa: E701, E702
