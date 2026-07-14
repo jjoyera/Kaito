@@ -50,7 +50,11 @@
 
 ## 5. Styling
 
-- [ ] 5.1 Add `onboarding-*`-prefixed rules to `app/styles.css`, reusing the existing CSS custom properties and the `.login-field`/`.login-form-error` accessible patterns; check against the brand palette and reduced-motion rules.
+- [x] 5.1 Add `onboarding-*`-prefixed rules to `app/styles.css`, reusing the existing CSS custom properties and the `.login-field`/`.login-form-error` accessible patterns; check against the brand palette and reduced-motion rules. Added `--color-success`/`--color-success-text` tokens (present in the brand-palette doc but not yet in `styles.css`). Card layout, pill-shaped step navigator (complete/current/incomplete/not-reached, with a text glyph alongside color per the brand doc's "don't signal state with color alone" rule), accessible field/error patterns matching `.login-field`, and a primary-green CTA button matching the brand doc's documented usage for "Iniciar onboarding".
+- [x] 5.2 **Unplanned prerequisite (visual verification tooling):** extracted `isTestAuthAdapterEnabled` from `login-form.tsx` into `shared/testing/test-auth-adapter.ts` (RED/GREEN, 5/5) so the wizard's real `getAccessToken` could be bypassed for a real-browser check, mirroring the existing login test-adapter pattern; `login-form.tsx` now imports the shared version (behavior unchanged). See design decision #9.
+- [x] 5.3 **Manual browser verification:** installed Playwright's Chromium, ran `next dev` with the existing `KAITO_E2E_AUTH_ADAPTER` session bypass plus the test auth adapter, and drove the real wizard end-to-end (goal → prior history → baseline → availability → restrictions) with the onboarding API mocked at the network layer, screenshotting every step. Found and fixed a real bug this way: `.onboarding-field input { width: 100% }` was also stretching checkbox/radio inputs, pushing their labels far to the right; scoped the rule to exclude `[type="checkbox"]`/`[type="radio"]` and gave them explicit sizing/`accent-color` instead.
+
+**Verification**: web suite 119/119 (onboarding+auth+shared, +5 from the extracted test-auth-adapter), `pnpm lint:web` clean, `tsc --noEmit` clean, and the manual Chromium walkthrough above confirmed the full 5-step flow renders and behaves correctly end-to-end with the brand palette applied.
 
 ## 6. E2E and verification
 

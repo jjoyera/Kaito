@@ -16,6 +16,7 @@ import {
 	validateLoginInput,
 	type LoginFieldErrors,
 } from "../_domain/login-validation";
+import { isTestAuthAdapterEnabledInBrowser } from "../../../shared/testing/test-auth-adapter";
 
 type LoginStatus =
 	| "idle"
@@ -165,7 +166,7 @@ function getEmailErrorMessage(
 }
 
 function createDefaultSignInWithPassword(): SignInWithPassword {
-	if (isTestAuthAdapterEnabled()) {
+	if (isTestAuthAdapterEnabledInBrowser()) {
 		return (input) => {
 			const testWindow = window as typeof window & {
 				__KAITO_TEST_AUTH_CALL_COUNT__?: number;
@@ -213,18 +214,3 @@ function reportLoginSystemError(): void {
 	});
 }
 
-function isTestAuthAdapterEnabled(): boolean {
-	return (
-		process.env.NODE_ENV !== "production" &&
-		process.env.NEXT_PUBLIC_KAITO_TEST_AUTH_ADAPTER === "1" &&
-		isLoopbackBrowserRuntime()
-	);
-}
-
-function isLoopbackBrowserRuntime(): boolean {
-	if (typeof window === "undefined") {
-		return false;
-	}
-
-	return ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
-}

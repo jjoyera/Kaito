@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { getAccessToken } from "../../auth/_adapters/get-access-token";
+import { isTestAuthAdapterEnabledInBrowser } from "../../../shared/testing/test-auth-adapter";
 import type {
 	OnboardingApiDependencies,
 	OnboardingDiagnostic,
@@ -104,7 +105,9 @@ function firstIncompleteStepIndex(
 function createApiDependencies(): OnboardingApiDependencies {
 	return {
 		apiBaseUrl: (process.env.NEXT_PUBLIC_KAITO_API_URL ?? "").trim(),
-		getAccessToken,
+		getAccessToken: isTestAuthAdapterEnabledInBrowser()
+			? async () => "test-access-token"
+			: getAccessToken,
 		fetcher: (input, init) => fetch(input, init),
 	};
 }

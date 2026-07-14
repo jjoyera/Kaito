@@ -180,7 +180,20 @@ so per this project's two-distinct-feature promotion threshold it stays
 feature that owns the concept until a second real consumer appears" pattern
 `private-fetch.ts` followed before onboarding promoted it.
 
-### 9. Multi-select array fields default to `[]`, not `undefined`
+### 9. `isTestAuthAdapterEnabled` promoted to `shared/testing/` (implementation amendment)
+
+Visually verifying the styled wizard in a real browser required bypassing
+`getAccessToken`'s real Supabase call, the same way `LoginForm` already
+bypasses real sign-in via an env-gated, loopback-only test adapter. Rather
+than duplicate that gate, its logic was extracted from `login-form.tsx` into
+`shared/testing/test-auth-adapter.ts` (now with its own unit tests, which
+the inline version never had) — auth and onboarding are the two real
+consumers, meeting the promotion threshold. `login-form.tsx` was updated to
+import the shared version instead of its local copy; behavior is unchanged
+(same env vars, same loopback check). This same helper is what Phase 6's
+Playwright E2E suite will need for the same reason.
+
+### 10. Multi-select array fields default to `[]`, not `undefined`
 
 `practiced_modalities`/`practiced_terrain` are completion-required but the
 contract treats an *explicitly supplied* empty array as a valid "no prior
