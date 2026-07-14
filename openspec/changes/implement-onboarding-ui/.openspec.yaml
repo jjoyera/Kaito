@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-07-14
+goal: Guide an authenticated runner through the canonical onboarding contract
+  with progress, validation, resume, and completion handling
