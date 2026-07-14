@@ -42,6 +42,17 @@ class DatabaseSettings:
     expected_role: str
 
 
+@dataclass(frozen=True)
+class WebSettings:
+    """Browser origins allowed to call this API directly (CORS).
+
+    Empty by default (fail closed): no cross-origin browser access until
+    KAITO_WEB_ORIGIN is explicitly configured.
+    """
+
+    allowed_origins: tuple[str, ...] = ()
+
+
 def get_auth_settings() -> AuthSettings:
     """Read auth settings from environment at call time.
 
@@ -91,3 +102,14 @@ def get_database_settings() -> DatabaseSettings:
     if not url or role != "kaito_api_login":
         raise ValueError("database_unavailable")
     return DatabaseSettings(url=url, expected_role=role)
+
+
+def get_web_settings() -> WebSettings:
+    """Read the CORS-allowed web origin(s) from KAITO_WEB_ORIGIN.
+
+    Accepts a comma-separated list. Leave unset to keep browser access
+    fully disabled (fail closed).
+    """
+    raw = os.getenv("KAITO_WEB_ORIGIN") or ""
+    origins = tuple(origin.strip() for origin in raw.split(",") if origin.strip())
+    return WebSettings(allowed_origins=origins)

@@ -282,3 +282,70 @@ def test_app_composes_the_protected_onboarding_router(
     paths = {route.path for route in reload_main().app.routes}
 
     assert "/runner-profile/onboarding" in paths
+
+
+# ---------------------------------------------------------------------------
+# CORS — browser access from the configured web origin only
+# ---------------------------------------------------------------------------
+
+
+def test_no_cors_headers_when_web_origin_is_not_configured(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Fail closed: with KAITO_WEB_ORIGIN unset, no origin is allowed."""
+    clear_sentry_env(monkeypatch)
+    monkeypatch.delenv("ENABLE_DEBUG_SENTRY", raising=False)
+    monkeypatch.delenv("KAITO_WEB_ORIGIN", raising=False)
+
+    client = TestClient(reload_main().app)
+    response = client.get("/health", headers={"origin": "http://localhost:3000"})
+
+    assert "access-control-allow-origin" not in response.headers
+
+
+def test_cors_allows_the_configured_web_origin(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A request from the configured web origin receives the CORS header."""
+    clear_sentry_env(monkeypatch)
+    monkeypatch.delenv("ENABLE_DEBUG_SENTRY", raising=False)
+    monkeypatch.setenv("KAITO_WEB_ORIGIN", "http://localhost:3000")
+
+    client = TestClient(reload_main().app)
+    response = client.get("/health", headers={"origin": "http://localhost:3000"})
+
+    assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
+
+
+def test_cors_rejects_an_origin_outside_the_configured_allowlist(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A request from an unlisted origin does not receive the CORS header."""
+    clear_sentry_env(monkeypatch)
+    monkeypatch.delenv("ENABLE_DEBUG_SENTRY", raising=False)
+    monkeypatch.setenv("KAITO_WEB_ORIGIN", "http://localhost:3000")
+
+    client = TestClient(reload_main().app)
+    response = client.get(
+        "/health", headers={"origin": "https://attacker.example"}
+    )
+
+    assert "access-control-allow-origin" not in response.headers
+
+
+def test_cors_supports_a_comma_separated_origin_allowlist(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """KAITO_WEB_ORIGIN accepts multiple comma-separated origins."""
+    clear_sentry_env(monkeypatch)
+    monkeypatch.delenv("ENABLE_DEBUG_SENTRY", raising=False)
+    monkeypatch.setenv(
+        "KAITO_WEB_ORIGIN", "http://localhost:3000, https://app.kaito.example"
+    )
+
+    client = TestClient(reload_main().app)
+    response = client.get(
+        "/health", headers={"origin": "https://app.kaito.example"}
+    )
+
+    assert response.headers["access-control-allow-origin"] == "https://app.kaito.example"
