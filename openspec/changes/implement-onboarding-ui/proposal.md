@@ -62,6 +62,21 @@ exists.
 - Reuses `apps/web/features/auth/_adapters` authenticated fetch and the
   existing private-route session flow; no changes to auth.
 - Consumes `PUT` and `GET /runner-profile/onboarding` exactly as specified by
-  the merged Issue #21 API; no backend or database changes are expected.
+  the merged Issue #21 API; no backend contract or database changes.
 - Adds web unit/contract tests and Playwright E2E coverage for the new flow;
-  no changes to API tests.
+  no changes to API business logic or tests beyond the CORS amendment below.
+
+### Amendment: minimal backend CORS configuration (discovered during implementation)
+
+`apps/api` had no `CORSMiddleware`, so a browser call from `apps/web` (a
+different origin in every environment: `:3000` vs `:8000` locally, and no
+shared-origin reverse proxy exists yet) would be blocked before reaching the
+API — this wizard cannot function without it. Two options were evaluated
+with the maintainer: a Next.js server-side proxy route (stays frontend-only
+but introduces a new, unestablished proxying pattern) vs. minimal backend
+CORS configuration (the architecturally conventional location for this
+policy). The maintainer chose backend CORS. Scope added: `apps/api` gains an
+opt-in, fail-closed `KAITO_WEB_ORIGIN` setting (unset = no cross-origin
+browser access at all, matching this project's existing fail-closed
+conventions for optional features) and a `CORSMiddleware` registration when
+configured. No route, persistence, or business-logic behavior changed.

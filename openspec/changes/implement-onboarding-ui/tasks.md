@@ -38,11 +38,15 @@
 
 ## 4. Wizard components
 
-- [ ] 4.1 Build the per-step components (`goal-step`, `prior-history-step`, `baseline-step`, `availability-step`, `restrictions-step`), wired to `_domain/step-validation.ts` with field-level errors using the existing accessible pattern (`label`+`id`, `aria-describedby`, `aria-invalid`, `role="alert"`).
-- [ ] 4.2 Build `step-navigator.tsx`: renders each step's complete/incomplete/not-reached status and supports a direct jump to any previously-reached step without discarding other steps' answers.
-- [ ] 4.3 Build `completion-view.tsx` for the post-completion confirmation state.
-- [ ] 4.4 Build `onboarding-wizard.tsx`: owns the accumulated snapshot and step-index state, wires the load/save/complete use-cases, enforces per-step completion before advancing, and drives navigator status from `diagnostic-mapping.ts`.
-- [ ] 4.5 Replace the `app/(private)/onboarding/page.tsx` placeholder with a composition of `<OnboardingWizard />`, preserving the existing session-guard redirect behavior unchanged.
+- [x] 4.0 **Unplanned prerequisite (backend CORS):** discovered `apps/api` had no `CORSMiddleware`, so the browser could never reach the API cross-origin. Decided with the maintainer to add minimal, opt-in, fail-closed backend CORS (`KAITO_WEB_ORIGIN`) rather than a Next.js proxy route. TDD: RED added 4 tests to `tests/test_main.py` (unset → no header, configured → header present, unlisted origin → no header, comma-separated list); GREEN added `get_web_settings()` to `app/core/config.py` and conditional `CORSMiddleware` registration in `app/main.py`. Full API suite 164/164, ruff clean. Documented in both `.env.example` files (`KAITO_WEB_ORIGIN`, `NEXT_PUBLIC_KAITO_API_URL`).
+- [x] 4.0b **Unplanned prerequisite (access token):** added `features/auth/_adapters/get-access-token.ts` (RED/GREEN, 3/3) so the wizard can build `OnboardingApiDependencies` from the real Supabase browser session; kept in `features/auth` (single consumer today) per decision #8.
+- [x] 4.1 Build the per-step components (`goal-step`, `prior-history-step`, `baseline-step`, `availability-step`, `restrictions-step`), wired to `_domain/step-validation.ts` with field-level errors using the existing accessible pattern (`label`+`id`, `aria-describedby`, `aria-invalid`, `role="alert"`). Added shared intra-feature `number-field.tsx`, `checkbox-group.tsx`, and `field-messages.ts` (reused by 3+ step components).
+- [x] 4.2 Build `step-navigator.tsx`: renders each step's complete/incomplete/not-reached status and supports a direct jump to any previously-reached step without discarding other steps' answers.
+- [x] 4.3 Build `completion-view.tsx` for the post-completion confirmation state.
+- [x] 4.4 Build `onboarding-wizard.tsx`: owns the accumulated snapshot and step-index state, wires the load/save/complete use-cases, enforces per-step completion before advancing, and drives navigator status from `diagnostic-mapping.ts`. Normalizes `practiced_modalities`/`practiced_terrain` to `[]` on init/hydrate per decision #9.
+- [x] 4.5 Replace the `app/(private)/onboarding/page.tsx` placeholder with a composition of `<OnboardingWizard />`, preserving the existing session-guard redirect behavior unchanged.
+
+**Verification**: web suite 114/114 (onboarding+auth+shared), `pnpm lint:web` clean, `tsc --noEmit` clean. Manual smoke check: `next dev` on the route with no session → 307 to `/login?returnTo=%2Fonboarding&context=auth_unavailable` with no compile/runtime errors in the server log (full authenticated behavioral verification deferred to Phase 6's mocked E2E, since the wizard is still unstyled and needs a real Supabase session to exercise past the guard).
 
 ## 5. Styling
 

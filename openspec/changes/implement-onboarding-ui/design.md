@@ -155,6 +155,45 @@ Supabase auth); mocking the two REST calls directly is simpler and keeps the
 existing Docker-backed RLS integration proof as the one place that exercises
 the real API end-to-end.
 
+### 7. Backend CORS via `KAITO_WEB_ORIGIN`, fail closed (implementation amendment)
+
+`apps/api` had no `CORSMiddleware`, so the browser call this wizard depends
+on would be blocked cross-origin in every environment. Evaluated with the
+maintainer against a Next.js server-side proxy route; backend CORS was
+chosen as the architecturally conventional location for this policy (see
+the proposal's amendment for the full trade-off). `app/core/config.py`
+gained `get_web_settings()` reading a comma-separated `KAITO_WEB_ORIGIN`;
+`app/main.py` registers `CORSMiddleware` only when at least one origin is
+configured (`allow_origins` from that list, `allow_methods=["GET", "PUT"]`
+matching the routes that exist today, `allow_headers=["authorization",
+"content-type"]`, no `allow_credentials` since auth uses a Bearer token, not
+cookies). Unset stays fail-closed, matching the existing `SUPABASE_JWKS_URL`
+and `ENABLE_DEBUG_SENTRY` optional-feature conventions in this same file.
+
+### 8. `getAccessToken` lives in `features/auth`, not `shared/`
+
+The wizard needs the current Supabase session's access token to build
+`OnboardingApiDependencies`. This is single-consumer today (only onboarding
+calls it externally; auth manages its own session via cookies internally),
+so per this project's two-distinct-feature promotion threshold it stays
+`features/auth/_adapters/get-access-token.ts` — the same "owned by the
+feature that owns the concept until a second real consumer appears" pattern
+`private-fetch.ts` followed before onboarding promoted it.
+
+### 9. Multi-select array fields default to `[]`, not `undefined`
+
+`practiced_modalities`/`practiced_terrain` are completion-required but the
+contract treats an *explicitly supplied* empty array as a valid "no prior
+experience" answer, distinct from an *absent* (unanswered) field. A checkbox
+group has no natural way to "explicitly submit empty" — if every box starts
+and stays unchecked, no `onChange` ever fires, so the field would remain
+`undefined` (unanswered) forever with no visible way to advance. The wizard
+resolves this by normalizing both fields to `[]` whenever a draft is
+initialized or hydrated (`normalizeDraft`), so reaching the step already
+counts as an implicit-but-correct "none" answer unless the runner checks
+something. This only applies to these two array fields; every other field
+keeps the contract's real absent/present distinction.
+
 ## Risks / Trade-offs
 
 - **[Risk]** Client-side validation in `_domain/step-validation.ts`
@@ -180,13 +219,21 @@ the real API end-to-end.
   unit test enumerates every field in the contract's field catalog and
   asserts each maps to exactly one step, with no fallback/default step
   allowed to silently absorb an unmapped field.
+- **[Risk]** `KAITO_WEB_ORIGIN` must be kept in sync with every real deployed
+  web origin, or the wizard will fail closed with a browser CORS error
+  reaching an otherwise-healthy API. → **Mitigation**: fail-closed-by-default
+  is the deliberately safer failure mode (visible network error, not silent
+  cross-origin exposure); `.env.example` documents the pairing with
+  `NEXT_PUBLIC_KAITO_API_URL` explicitly.
 
 ## Migration Plan
 
-No data migration. This is a UI-only change behind the existing private-route
-session guard; deployment is a normal merge/release. Rollback is a plain
-revert of the PR (the backend and stored snapshots are unaffected either
-way).
+No data migration. This is mostly a UI-only change behind the existing
+private-route session guard; deployment is a normal merge/release. The one
+non-UI piece — backend `CORSMiddleware` — is opt-in via `KAITO_WEB_ORIGIN`
+and inert until that variable is set, so it cannot regress any existing
+deployment that doesn't set it. Rollback is a plain revert of the PR (the
+backend and stored snapshots are unaffected either way).
 
 ## Open Questions
 
