@@ -17,14 +17,14 @@
 
 ## 2. Onboarding domain layer (pure, TDD)
 
-- [ ] 2.1 **RED:** `_domain/steps.test.ts` asserts the ordered step list and which contract fields each step owns.
-- [ ] 2.2 **GREEN:** implement `_domain/steps.ts`.
-- [ ] 2.3 **RED:** `_domain/step-validation.test.ts` covers structural types, ranges, and conditional-field rules per step, mirroring `openspec/specs/onboarding-contract`.
-- [ ] 2.4 **GREEN:** implement `_domain/step-validation.ts`.
-- [ ] 2.5 **RED:** `_domain/conditional-clearing.test.ts` covers modality-hidden goal fields and restriction-detail clearing.
-- [ ] 2.6 **GREEN:** implement `_domain/conditional-clearing.ts`.
-- [ ] 2.7 **RED:** `_domain/diagnostic-mapping.test.ts` enumerates every field in the contract's field catalog and asserts each maps to exactly one step, with no silent fallback for an unmapped field.
-- [ ] 2.8 **GREEN:** implement `_domain/diagnostic-mapping.ts`.
+- [x] 2.1 **RED:** `_domain/steps.test.ts` asserts the ordered step list and which contract fields each step owns. (Module-not-found failure confirmed before implementation.)
+- [x] 2.2 **GREEN:** implement `_domain/steps.ts`. (9/9 passed.)
+- [x] 2.3 **RED:** `_domain/step-validation.test.ts` covers structural types, ranges, and conditional-field rules per step, mirroring `openspec/specs/onboarding-contract`. (Module-not-found failure confirmed before implementation.)
+- [x] 2.4 **GREEN:** implement `_domain/step-validation.ts`. (18/18 passed.)
+- [x] 2.5 **RED:** `_domain/conditional-clearing.test.ts` covers modality-hidden goal fields and restriction-detail clearing. (Module-not-found failure confirmed before implementation.)
+- [x] 2.6 **GREEN:** implement `_domain/conditional-clearing.ts`. (8/8 passed.)
+- [x] 2.7 **RED:** `_domain/diagnostic-mapping.test.ts` enumerates every field in the contract's field catalog and asserts each maps to exactly one step, with no silent fallback for an unmapped field. (Module-not-found failure confirmed before implementation.)
+- [x] 2.8 **GREEN:** implement `_domain/diagnostic-mapping.ts`. (5/5 passed. Full domain suite: 40/40 passed; `pnpm lint:web` clean; `tsc --noEmit` clean.)
 
 ## 3. Onboarding use-cases (TDD with fakes)
 
