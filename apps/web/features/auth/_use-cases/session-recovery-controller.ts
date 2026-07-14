@@ -1,5 +1,5 @@
 import { selectReturnDestination } from "../_domain/return-destination";
-import type { PrivateApiErrorKind } from "../_adapters/private-fetch";
+import type { PrivateApiErrorKind } from "../../../shared/adapters/private-fetch";
 
 type SessionRecoveryDependencies = {
 	currentPath: string;

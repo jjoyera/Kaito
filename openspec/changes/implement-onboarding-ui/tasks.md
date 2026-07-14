@@ -11,9 +11,9 @@
 
 ## 1. Shared adapter promotion
 
-- [ ] 1.1 **RED:** confirm the existing `apps/web/features/auth/_adapters/private-fetch.test.ts` passes unmoved as the pre-move regression baseline.
-- [ ] 1.2 **GREEN:** move `private-fetch.ts` and its test to `apps/web/shared/adapters/`; update every `features/auth` import site. No behavior change.
-- [ ] 1.3 **REFACTOR/verify:** rerun `pnpm test:web-auth` and the relocated test from their new path; confirm no import cycles and no auth-visible change.
+- [x] 1.1 **RED:** confirm the existing `apps/web/features/auth/_adapters/private-fetch.test.ts` passes unmoved as the pre-move regression baseline. (5/5 passed pre-move.)
+- [x] 1.2 **GREEN:** move `private-fetch.ts` and its test to `apps/web/shared/adapters/`; update every `features/auth` import site. No behavior change. (`git mv` both files; updated the type-only import in `session-recovery-controller.ts`; extended the `test:auth` glob in `apps/web/package.json` to also cover `shared/**/*.test.ts` so CI keeps exercising the moved test.)
+- [x] 1.3 **REFACTOR/verify:** rerun `pnpm test:web-auth` and the relocated test from their new path; confirm no import cycles and no auth-visible change. (`pnpm test:web-auth` → 55/55 passed; `pnpm lint:web` → clean.)
 
 ## 2. Onboarding domain layer (pure, TDD)
 
