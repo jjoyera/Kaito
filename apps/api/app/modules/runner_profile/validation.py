@@ -73,9 +73,21 @@ def parse_and_normalize(
 
 
 def _validate_structural(profile: dict[str, Any], goal: dict[str, Any]) -> None:
+    _validate_profile_blocks(profile)
+    _validate_availability(profile)
+    _validate_prior_history(profile)
+    _validate_profile_numbers(profile)
+    _validate_restrictions(profile)
+    _validate_goal(goal)
+
+
+def _validate_profile_blocks(profile: dict[str, Any]) -> None:
     for block in ("prior_history", "baseline_4_weeks", "availability", "restrictions"):
         if block in profile and not isinstance(profile[block], Mapping):
             raise ValueError("malformed_snapshot")
+
+
+def _validate_availability(profile: dict[str, Any]) -> None:
     availability = _mapping(_mapping(profile.get("availability", {})) or {}).get(
         "minutes_by_day"
     )
@@ -84,8 +96,10 @@ def _validate_structural(profile: dict[str, Any], goal: dict[str, Any]) -> None:
             WeeklyAvailability(availability)
         except ValueError:
             raise ValueError("malformed_snapshot") from None
+
+
+def _validate_prior_history(profile: dict[str, Any]) -> None:
     prior = _mapping(profile.get("prior_history", {})) or {}
-    baseline = _mapping(profile.get("baseline_4_weeks", {})) or {}
     race_count = prior.get("completed_race_count_range")
     if race_count is not None and not isinstance(race_count, str):
         raise ValueError("malformed_snapshot")
@@ -96,6 +110,11 @@ def _validate_structural(profile: dict[str, Any], goal: dict[str, Any]) -> None:
             or any(not isinstance(item, str) for item in value)
         ):
             raise ValueError("malformed_snapshot")
+
+
+def _validate_profile_numbers(profile: dict[str, Any]) -> None:
+    prior = _mapping(profile.get("prior_history", {})) or {}
+    baseline = _mapping(profile.get("baseline_4_weeks", {})) or {}
     checks = (
         (prior.get("training_years"), False, True),
         (prior.get("longest_completed_distance_km"), False, False),
@@ -110,11 +129,14 @@ def _validate_structural(profile: dict[str, Any], goal: dict[str, Any]) -> None:
         for value, positive, half in checks
     ):
         raise ValueError("malformed_snapshot")
-    if baseline.get("sessions") is not None and (
-        isinstance(baseline["sessions"], bool)
-        or not isinstance(baseline["sessions"], int)
+    sessions = baseline.get("sessions")
+    if sessions is not None and (
+        isinstance(sessions, bool) or not isinstance(sessions, int)
     ):
         raise ValueError("malformed_snapshot")
+
+
+def _validate_restrictions(profile: dict[str, Any]) -> None:
     restrictions = _mapping(profile.get("restrictions", {})) or {}
     if "has_restrictions" in restrictions and not isinstance(
         restrictions["has_restrictions"], bool
@@ -122,6 +144,9 @@ def _validate_structural(profile: dict[str, Any], goal: dict[str, Any]) -> None:
         raise ValueError("malformed_snapshot")
     if "detail" in restrictions and not isinstance(restrictions["detail"], str):
         raise ValueError("malformed_snapshot")
+
+
+def _validate_goal(goal: dict[str, Any]) -> None:
     for key in ("target_distance_km", "positive_elevation_m"):
         if key in goal and not _is_number(goal[key], positive=True):
             raise ValueError("malformed_snapshot")
@@ -175,6 +200,17 @@ def _completion_diagnostics(
     snapshot: OnboardingSnapshot, validation_date: date
 ) -> list[Diagnostic]:
     profile, goal, diagnostics = snapshot.profile, snapshot.goal, []
+    _add_required_diagnostics(profile, goal, diagnostics)
+    _add_availability_diagnostics(profile, diagnostics)
+    _add_restriction_diagnostics(profile, diagnostics)
+    _add_history_diagnostics(profile, diagnostics)
+    _add_goal_diagnostics(goal, validation_date, diagnostics)
+    return diagnostics
+
+
+def _add_required_diagnostics(
+    profile: JsonObject, goal: JsonObject, diagnostics: list[Diagnostic]
+) -> None:
     required = (
         (
             profile.get("prior_history", {}),
@@ -208,6 +244,11 @@ def _completion_diagnostics(
     for values, fields, prefix in required:
         for field in fields:
             _required(values.get(field), f"{prefix}.{field}", diagnostics)
+
+
+def _add_availability_diagnostics(
+    profile: JsonObject, diagnostics: list[Diagnostic]
+) -> None:
     availability = _mapping(_mapping(profile.get("availability", {})) or {}).get(
         "minutes_by_day"
     )
@@ -221,12 +262,22 @@ def _completion_diagnostics(
                 "availability_insufficient", "profile.availability.minutes_by_day"
             )
         )
+
+
+def _add_restriction_diagnostics(
+    profile: JsonObject, diagnostics: list[Diagnostic]
+) -> None:
     restrictions = profile.get("restrictions", {})
     if restrictions.get("has_restrictions") and not (
         isinstance(restrictions.get("detail"), str)
         and 1 <= len(restrictions["detail"].strip()) <= 500
     ):
         diagnostics.append(_diagnostic("required", "profile.restrictions.detail"))
+
+
+def _add_history_diagnostics(
+    profile: JsonObject, diagnostics: list[Diagnostic]
+) -> None:
     prior = profile.get("prior_history", {})
     if prior.get("completed_race_count_range") not in _RACE_COUNTS:
         diagnostics.append(
@@ -243,6 +294,11 @@ def _completion_diagnostics(
             diagnostics.append(
                 _diagnostic("out_of_range", f"profile.prior_history.{field}")
             )
+
+
+def _add_goal_diagnostics(
+    goal: JsonObject, validation_date: date, diagnostics: list[Diagnostic]
+) -> None:
     modality = goal.get("modality")
     if modality not in _MODALITIES:
         diagnostics.append(_diagnostic("out_of_range", "goal.modality"))
@@ -280,4 +336,3 @@ def _completion_diagnostics(
         *_TECHNICALITIES,
     }:
         diagnostics.append(_diagnostic("out_of_range", "goal.obstacle_difficulty"))
-    return diagnostics

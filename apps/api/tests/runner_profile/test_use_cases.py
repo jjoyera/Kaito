@@ -96,13 +96,13 @@ def test_save_rejects_malformed_draft_without_opening_a_transaction_or_mutating_
         "goal": {},
     }
     transactions = RecordingTransactions(RecordingRepository())
+    user = UserContext("runner-1")
+    input_data = SaveOnboardingInput(
+        snapshot=snapshot, validation_date=date(2026, 7, 13)
+    )
 
     with pytest.raises(InvalidOnboardingInput, match="^malformed_snapshot$") as raised:
-        save_onboarding(
-            UserContext("runner-1"),
-            SaveOnboardingInput(snapshot=snapshot, validation_date=date(2026, 7, 13)),
-            transactions,
-        )
+        save_onboarding(user, input_data, transactions)
 
     assert raised.value.code == "malformed_snapshot"
     assert transactions.calls == []
@@ -114,13 +114,13 @@ def test_save_rejects_malformed_nested_blocks_before_opening_a_transaction(value
     snapshot = _completed_snapshot()
     snapshot["profile"]["prior_history"] = value
     transactions = RecordingTransactions(RecordingRepository())
+    user = UserContext("runner-1")
+    input_data = SaveOnboardingInput(
+        snapshot=snapshot, validation_date=date(2026, 7, 13)
+    )
 
     with pytest.raises(InvalidOnboardingInput, match="^malformed_snapshot$"):
-        save_onboarding(
-            UserContext("runner-1"),
-            SaveOnboardingInput(snapshot=snapshot, validation_date=date(2026, 7, 13)),
-            transactions,
-        )
+        save_onboarding(user, input_data, transactions)
 
     assert transactions.calls == []
 
@@ -136,13 +136,13 @@ def test_save_rejects_malformed_canonical_array_answers(field, value):
     snapshot = _completed_snapshot()
     snapshot["profile"]["prior_history"][field] = value
     transactions = RecordingTransactions(RecordingRepository())
+    user = UserContext("runner-1")
+    input_data = SaveOnboardingInput(
+        snapshot=snapshot, validation_date=date(2026, 7, 13)
+    )
 
     with pytest.raises(InvalidOnboardingInput, match="^malformed_snapshot$"):
-        save_onboarding(
-            UserContext("runner-1"),
-            SaveOnboardingInput(snapshot=snapshot, validation_date=date(2026, 7, 13)),
-            transactions,
-        )
+        save_onboarding(user, input_data, transactions)
 
     assert transactions.calls == []
 
@@ -151,15 +151,15 @@ def test_save_rejects_unknown_contract_version_without_opening_a_transaction():
     snapshot = _completed_snapshot()
     snapshot["contract_version"] = "2"
     transactions = RecordingTransactions(RecordingRepository())
+    user = UserContext("runner-1")
+    input_data = SaveOnboardingInput(
+        snapshot=snapshot, validation_date=date(2026, 7, 13)
+    )
 
     with pytest.raises(
         InvalidOnboardingInput, match="^unsupported_contract_version$"
     ) as raised:
-        save_onboarding(
-            UserContext("runner-1"),
-            SaveOnboardingInput(snapshot=snapshot, validation_date=date(2026, 7, 13)),
-            transactions,
-        )
+        save_onboarding(user, input_data, transactions)
 
     assert raised.value.code == "unsupported_contract_version"
     assert transactions.calls == []
@@ -182,7 +182,9 @@ def test_save_preserves_a_sparse_typed_draft_and_returns_immutable_owner_free_re
     )
 
     assert result.snapshot.state is OnboardingState.INCOMPLETE
-    assert result.snapshot.profile["prior_history"]["training_years"] == 1.5
+    assert result.snapshot.profile["prior_history"]["training_years"] == pytest.approx(
+        1.5
+    )
     assert len(repository.upserts) == 1
     assert all("owner" not in field for field in result.__dataclass_fields__)
     with pytest.raises((FrozenInstanceError, TypeError)):
@@ -201,12 +203,13 @@ def test_save_demotes_invalid_completed_snapshot_and_persists_correctable_answer
     )
 
     assert result.snapshot.state is OnboardingState.INCOMPLETE
-    assert result.snapshot.goal["target_distance_km"] == 50.0
+    assert result.snapshot.goal["target_distance_km"] == pytest.approx(50.0)
     assert any(
         diagnostic.field == "goal.technicality" and diagnostic.severity == "error"
         for diagnostic in result.diagnostics
     )
-    assert repository.upserts[0][1] == result.snapshot
+    ((_, persisted_snapshot),) = repository.upserts
+    assert persisted_snapshot == result.snapshot
 
 
 @pytest.mark.parametrize(
@@ -230,7 +233,8 @@ def test_save_demotes_noncanonical_completed_history_answers(field, value):
 
     assert result.snapshot.state is OnboardingState.INCOMPLETE
     assert any(diagnostic.field.endswith(field) for diagnostic in result.diagnostics)
-    assert repository.upserts[0][1] == result.snapshot
+    ((_, persisted_snapshot),) = repository.upserts
+    assert persisted_snapshot == result.snapshot
 
 
 @pytest.mark.parametrize(
@@ -276,9 +280,8 @@ def test_save_clears_hidden_restriction_detail_before_persisting_normalization()
     )
 
     assert result.snapshot.profile["restrictions"] == {"has_restrictions": False}
-    assert repository.upserts[0][1].profile["restrictions"] == {
-        "has_restrictions": False
-    }
+    ((_, persisted_snapshot),) = repository.upserts
+    assert persisted_snapshot.profile["restrictions"] == {"has_restrictions": False}
     assert (
         snapshot["profile"]["restrictions"]["detail"]
         == "This answer must not be retained"
@@ -287,15 +290,14 @@ def test_save_clears_hidden_restriction_detail_before_persisting_normalization()
 
 def test_read_rejects_corrupt_stored_snapshot_without_upserting_a_replacement():
     repository = RecordingRepository(stored={"contract_version": "2"})
+    user = UserContext("runner-1")
+    input_data = ReadOnboardingInput(validation_date=date(2026, 7, 13))
+    transactions = RecordingTransactions(repository)
 
     with pytest.raises(
         CorruptOnboardingData, match="^stored_onboarding_snapshot_is_invalid$"
     ):
-        read_onboarding(
-            UserContext("runner-1"),
-            ReadOnboardingInput(validation_date=date(2026, 7, 13)),
-            RecordingTransactions(repository),
-        )
+        read_onboarding(user, input_data, transactions)
 
     assert len(repository.read_calls) == 1
     assert repository.upserts == []
@@ -303,28 +305,25 @@ def test_read_rejects_corrupt_stored_snapshot_without_upserting_a_replacement():
 
 def test_read_raises_not_found_after_the_transaction_exits_cleanly():
     transactions = RecordingTransactions(RecordingRepository())
+    user = UserContext("runner-1")
+    input_data = ReadOnboardingInput(validation_date=date(2026, 7, 13))
 
     with pytest.raises(OnboardingNotFound, match="^onboarding_snapshot_not_found$"):
-        read_onboarding(
-            UserContext("runner-1"),
-            ReadOnboardingInput(validation_date=date(2026, 7, 13)),
-            transactions,
-        )
+        read_onboarding(user, input_data, transactions)
 
     assert len(transactions.calls) == 1
 
 
 def test_save_maps_transaction_failure_to_a_sanitized_persistence_error():
     raw_error = RuntimeError("RAW_PAYLOAD_MARKER runner-1")
+    user = UserContext("runner-1")
+    input_data = SaveOnboardingInput(
+        snapshot=_completed_snapshot(), validation_date=date(2026, 7, 13)
+    )
+    transactions = RecordingTransactions(RecordingRepository(), error=raw_error)
 
     with pytest.raises(OnboardingPersistenceUnavailable) as raised:
-        save_onboarding(
-            UserContext("runner-1"),
-            SaveOnboardingInput(
-                snapshot=_completed_snapshot(), validation_date=date(2026, 7, 13)
-            ),
-            RecordingTransactions(RecordingRepository(), error=raw_error),
-        )
+        save_onboarding(user, input_data, transactions)
 
     assert str(raised.value) == "service_unavailable"
     assert "RAW_PAYLOAD_MARKER" not in str(raised.value)
@@ -349,4 +348,5 @@ def test_save_uses_the_explicit_validation_date_for_date_demotion():
         and diagnostic.field == "goal.target_date"
         for diagnostic in result.diagnostics
     )
-    assert repository.upserts[0][1] == result.snapshot
+    ((_, persisted_snapshot),) = repository.upserts
+    assert persisted_snapshot == result.snapshot

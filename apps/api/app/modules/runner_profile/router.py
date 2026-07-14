@@ -27,6 +27,7 @@ from app.modules.runner_profile.use_cases import (
 )
 
 router = APIRouter(prefix="/runner-profile", tags=["runner-profile"])
+_SERVICE_UNAVAILABLE_DETAIL = "Service unavailable"
 
 
 def get_owner_transactions(request: Request) -> OwnerTransactionFactory:
@@ -35,7 +36,7 @@ def get_owner_transactions(request: Request) -> OwnerTransactionFactory:
         return request.app.state.onboarding_transactions
     except AttributeError:
         raise HTTPException(
-            status.HTTP_503_SERVICE_UNAVAILABLE, "Service unavailable"
+            status.HTTP_503_SERVICE_UNAVAILABLE, _SERVICE_UNAVAILABLE_DETAIL
         ) from None
 
 
@@ -90,7 +91,7 @@ def save_onboarding_route(
         ) from None
     except OnboardingPersistenceUnavailable:
         raise HTTPException(
-            status.HTTP_503_SERVICE_UNAVAILABLE, "Service unavailable"
+            status.HTTP_503_SERVICE_UNAVAILABLE, _SERVICE_UNAVAILABLE_DETAIL
         ) from None
     return _response(result)
 
@@ -119,6 +120,6 @@ def read_onboarding_route(
         ) from None
     except OnboardingPersistenceUnavailable:
         raise HTTPException(
-            status.HTTP_503_SERVICE_UNAVAILABLE, "Service unavailable"
+            status.HTTP_503_SERVICE_UNAVAILABLE, _SERVICE_UNAVAILABLE_DETAIL
         ) from None
     return _response(result)

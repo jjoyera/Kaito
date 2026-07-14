@@ -43,7 +43,7 @@ def test_upsert_is_atomic_owner_scoped_and_does_not_control_transactions():
 
     repository.upsert("owner-1", _snapshot())
 
-    statement, parameters = connection.calls[0]
+    ((statement, parameters),) = connection.calls
     assert "INSERT INTO onboarding_snapshots" in statement
     assert "ON CONFLICT (owner_id) DO UPDATE" in statement
     assert (
@@ -63,7 +63,7 @@ def test_read_returns_snapshot_without_transaction_control():
 
     assert repository.read("owner-1") == {"contract_version": "1"}
 
-    statement, parameters = connection.calls[0]
+    ((statement, parameters),) = connection.calls
     assert "WHERE owner_id = :owner_id" in statement
     assert parameters == {"owner_id": "owner-1"}
     assert connection.commits == connection.rollbacks == 0
