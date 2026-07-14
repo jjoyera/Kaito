@@ -2,6 +2,7 @@
 
 import json
 import secrets
+import shutil
 import subprocess
 from collections.abc import Callable, Generator
 from dataclasses import dataclass
@@ -16,6 +17,29 @@ from psycopg.sql import Identifier, Literal, SQL
 LOGIN_ROLE = "kaito_api_login"
 SAFE_ROLE = "NOLOGIN NOINHERIT NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB NOREPLICATION PASSWORD NULL"
 
+
+@pytest.mark.parametrize("available", ["npx.cmd", "npx"])
+def test_resolve_npx_uses_an_available_executable(
+    monkeypatch: pytest.MonkeyPatch, available: str
+) -> None:
+    monkeypatch.setattr(
+        shutil,
+        "which",
+        lambda command: available if command == available else None,
+    )
+
+    assert _resolve_npx() == available
+
+
+def test_resolve_npx_fails_closed_without_an_executable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(shutil, "which", lambda command: None)
+
+    with pytest.raises(RuntimeError, match="^local_supabase_cli_unavailable$"):
+        _resolve_npx()
+
+
 @dataclass(frozen=True)
 class RlsFixture:
     db_url: str
@@ -26,8 +50,30 @@ class RlsFixture:
     def __repr__(self) -> str:
         return "RlsFixture(redacted)"
 
+
+def _resolve_npx() -> str:
+    for executable in ("npx.cmd", "npx"):
+        resolved = shutil.which(executable)
+        if resolved:
+            return resolved
+    raise RuntimeError("local_supabase_cli_unavailable")
+
+
 def _status() -> dict[str, str]:
-    result = subprocess.run(["npx", "supabase@2.39.2", "--workdir", "../..", "status", "-o", "json"], check=True, capture_output=True, text=True)
+    result = subprocess.run(
+        [
+            _resolve_npx(),
+            "supabase@2.39.2",
+            "--workdir",
+            "../..",
+            "status",
+            "-o",
+            "json",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
     return json.loads(result.stdout)
 
 

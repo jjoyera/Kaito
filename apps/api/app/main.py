@@ -14,6 +14,8 @@ from app.core.database import (
     guard_connection,
 )
 from app.modules.auth.router import router as auth_router
+from app.modules.runner_profile.repository import SqlAlchemyOwnerTransactionFactory
+from app.modules.runner_profile.router import router as runner_profile_router
 from app.observability.sentry import init_sentry
 
 logger = logging.getLogger(__name__)
@@ -32,7 +34,7 @@ def _dispose_safely(candidate) -> None:
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI):
+async def lifespan(app: FastAPI):
     global database_settings, engine
     failed = False
     reported_failure = None
@@ -41,6 +43,9 @@ async def lifespan(_: FastAPI):
         engine = create_engine_for_url(database_settings.url)
         with engine.connect() as connection:
             guard_connection(connection, database_settings.expected_role)
+        app.state.onboarding_transactions = SqlAlchemyOwnerTransactionFactory(
+            engine, database_settings.expected_role
+        )
     except DatabaseConfigurationError as error:
         failed = True
         reported_failure = error
@@ -58,6 +63,8 @@ async def lifespan(_: FastAPI):
     try:
         yield
     finally:
+        if hasattr(app.state, "onboarding_transactions"):
+            del app.state.onboarding_transactions
         if engine:
             _dispose_safely(engine)
         engine = database_settings = None
@@ -66,6 +73,7 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title="Kaito API", lifespan=lifespan)
 
 app.include_router(auth_router)
+app.include_router(runner_profile_router)
 
 
 @app.exception_handler(AuthConfigError)

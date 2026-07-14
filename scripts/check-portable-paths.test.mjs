@@ -124,6 +124,7 @@ test("trusted git resolution accepts root-owned 0755 git for effective UID 0", (
 	]);
 	assert.equal(
 		resolveTrustedGit({
+			platform: "linux",
 			realpathSync: (path) => path,
 			statSync: (path) => stats.get(path),
 			getuid: () => 0,
@@ -140,6 +141,7 @@ test("trusted git resolution accepts fixed safe candidates and rejects writable 
 		["/", { isFile: () => false, mode: 0o40755, uid: 0 }],
 	]);
 	const deps = {
+		platform: "linux",
 		realpathSync: (path) => path,
 		statSync: (path) => stats.get(path),
 		getuid: () => 1000,

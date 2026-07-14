@@ -73,14 +73,14 @@ RLS is a separate enforcement layer, not a replacement for API authorization. Th
 
 ### Delivery Forecast
 
-The implementation is expected to exceed the 400 changed-line review budget once Supabase CLI setup, migrations, RLS policies, Docker-backed integration proof, API capability code, and tests are included. Session mode is auto-forecast with automatic chained PRs above the threshold.
+The current iteration is estimated at 1,180–1,800 changed lines and is approved as one PR on `feat/onboarding-persistence-21-pr2`, capped at 2,500 changed lines. The former 400-line rule applies only to historical PR 1 evidence and is not a current delivery constraint.
 
 Decision needed before apply: No
-Chained PRs recommended: Yes
+Chained PRs recommended: No
 400-line budget risk: High
 
-1. **Database foundation and RLS proof** — Supabase CLI configuration and migration, current-record schema, indexes/constraints, owner policies, Docker-backed local Supabase setup, and two-user isolation verification. This is security concentrated and independently reviewable.
-2. **Runner-profile API persistence** — SQLAlchemy runtime access, contract parser/validator integration, owner-scoped use cases and protected endpoints, draft/completion/demotion behavior, and fast unit/API tests.
+1. **Prepare and ground** — retain completed foundation, narrow staged value objects to onboarding, and defer `PlanApproach`.
+2. **Implement and verify** — strict RED/GREEN repository/use cases, protected API, then refactor and full verification in the single approved PR.
 
 The main review risk is false confidence: reviewing API owner filters without the executable two-user RLS proof, or treating a privileged backend connection as policy verification. A second risk is expanding #21 into UI behavior, audit history, or normalized analytics schema before a real consumer requires it.
 
