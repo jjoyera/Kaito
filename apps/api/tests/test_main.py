@@ -270,3 +270,15 @@ def test_app_imports_successfully_without_sentry_env(
     monkeypatch.delenv("ENABLE_DEBUG_SENTRY", raising=False)
     mod = reload_main()
     assert mod.app.title == "Kaito API"
+
+
+def test_app_composes_the_protected_onboarding_router(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The production app exposes the protected onboarding API route."""
+    clear_sentry_env(monkeypatch)
+    monkeypatch.delenv("ENABLE_DEBUG_SENTRY", raising=False)
+
+    paths = {route.path for route in reload_main().app.routes}
+
+    assert "/runner-profile/onboarding" in paths

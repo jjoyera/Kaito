@@ -14,12 +14,18 @@ sdd:
   mode: interactive
   strict_tdd: true
   strict_tdd_reason: >-
-    The scaffold now includes application source, package manifests, and CI
-    validation. TDD should become mandatory once concrete test runners are
-    introduced for implementation changes.
+    Concrete unit, integration, and E2E runners are configured and exercised
+    by CI, so implementation changes must follow RED-GREEN-REFACTOR.
   artifact_store: both
-  chained_pr_strategy: ask-always
-  review_budget_changed_lines: 600
+  persistence_mode: hybrid
+  chained_pr_strategy: single-pr-default
+  review_budget_changed_lines: 2500
+  delivery_constraints:
+      issue_21:
+        authored_changed_lines_per_pr: "<=2500"
+        precedence: >-
+          Maintainer-approved current Issue #21 PR 2 cap. Historical PR 1
+          retains its former 400-line evidence; it is not a current constraint.
   phase_rules:
     init:
       allowed_outputs:
@@ -53,23 +59,46 @@ sdd:
         specs.
 
 testing:
-  status: scaffold_validation
+  status: operational
+  strict_tdd_supported: true
   detected_runners:
+    - Node.js test runner via tsx
+    - pytest
     - eslint
     - next build
-    - Playwright E2E (Chromium smoke)
+    - Playwright E2E (Chromium development and production checks)
     - ruff
-    - FastAPI TestClient smoke check
+    - FastAPI TestClient
+    - local Supabase RLS integration test
   commands:
+    - pnpm test:portable-paths
+    - pnpm test:web-sentry-scrubbing
+    - pnpm test:web-auth
     - pnpm lint:web
     - pnpm build:web
     - pnpm test:web-e2e
     - cd apps/api && uv run ruff check .
-    - cd apps/api && uv run python -c "from app.main import app"
+    - cd apps/api && uv run pytest tests/ --ignore=tests/integration
+    - npx supabase@2.39.2 start && npx supabase@2.39.2 db reset --local && cd apps/api && uv run pytest tests/integration/test_onboarding_rls.py -q
+  layers:
+    unit: Node.js test runner via tsx and pytest
+    integration: FastAPI TestClient, SQLAlchemy tests, and local Supabase RLS proof
+    e2e: Playwright Chromium against development and production Next.js servers
+  coverage:
+    available: false
+    command: null
+  quality:
+    linter: pnpm lint:web and cd apps/api && uv run ruff check .
+    type_checker: pnpm build:web; pyright config exists but no executable is configured
+    formatter: not configured
+  local_preflight:
+    node: v22.22.2 (does not satisfy the declared >=24.18 <25 range)
+    pnpm: 11.0.0 via corepack; direct pnpm command is unavailable
+    uv: 0.9.24
   notes: >-
-    Web browser-smoke validation now runs through Playwright (Chromium) in both
-    local workflows and PR CI. Backend/API E2E and real auth-flow
-    coverage remain deferred until frontend/backend integration matures.
+    CI runs deterministic web contract tests, Chromium E2E checks, API tests,
+    and a Docker-backed local Supabase RLS integration proof. No coverage
+    reporter or threshold is configured.
 
 architecture:
   planned_repo_shape: monorepo

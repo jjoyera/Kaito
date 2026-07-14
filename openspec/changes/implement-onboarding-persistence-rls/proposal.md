@@ -10,7 +10,7 @@ Issue #21 makes the canonical onboarding contract resumable for authenticated ru
 - Persist one current JSONB snapshot per user while preserving `onboarding-contract` lifecycle semantics.
 - Add protected FastAPI save/read seams and SQLAlchemy CRUD in `runner_profile`; derive ownership only from verified `UserContext.user_id` and scope every repository operation.
 - Establish Supabase CLI schema migrations and owner-only RLS; prove two-user isolation against Docker-backed local Supabase in development and CI.
-- Expected delivery exceeds 400 changed lines; use an automatic two-PR chain: database/RLS proof, then dependent API persistence, each within budget.
+- Current delivery is one PR on `feat/onboarding-persistence-21-pr2`, capped at 2,500 changed lines by maintainer approval. Historical PR 1 remains separately recorded under its former 400-line budget.
 
 ### Out of Scope
 - Issue #22 UI or direct browser persistence.

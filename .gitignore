@@ -13,9 +13,10 @@
 /apps/api/.venv
 __pycache__/
 .ruff_cache/
-# Local Pi runtime state
 .atl/
 /apps/web/.env
 /apps/api/.env
 /supabase/.branches/
 /supabase/.temp/
+.codegraph/
+.gga
