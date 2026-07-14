@@ -88,7 +88,7 @@ def _validate_profile_blocks(profile: dict[str, Any]) -> None:
 
 
 def _validate_availability(profile: dict[str, Any]) -> None:
-    availability = _mapping(_mapping(profile.get("availability", {})) or {}).get(
+    availability = (_mapping(profile.get("availability", {})) or {}).get(
         "minutes_by_day"
     )
     if availability is not None:
@@ -147,9 +147,18 @@ def _validate_restrictions(profile: dict[str, Any]) -> None:
 
 
 def _validate_goal(goal: dict[str, Any]) -> None:
+    _validate_goal_measurements(goal)
+    _validate_goal_integers(goal)
+    _validate_goal_strings(goal)
+
+
+def _validate_goal_measurements(goal: dict[str, Any]) -> None:
     for key in ("target_distance_km", "positive_elevation_m"):
         if key in goal and not _is_number(goal[key], positive=True):
             raise ValueError("malformed_snapshot")
+
+
+def _validate_goal_integers(goal: dict[str, Any]) -> None:
     for key in ("obstacle_count", "target_loops"):
         if key in goal and (
             isinstance(goal[key], bool)
@@ -162,6 +171,9 @@ def _validate_goal(goal: dict[str, Any]) -> None:
         or not isinstance(goal["max_altitude_m"], int)
     ):
         raise ValueError("malformed_snapshot")
+
+
+def _validate_goal_strings(goal: dict[str, Any]) -> None:
     for key in ("modality", "technicality", "obstacle_difficulty"):
         if key in goal and not isinstance(goal[key], str):
             raise ValueError("malformed_snapshot")
@@ -249,7 +261,7 @@ def _add_required_diagnostics(
 def _add_availability_diagnostics(
     profile: JsonObject, diagnostics: list[Diagnostic]
 ) -> None:
-    availability = _mapping(_mapping(profile.get("availability", {})) or {}).get(
+    availability = (_mapping(profile.get("availability", {})) or {}).get(
         "minutes_by_day"
     )
     if availability is None:
