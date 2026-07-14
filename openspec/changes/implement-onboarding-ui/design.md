@@ -106,6 +106,19 @@ apps/web/features/onboarding/
     └── onboarding-api.ts           # thin fetch wrapper using shared privateFetch
 ```
 
+**Amendment during implementation**: `privateFetch` sanitized every non-401/503
+status (including 404) into one generic thrown error, which would have made a
+legitimate "no draft yet" GET 404 indistinguishable from a real backend
+failure. Rather than let the onboarding adapter duplicate token/URL-safety
+logic to inspect the status itself, `shared/adapters/private-fetch.ts` gained
+an opt-in `passthroughStatuses` option: callers that need to interpret a
+specific status themselves declare it, and every other status keeps the
+existing sanitize-and-throw behavior untouched. The change is additive (new
+optional parameter, default `[]`), so it does not weaken decision #2's "pure
+move, no behavior change" framing for existing callers — auth's own tests
+required zero modifications, and only `fetchOnboardingSnapshot`'s 404 case
+opts in.
+
 No `_infrastructure/` — onboarding has no provider of its own; it reuses the
 shared authenticated-fetch adapter and the existing Supabase session/token
 plumbing already owned by `features/auth`.

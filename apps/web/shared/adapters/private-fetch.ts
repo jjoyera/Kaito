@@ -11,16 +11,26 @@ export class PrivateApiError extends Error {
 	}
 }
 
-type PrivateFetchDependencies = {
+export type PrivateFetchDependencies = {
 	apiBaseUrl: string;
 	getAccessToken(): Promise<string | undefined>;
 	fetcher(input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
+};
+
+export type PrivateFetchOptions = {
+	/**
+	 * Statuses the caller expects and will interpret itself (e.g. 404 meaning
+	 * "no resource yet"). Passed-through responses are NOT sanitized — only
+	 * declare a status here when the caller does not need to read its body.
+	 */
+	passthroughStatuses?: readonly number[];
 };
 
 export async function privateFetch(
 	path: string,
 	init: RequestInit,
 	{ apiBaseUrl, getAccessToken, fetcher }: PrivateFetchDependencies,
+	{ passthroughStatuses = [] }: PrivateFetchOptions = {},
 ): Promise<Response> {
 	let target: URL;
 	try {
@@ -66,7 +76,7 @@ export async function privateFetch(
 	if (response.status === 503) {
 		throw new PrivateApiError("auth_unavailable");
 	}
-	if (!response.ok) {
+	if (!response.ok && !passthroughStatuses.includes(response.status)) {
 		throw new PrivateApiError("request_failed");
 	}
 	return response;

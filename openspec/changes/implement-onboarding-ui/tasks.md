@@ -28,12 +28,13 @@
 
 ## 3. Onboarding use-cases (TDD with fakes)
 
-- [ ] 3.1 **RED:** `_use-cases/load-onboarding-draft.test.ts` covers hydrate-from-stored-snapshot, blank-start on a 404, and a load-error state.
-- [ ] 3.2 **GREEN:** implement `_adapters/onboarding-api.ts` (GET) and `_use-cases/load-onboarding-draft.ts`.
-- [ ] 3.3 **RED:** `_use-cases/save-onboarding-step.test.ts` covers save-on-advance with `state: "incomplete"`, and a failed save preserving the runner's local answers.
-- [ ] 3.4 **GREEN:** implement the adapter's PUT call and `_use-cases/save-onboarding-step.ts`.
-- [ ] 3.5 **RED:** `_use-cases/complete-onboarding.test.ts` covers a successful `state: "completed"` submission and a demoted-with-diagnostics outcome.
-- [ ] 3.6 **GREEN:** implement `_use-cases/complete-onboarding.ts`.
+- [x] 3.0 **RED/GREEN (unplanned prerequisite):** discovered `privateFetch` sanitizes every non-401/503 status (including 404) into a generic thrown error, which would make a legitimate "no draft yet" GET 404 indistinguishable from a real failure. Added an opt-in `passthroughStatuses` option to `shared/adapters/private-fetch.ts` (additive; default behavior unchanged) with a new RED/GREEN test; full auth+shared regression stayed green (56/56) with zero modified assertions.
+- [x] 3.1 **RED:** `_use-cases/load-onboarding-draft.test.ts` covers hydrate-from-stored-snapshot, blank-start on a 404, and a load-error state. (Module-not-found failure confirmed before implementation.)
+- [x] 3.2 **GREEN:** implement `_adapters/onboarding-api.ts` (GET, using `passthroughStatuses: [404]`) and `_use-cases/load-onboarding-draft.ts`. (Adapter 5/5, use-case 4/4.)
+- [x] 3.3 **RED:** `_use-cases/save-onboarding-step.test.ts` covers save-on-advance with `state: "incomplete"`, and a failed save preserving the runner's local answers. (Module-not-found failure confirmed before implementation.)
+- [x] 3.4 **GREEN:** implement the adapter's PUT call and `_use-cases/save-onboarding-step.ts`. (3/3 passed.)
+- [x] 3.5 **RED:** `_use-cases/complete-onboarding.test.ts` covers a successful `state: "completed"` submission and a demoted-with-diagnostics outcome. (Module-not-found failure confirmed before implementation.)
+- [x] 3.6 **GREEN:** implement `_use-cases/complete-onboarding.ts`. (3/3 passed. Full regression: 111/111 across onboarding+auth+shared; `pnpm lint:web` and `tsc --noEmit` clean.)
 
 ## 4. Wizard components
 
