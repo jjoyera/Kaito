@@ -3,11 +3,12 @@ import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
 
 from app.core.auth.errors import AuthConfigError
-from app.core.config import get_database_settings
+from app.core.config import get_database_settings, get_web_settings
 from app.core.database import (
     DatabaseConfigurationError,
     create_engine_for_url,
@@ -71,6 +72,15 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Kaito API", lifespan=lifespan)
+
+web_settings = get_web_settings()
+if web_settings.allowed_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(web_settings.allowed_origins),
+        allow_methods=["GET", "PUT"],
+        allow_headers=["authorization", "content-type"],
+    )
 
 app.include_router(auth_router)
 app.include_router(runner_profile_router)

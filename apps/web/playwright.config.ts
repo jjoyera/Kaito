@@ -31,6 +31,7 @@ export default defineConfig({
 			KAITO_E2E_AUTH_ADAPTER: "1",
 			KAITO_E2E_AUTH_SECRET: e2eAuthSecret,
 			NEXT_PUBLIC_KAITO_TEST_AUTH_ADAPTER: "1",
+			NEXT_PUBLIC_KAITO_API_URL: "http://127.0.0.1:9999",
 			NEXT_PUBLIC_SENTRY_DSN: "",
 		},
 		reuseExistingServer: false,

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { OnboardingWizard } from "../../../features/onboarding/_components/onboarding-wizard";
 import { getServerSessionResult } from "../../../features/auth/_infrastructure/supabase/server";
 
 export default async function OnboardingPage() {
@@ -15,9 +16,9 @@ export default async function OnboardingPage() {
 	}
 
 	return (
-		<main>
-			<h1>Onboarding process</h1>
-			<p>Welcome to your Kaito onboarding area.</p>
+		<main className="onboarding-page">
+			<h1>Cuéntanos tu punto de partida</h1>
+			<OnboardingWizard />
 		</main>
 	);
 }

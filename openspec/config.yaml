@@ -26,6 +26,20 @@ sdd:
         precedence: >-
           Maintainer-approved current Issue #21 PR 2 cap. Historical PR 1
           retains its former 400-line evidence; it is not a current constraint.
+      issue_22:
+        authored_changed_lines_per_pr: "<=4500"
+        precedence: >-
+          Maintainer-approved size:exception for Issue #22 PR 1
+          (feat/onboarding-ui-22-pr1), granted 2026-07-15. The change's own
+          proposal.md forecast (900-1,400 lines) undercounted the domain
+          validation layer, its tests, the unplanned CORS/access-token
+          prerequisites, and full E2E coverage. Actual authored total: ~4,335
+          lines (source ~2,021, unit tests ~965, E2E ~416, OpenSpec SDD docs
+          ~608, styles/config ~325). Approved as a single PR rather than
+          split because the domain, component, and use-case layers are
+          tightly interdependent and were already built and verified
+          together; splitting after the fact would not reduce reviewable
+          risk, only diff count.
   phase_rules:
     init:
       allowed_outputs:

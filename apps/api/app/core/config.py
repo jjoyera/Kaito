@@ -27,6 +27,11 @@ class AuthSettings:
         jwt_audience:           Expected token audience. None disables audience check.
         jwt_issuer:             Expected token issuer. None disables issuer check.
         jwks_cache_ttl_seconds: JWKS in-process cache lifetime in seconds.
+        local_jwt_secret:       LOCAL DEV ONLY (from SUPABASE_LOCAL_JWT_SECRET).
+                                 Selects the HS256 verifier for local Supabase
+                                 CLI stacks, which sign tokens with a shared
+                                 secret instead of publishing JWKS. Ignored
+                                 whenever jwks_url is set — JWKS always wins.
     """
 
     jwks_url: str
@@ -34,12 +39,24 @@ class AuthSettings:
     jwt_audience: str | None = "authenticated"
     jwt_issuer: str | None = None
     jwks_cache_ttl_seconds: int = DEFAULT_JWKS_CACHE_TTL_SECONDS
+    local_jwt_secret: str | None = None
 
 
 @dataclass(frozen=True)
 class DatabaseSettings:
     url: str
     expected_role: str
+
+
+@dataclass(frozen=True)
+class WebSettings:
+    """Browser origins allowed to call this API directly (CORS).
+
+    Empty by default (fail closed): no cross-origin browser access until
+    KAITO_WEB_ORIGIN is explicitly configured.
+    """
+
+    allowed_origins: tuple[str, ...] = ()
 
 
 def get_auth_settings() -> AuthSettings:
@@ -76,12 +93,16 @@ def get_auth_settings() -> AuthSettings:
         parsed_ttl = DEFAULT_JWKS_CACHE_TTL_SECONDS
     ttl = parsed_ttl if parsed_ttl > 0 else DEFAULT_JWKS_CACHE_TTL_SECONDS
 
+    raw_local_secret = (os.getenv("SUPABASE_LOCAL_JWT_SECRET") or "").strip()
+    local_jwt_secret: str | None = raw_local_secret if raw_local_secret else None
+
     return AuthSettings(
         jwks_url=jwks_url,
         supabase_url=supabase_url,
         jwt_audience=audience,
         jwt_issuer=issuer,
         jwks_cache_ttl_seconds=ttl,
+        local_jwt_secret=local_jwt_secret,
     )
 
 
@@ -91,3 +112,14 @@ def get_database_settings() -> DatabaseSettings:
     if not url or role != "kaito_api_login":
         raise ValueError("database_unavailable")
     return DatabaseSettings(url=url, expected_role=role)
+
+
+def get_web_settings() -> WebSettings:
+    """Read the CORS-allowed web origin(s) from KAITO_WEB_ORIGIN.
+
+    Accepts a comma-separated list. Leave unset to keep browser access
+    fully disabled (fail closed).
+    """
+    raw = os.getenv("KAITO_WEB_ORIGIN") or ""
+    origins = tuple(origin.strip() for origin in raw.split(",") if origin.strip())
+    return WebSettings(allowed_origins=origins)

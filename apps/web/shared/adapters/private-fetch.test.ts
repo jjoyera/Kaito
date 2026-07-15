@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";
+import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 
 import { PrivateApiError, privateFetch } from "./private-fetch";
@@ -153,6 +153,36 @@ describe("privateFetch", () => {
 					!error.message.includes(backendDetail),
 			);
 		}
+	});
+
+	it("passes through a caller-declared expected status without throwing or altering the sanitize-by-default behavior", async () => {
+		const notFoundResponse = await privateFetch(
+			"/runner-profile/onboarding",
+			{},
+			{
+				getAccessToken: async () => "token",
+				fetcher: async () => new Response("secret detail", { status: 404 }),
+				apiBaseUrl: "https://api.kaito.test",
+			},
+			{ passthroughStatuses: [404] },
+		);
+		assert.equal(notFoundResponse.status, 404);
+
+		await assert.rejects(
+			() =>
+				privateFetch(
+					"/runner-profile/onboarding",
+					{},
+					{
+						getAccessToken: async () => "token",
+						fetcher: async () => new Response("secret detail", { status: 500 }),
+						apiBaseUrl: "https://api.kaito.test",
+					},
+					{ passthroughStatuses: [404] },
+				),
+			(error: unknown) =>
+				error instanceof PrivateApiError && error.kind === "request_failed",
+		);
 	});
 
 	it("does not issue a request without a token and maps 401 and 503 distinctly", async () => {
