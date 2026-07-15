@@ -22,7 +22,7 @@ import {
 	type PriorHistoryDraft,
 	type RestrictionsDraft,
 } from "../_domain/step-validation";
-import { ONBOARDING_STEPS, type FieldPath } from "../_domain/steps";
+import { ONBOARDING_STEPS } from "../_domain/steps";
 import { completeOnboarding } from "../_use-cases/complete-onboarding";
 import { loadOnboardingDraft } from "../_use-cases/load-onboarding-draft";
 import { saveOnboardingStep } from "../_use-cases/save-onboarding-step";
@@ -36,7 +36,7 @@ import { StepNavigator, type StepStatus } from "./step-navigator";
 
 type Phase = "loading" | "ready" | "load_error" | "completed";
 type SaveStatus = "idle" | "saving" | "save_error";
-type DiagnosticsByField = Partial<Record<FieldPath, OnboardingDiagnostic>>;
+type DiagnosticsByField = Partial<Record<string, OnboardingDiagnostic>>;
 
 function normalizeDraft(draft: OnboardingSnapshotDraft): OnboardingSnapshotDraft {
 	return {
@@ -286,6 +286,12 @@ export function OnboardingWizard() {
 
 	const currentStep = ONBOARDING_STEPS[stepIndex];
 	const isLastStep = stepIndex === ONBOARDING_STEPS.length - 1;
+	let nextButtonLabel = "Siguiente";
+	if (saveStatus === "saving") {
+		nextButtonLabel = "Guardando…";
+	} else if (isLastStep) {
+		nextButtonLabel = "Completar";
+	}
 
 	return (
 		<div className="onboarding-wizard">
@@ -339,11 +345,7 @@ export function OnboardingWizard() {
 				disabled={saveStatus === "saving"}
 				onClick={handleNext}
 			>
-				{saveStatus === "saving"
-					? "Guardando…"
-					: isLastStep
-						? "Completar"
-						: "Siguiente"}
+				{nextButtonLabel}
 			</button>
 		</div>
 	);

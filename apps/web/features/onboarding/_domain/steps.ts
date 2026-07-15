@@ -5,11 +5,9 @@ export type StepId =
 	| "availability"
 	| "restrictions";
 
-export type FieldPath = string;
-
 export type StepDefinition = {
 	id: StepId;
-	fields: readonly FieldPath[];
+	fields: readonly string[];
 };
 
 export const ONBOARDING_STEPS: readonly StepDefinition[] = [

@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";
+import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 
 import type { PrivateFetchDependencies } from "../../../shared/adapters/private-fetch";
@@ -16,12 +16,12 @@ function dependencies(
 
 describe("saveOnboardingStep", () => {
 	it("persists the accumulated snapshot with state incomplete on advance", async () => {
-		let capturedBody: unknown;
+		let capturedBody: string | undefined;
 		const outcome = await saveOnboardingStep(
 			{ profile: { restrictions: { has_restrictions: false } }, goal: { modality: "trail" } },
 			"2026-07-13",
 			dependencies(async (_input, init) => {
-				capturedBody = JSON.parse(String(init?.body));
+				capturedBody = String(init?.body);
 				return new Response(
 					JSON.stringify({
 						snapshot: {
@@ -38,8 +38,16 @@ describe("saveOnboardingStep", () => {
 		);
 
 		assert.equal(
-			(capturedBody as { snapshot: { state: string } }).snapshot.state,
-			"incomplete",
+			capturedBody,
+			JSON.stringify({
+				snapshot: {
+					contract_version: "1",
+					state: "incomplete",
+					profile: { restrictions: { has_restrictions: false } },
+					goal: { modality: "trail" },
+				},
+				validation_date: "2026-07-13",
+			}),
 		);
 		assert.equal(outcome.status, "saved");
 	});

@@ -9,11 +9,11 @@ import { CheckboxGroup } from "./checkbox-group";
 import { fieldErrorMessage } from "./field-messages";
 import { NumberField } from "./number-field";
 
-type PriorHistoryStepProps = {
+type PriorHistoryStepProps = Readonly<{
 	value: PriorHistoryDraft;
 	errors: FieldErrors;
 	onChange: (patch: Partial<PriorHistoryDraft>) => void;
-};
+}>;
 
 const RACE_COUNT_LABELS: Record<RaceCountRange, string> = {
 	none: "Ninguna",

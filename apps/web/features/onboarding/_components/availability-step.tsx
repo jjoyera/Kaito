@@ -4,11 +4,11 @@ import type {
 	WeekDay,
 } from "../_domain/step-validation";
 
-type AvailabilityStepProps = {
+type AvailabilityStepProps = Readonly<{
 	value: AvailabilityDraft;
 	errors: FieldErrors;
 	onChange: (patch: Partial<AvailabilityDraft>) => void;
-};
+}>;
 
 const WEEK_DAY_LABELS: Record<WeekDay, string> = {
 	monday: "Lunes",

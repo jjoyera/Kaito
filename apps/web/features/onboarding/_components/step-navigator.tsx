@@ -2,11 +2,11 @@ import { ONBOARDING_STEPS, type StepId } from "../_domain/steps";
 
 export type StepStatus = "complete" | "incomplete" | "not_reached";
 
-type StepNavigatorProps = {
+type StepNavigatorProps = Readonly<{
 	currentStepIndex: number;
 	statuses: readonly StepStatus[];
 	onJump: (index: number) => void;
-};
+}>;
 
 const STEP_LABELS: Record<StepId, string> = {
 	goal: "Objetivo",

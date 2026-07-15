@@ -1,4 +1,4 @@
-type NumberFieldProps = {
+type NumberFieldProps = Readonly<{
 	id: string;
 	label: string;
 	value: number | undefined;
@@ -6,7 +6,7 @@ type NumberFieldProps = {
 	step?: number;
 	min?: number;
 	onChange: (next: number | undefined) => void;
-};
+}>;
 
 export function NumberField({
 	id,

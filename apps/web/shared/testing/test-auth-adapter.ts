@@ -1,4 +1,4 @@
-const LOOPBACK_HOSTNAMES = ["localhost", "127.0.0.1", "::1"];
+const LOOPBACK_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1"]);
 
 export function isTestAuthAdapterEnabled(
 	hostname: string | undefined,
@@ -9,7 +9,7 @@ export function isTestAuthAdapterEnabled(
 		environment !== "production" &&
 		flag === "1" &&
 		hostname !== undefined &&
-		LOOPBACK_HOSTNAMES.includes(hostname)
+		LOOPBACK_HOSTNAMES.has(hostname)
 	);
 }
 

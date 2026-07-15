@@ -2,11 +2,11 @@ import type { BaselineDraft, FieldErrors } from "../_domain/step-validation";
 import { fieldErrorMessage } from "./field-messages";
 import { NumberField } from "./number-field";
 
-type BaselineStepProps = {
+type BaselineStepProps = Readonly<{
 	value: BaselineDraft;
 	errors: FieldErrors;
 	onChange: (patch: Partial<BaselineDraft>) => void;
-};
+}>;
 
 export function BaselineStep({ value, errors, onChange }: BaselineStepProps) {
 	return (

@@ -1,4 +1,4 @@
-import type { FieldPath, StepId } from "./steps";
+import type { StepId } from "./steps";
 
 export type Modality = "trail" | "ultra_trail" | "ocr" | "backyard";
 export type Technicality = "low" | "medium" | "high";
@@ -71,29 +71,29 @@ export type FieldErrorCode =
 	| "out_of_range"
 	| "invalid_length";
 
-export type FieldErrors = Partial<Record<FieldPath, FieldErrorCode>>;
+export type FieldErrors = Partial<Record<string, FieldErrorCode>>;
 
-const MODALITIES: readonly Modality[] = [
+const MODALITIES = new Set<Modality>([
 	"trail",
 	"ultra_trail",
 	"ocr",
 	"backyard",
-];
-const TECHNICALITIES: readonly Technicality[] = ["low", "medium", "high"];
-const RACE_COUNT_RANGES: readonly RaceCountRange[] = [
+]);
+const TECHNICALITIES = new Set<Technicality>(["low", "medium", "high"]);
+const RACE_COUNT_RANGES = new Set<RaceCountRange>([
 	"none",
 	"one_to_three",
 	"four_to_ten",
 	"eleven_to_twenty_five",
 	"twenty_six_plus",
-];
-const TERRAINS: readonly PracticedTerrain[] = [
+]);
+const TERRAINS = new Set<PracticedTerrain>([
 	"road",
 	"trail",
 	"mountain",
 	"mixed",
-];
-const WEEK_DAYS: readonly WeekDay[] = [
+]);
+const WEEK_DAYS = new Set<WeekDay>([
 	"monday",
 	"tuesday",
 	"wednesday",
@@ -101,10 +101,10 @@ const WEEK_DAYS: readonly WeekDay[] = [
 	"friday",
 	"saturday",
 	"sunday",
-];
+]);
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
-const CONDITIONAL_GOAL_FIELDS: Record<Modality, readonly FieldPath[]> = {
+const CONDITIONAL_GOAL_FIELDS: Record<Modality, readonly string[]> = {
 	trail: [
 		"goal.target_distance_km",
 		"goal.positive_elevation_m",
@@ -146,7 +146,7 @@ export function validateGoalStep(goal: GoalDraft): FieldErrors {
 
 	if (goal.modality === undefined) {
 		errors["goal.modality"] = "required";
-	} else if (!MODALITIES.includes(goal.modality)) {
+	} else if (!MODALITIES.has(goal.modality)) {
 		errors["goal.modality"] = "invalid_type";
 	}
 
@@ -164,13 +164,13 @@ export function validateGoalStep(goal: GoalDraft): FieldErrors {
 	}
 	if (
 		goal.obstacle_difficulty !== undefined &&
-		!TECHNICALITIES.includes(goal.obstacle_difficulty)
+		!TECHNICALITIES.has(goal.obstacle_difficulty)
 	) {
 		errors["goal.obstacle_difficulty"] = "invalid_type";
 	}
 
 	const conditionalFields =
-		goal.modality && MODALITIES.includes(goal.modality)
+		goal.modality && MODALITIES.has(goal.modality)
 			? CONDITIONAL_GOAL_FIELDS[goal.modality]
 			: [];
 
@@ -182,7 +182,7 @@ export function validateGoalStep(goal: GoalDraft): FieldErrors {
 }
 
 function applyConditionalGoalCheck(
-	field: FieldPath,
+	field: string,
 	goal: GoalDraft,
 	errors: FieldErrors,
 ): void {
@@ -199,7 +199,7 @@ function applyConditionalGoalCheck(
 			return;
 		case "goal.technicality":
 			if (goal.technicality === undefined) errors[field] = "required";
-			else if (!TECHNICALITIES.includes(goal.technicality))
+			else if (!TECHNICALITIES.has(goal.technicality))
 				errors[field] = "invalid_type";
 			return;
 		case "goal.obstacle_count":
@@ -233,7 +233,7 @@ export function validatePriorHistoryStep(
 	if (priorHistory.completed_race_count_range === undefined) {
 		errors["profile.prior_history.completed_race_count_range"] = "required";
 	} else if (
-		!RACE_COUNT_RANGES.includes(priorHistory.completed_race_count_range)
+		!RACE_COUNT_RANGES.has(priorHistory.completed_race_count_range)
 	) {
 		errors["profile.prior_history.completed_race_count_range"] =
 			"invalid_type";
@@ -253,7 +253,7 @@ export function validatePriorHistoryStep(
 		errors["profile.prior_history.practiced_modalities"] = "required";
 	} else if (
 		!priorHistory.practiced_modalities.every((item) =>
-			MODALITIES.includes(item),
+			MODALITIES.has(item),
 		)
 	) {
 		errors["profile.prior_history.practiced_modalities"] = "invalid_type";
@@ -262,7 +262,7 @@ export function validatePriorHistoryStep(
 	if (priorHistory.practiced_terrain === undefined) {
 		errors["profile.prior_history.practiced_terrain"] = "required";
 	} else if (
-		!priorHistory.practiced_terrain.every((item) => TERRAINS.includes(item))
+		!priorHistory.practiced_terrain.every((item) => TERRAINS.has(item))
 	) {
 		errors["profile.prior_history.practiced_terrain"] = "invalid_type";
 	}
@@ -324,7 +324,7 @@ export function validateAvailabilityStep(
 	>;
 	const hasInvalidEntry = entries.some(
 		([day, minutes]) =>
-			!WEEK_DAYS.includes(day as WeekDay) ||
+			!WEEK_DAYS.has(day as WeekDay) ||
 			minutes === null ||
 			minutes === undefined ||
 			!Number.isInteger(minutes) ||
@@ -362,13 +362,15 @@ export function validateRestrictionsStep(
 		return errors;
 	}
 
-	if (restrictions.has_restrictions) {
-		const detail = restrictions.detail?.trim() ?? "";
-		if (detail.length === 0) {
-			errors["profile.restrictions.detail"] = "required";
-		} else if (detail.length > 500) {
-			errors["profile.restrictions.detail"] = "invalid_length";
-		}
+	if (!restrictions.has_restrictions) {
+		return errors;
+	}
+
+	const detail = restrictions.detail?.trim() ?? "";
+	if (detail.length === 0) {
+		errors["profile.restrictions.detail"] = "required";
+	} else if (detail.length > 500) {
+		errors["profile.restrictions.detail"] = "invalid_length";
 	}
 
 	return errors;

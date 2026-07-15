@@ -4,11 +4,11 @@ import type {
 } from "../_domain/step-validation";
 import { fieldErrorMessage } from "./field-messages";
 
-type RestrictionsStepProps = {
+type RestrictionsStepProps = Readonly<{
 	value: RestrictionsDraft;
 	errors: FieldErrors;
 	onChange: (patch: Partial<RestrictionsDraft>) => void;
-};
+}>;
 
 export function RestrictionsStep({
 	value,
@@ -31,7 +31,7 @@ export function RestrictionsStep({
 						name="has-restrictions"
 						checked={hasRestrictions === true}
 						onChange={() => onChange({ has_restrictions: true })}
-					/>
+					/>{" "}
 					Sí
 				</label>
 				<label>
@@ -42,7 +42,7 @@ export function RestrictionsStep({
 						onChange={() =>
 							onChange({ has_restrictions: false, detail: undefined })
 						}
-					/>
+					/>{" "}
 					No
 				</label>
 				{errors["profile.restrictions.has_restrictions"] ? (

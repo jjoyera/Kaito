@@ -1,10 +1,10 @@
-type CheckboxGroupProps<T extends string> = {
+type CheckboxGroupProps<T extends string> = Readonly<{
 	legend: string;
 	options: readonly { value: T; label: string }[];
 	selected: T[] | undefined;
 	error?: string;
 	onChange: (next: T[]) => void;
-};
+}>;
 
 export function CheckboxGroup<T extends string>({
 	legend,

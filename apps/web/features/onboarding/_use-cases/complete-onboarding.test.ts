@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";
+import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 
 import type { PrivateFetchDependencies } from "../../../shared/adapters/private-fetch";
@@ -46,12 +46,12 @@ const completeSnapshot = {
 
 describe("completeOnboarding", () => {
 	it("submits state=completed and reports success when it stays completed", async () => {
-		let capturedBody: unknown;
+		let capturedBody: string | undefined;
 		const outcome = await completeOnboarding(
 			completeSnapshot,
 			"2026-07-13",
 			dependencies(async (_input, init) => {
-				capturedBody = JSON.parse(String(init?.body));
+				capturedBody = String(init?.body);
 				return new Response(
 					JSON.stringify({
 						snapshot: { contract_version: "1", state: "completed", ...completeSnapshot },
@@ -63,8 +63,15 @@ describe("completeOnboarding", () => {
 		);
 
 		assert.equal(
-			(capturedBody as { snapshot: { state: string } }).snapshot.state,
-			"completed",
+			capturedBody,
+			JSON.stringify({
+				snapshot: {
+					contract_version: "1",
+					state: "completed",
+					...completeSnapshot,
+				},
+				validation_date: "2026-07-13",
+			}),
 		);
 		assert.equal(outcome.status, "completed");
 	});

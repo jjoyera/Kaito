@@ -7,11 +7,11 @@ import type {
 import { fieldErrorMessage } from "./field-messages";
 import { NumberField } from "./number-field";
 
-type GoalStepProps = {
+type GoalStepProps = Readonly<{
 	value: GoalDraft;
 	errors: FieldErrors;
 	onChange: (patch: Partial<GoalDraft>) => void;
-};
+}>;
 
 const MODALITY_LABELS: Record<Modality, string> = {
 	trail: "Trail",

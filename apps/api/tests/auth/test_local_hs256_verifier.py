@@ -47,8 +47,10 @@ def test_verifies_a_valid_hs256_token():
 
 def test_rejects_a_token_signed_with_the_wrong_secret():
     verifier = LocalHs256JwtVerifier(_settings())
+    wrong_signing_key = f"{_SECRET}-alternate"
+    token = _token(secret=wrong_signing_key)
     with pytest.raises(AuthError):
-        verifier.verify(_token(secret="a-completely-different-secret-value"))
+        verifier.verify(token)
 
 
 def test_rejects_a_token_missing_subject():
