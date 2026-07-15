@@ -4,10 +4,11 @@
 
 | Field | Value |
 |---|---|
-| Estimated changed lines | 900-1,400 |
-| Review budget | <=2,500 (default single-PR, no size exception requested) |
-| Chained PRs recommended | No |
-| Suggested split | One PR on a new `feat/onboarding-ui-22-pr1` branch |
+| Estimated changed lines | 900-1,400 (initial forecast; undercounted, see actual below) |
+| Actual authored changed lines | ~4,335 (source ~2,021, unit tests ~965, E2E ~416, OpenSpec docs ~608, styles/config ~325) |
+| Review budget | `<=4,500`, maintainer-approved `size:exception` granted 2026-07-15 (see `openspec/config.yaml` `delivery_constraints.issue_22`); default budget was `<=2,500` |
+| Chained PRs recommended | No — approved as a single PR; domain/component/use-case layers are tightly interdependent |
+| Suggested split | One PR on `feat/onboarding-ui-22-pr1` |
 
 ## 1. Shared adapter promotion
 
@@ -58,5 +59,7 @@
 
 ## 6. E2E and verification
 
-- [ ] 6.1 Add Playwright coverage for resume-from-draft hydration, save-on-advance persistence, per-step completion gating, direct step-navigator jumps without data loss, conditional field clearing, completion success, and completion demotion with diagnostics — mocking `GET`/`PUT /runner-profile/onboarding` at the network layer.
-- [ ] 6.2 **VERIFY:** run `pnpm test:web-auth` (moved-adapter regression), the new onboarding unit suites, `pnpm test:web-e2e`, `pnpm lint:web`, `pnpm build:web`, `pnpm test:portable-paths`, `git diff --check`, and compute the final authored-line count against the 2,500 budget.
+- [x] 6.1 Add Playwright coverage for resume-from-draft hydration, save-on-advance persistence, per-step completion gating, direct step-navigator jumps without data loss, conditional field clearing, completion success, and completion demotion with diagnostics — mocking `GET`/`PUT /runner-profile/onboarding` at the network layer. (`e2e/onboarding.spec.ts`, 7/7 passed.) Added `NEXT_PUBLIC_KAITO_API_URL` to `playwright.config.ts`'s webServer env so the mocked origin is routable.
+- [x] 6.1b **Regression found and fixed:** the Phase 4 route-composition change replaced the placeholder heading ("Onboarding process") that 7 existing assertions across `session-flow.spec.ts` and `login.spec.ts` depended on. Updated them to the real heading ("Cuéntanos tu punto de partida"); all 24 pre-existing E2E tests pass again.
+- [x] 6.1c **Unplanned prerequisite (CI coverage gap found):** `pnpm test:web-auth`'s glob never covered `features/onboarding/**`, so none of Phase 2-3's 114 unit tests would have run in CI. Added `test:onboarding`/`test:web-onboarding` scripts and a CI step; also updated the root README (env vars, new test command, `/onboarding` capability description) per this project's SDD sync rule.
+- [x] 6.2 **VERIFY:** `pnpm test:web-auth` 64/64, `pnpm test:web-onboarding` 55/55, `pnpm test:web-e2e` 25/25 (24 dev + 1 production), `pnpm lint:web` clean, `pnpm build:web` clean (including production `tsc`), `pnpm test:portable-paths` 25/25, `git diff --check` clean. Reverted an incidentally-regenerated `next-env.d.ts` (auto-generated, not meant to be edited). Final authored-line count: **~4,335**, exceeding the default 2,500 budget — see the maintainer-approved `size:exception` in `openspec/config.yaml` (`delivery_constraints.issue_22`) and the updated forecast table above.

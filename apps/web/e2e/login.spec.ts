@@ -172,7 +172,7 @@ test.describe("/login", () => {
 
 		await expect(page).toHaveURL("/onboarding");
 		await expect(
-			page.getByRole("heading", { name: "Onboarding process" }),
+			page.getByRole("heading", { name: "Cuéntanos tu punto de partida" }),
 		).toBeVisible();
 	});
 

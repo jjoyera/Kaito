@@ -16,8 +16,8 @@ funcional de acceso para usuarios finales.
 
 | Área | Estado |
 | --- | --- |
-| Web | Next.js App Router con home scaffold y pantalla `/login`. |
-| API | FastAPI con health check y verificación JWT Supabase vía JWKS. |
+| Web | Next.js App Router con home scaffold, pantalla `/login` y wizard `/onboarding`. |
+| API | FastAPI con health check, verificación JWT Supabase vía JWKS y persistencia de onboarding. |
 | Auth | Backend protegido con `GET /auth/me`; `/login` auth-aware y `/onboarding` privado con sesión Supabase. |
 | Marca | Paleta y assets iniciales bajo `docs/` y `apps/web/public/`. |
 | SDD | Cambios guiados por OpenSpec en `openspec/changes/`. |
@@ -104,6 +104,13 @@ para el inicio de sesión y las rutas privadas. Son configuración pública de S
 no secretos: no añadas `SUPABASE_SERVICE_ROLE_KEY`, tokens ni secretos JWT a la web.
 En producción, despliega detrás de HTTPS: el proxy de sesión fuerza cookies `Secure`.
 
+El onboarding autenticado (`/onboarding`) llama al API directamente desde el
+navegador, así que además necesitás `NEXT_PUBLIC_KAITO_API_URL` en la web
+(`http://localhost:8000` en local) y `KAITO_WEB_ORIGIN` en el API
+(`http://localhost:3000` en local). `KAITO_WEB_ORIGIN` está vacía por defecto
+(fail-closed): sin configurarla, el API no habilita CORS y el navegador no
+puede llamarlo entre orígenes distintos.
+
 La verificación JWT usa las Signing Keys/JWKS de Supabase mediante una URL
 explícita:
 
@@ -143,6 +150,7 @@ pnpm lint:web
 pnpm build:web
 pnpm test:web-e2e
 pnpm test:web-auth
+pnpm test:web-onboarding
 # Si el puerto 3000 está ocupado:
 KAITO_PLAYWRIGHT_PORT=3001 pnpm test:web-e2e
 ```
@@ -158,6 +166,11 @@ uv run pytest
 `pnpm test:web-auth` cubre los contratos frontend de login: validación local,
 normalización de resultados de auth y handoff autenticado centralizado. No requiere
 cuentas reales de Supabase.
+
+`pnpm test:web-onboarding` cubre el wizard de onboarding: pasos y validación
+por paso, limpieza condicional de campos, mapeo de diagnósticos del backend a
+pasos, y los casos de uso de carga/guardado/completado. Tampoco requiere
+cuentas reales de Supabase ni el API corriendo.
 
 ## Arquitectura frontend
 
@@ -188,18 +201,23 @@ openspec/              Artefactos SDD/OpenSpec.
 - Pantalla `/login` auth-aware para usuarios existentes, con validación local,
   estados de carga y errores seguros; el handoff autenticado usa una URL local
   validada o `/onboarding`.
-- Placeholder privado `/onboarding`, protegido por proxy y comprobación de servidor;
-  no implementa ningún flujo ni persistencia de onboarding.
 - Contratos frontend de login para validar email/password, mapear resultados de
   proveedor a estados propios de Kaito y centralizar el handoff autenticado.
-- Validación básica: lint/build de web, tests unitarios auth, E2E Playwright de
-  login (incluido un chequeo de producción) y lint/smoke/tests de API.
+- Wizard privado `/onboarding` (protegido por proxy y comprobación de servidor)
+  con los 5 pasos del contrato canónico (objetivo, historial previo, últimas 4
+  semanas, disponibilidad, restricciones): resume desde un borrador guardado,
+  valida cada paso antes de avanzar, guarda al avanzar, navegación directa
+  entre pasos ya alcanzados sin perder respuestas, y maneja la degradación a
+  `incomplete` que puede devolver el backend al completar.
+- Validación básica: lint/build de web, tests unitarios auth y onboarding, E2E
+  Playwright de login y onboarding (incluido un chequeo de producción del
+  login) y lint/smoke/tests de API, incluida la prueba RLS de dos usuarios.
 - Paquete `@kaito/api-client` reservado para un futuro cliente generado; hoy no
   exporta código ni contratos de producto.
 
 Todavía no hay signup, password reset, magic links, social auth, demo access,
-onboarding, dashboard, Strava, IA/RAG, planes de entrenamiento reales, base de
-datos de dominio ni despliegue/CD.
+selección de enfoque de plan, dashboard, Strava, IA/RAG, planes de
+entrenamiento reales ni despliegue/CD.
 
 ## Flujo SDD/OpenSpec
 

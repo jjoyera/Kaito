@@ -49,6 +49,9 @@ jobs:
       - name: Test web auth contracts
         run: pnpm test:web-auth
 
+      - name: Test web onboarding contracts
+        run: pnpm test:web-onboarding
+
       - name: Build web scaffold
         run: pnpm build:web
 

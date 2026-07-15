@@ -17,7 +17,7 @@ test.describe("session route flow", () => {
 			/\/login\?returnTo=%2Fonboarding%3Fsource%3Dinvite$/,
 		);
 		await expect(
-			page.getByRole("heading", { name: /onboarding process/i }),
+			page.getByRole("heading", { name: /cuéntanos tu punto de partida/i }),
 		).toHaveCount(0);
 		await expect(page.getByText(/sesión caducó/i)).toHaveCount(0);
 	});
@@ -41,7 +41,7 @@ test.describe("session route flow", () => {
 			page.getByText(/no está disponible temporalmente/i),
 		).toBeVisible();
 		await expect(
-			page.getByRole("heading", { name: /onboarding process/i }),
+			page.getByRole("heading", { name: /cuéntanos tu punto de partida/i }),
 		).toHaveCount(0);
 	});
 
@@ -67,11 +67,11 @@ test.describe("session route flow", () => {
 			/Loading your onboarding area/i,
 		);
 		await expect(
-			page.getByRole("heading", { name: /onboarding process/i }),
+			page.getByRole("heading", { name: /cuéntanos tu punto de partida/i }),
 		).toHaveCount(0);
 		await navigation;
 		await expect(
-			page.getByRole("heading", { name: /onboarding process/i }),
+			page.getByRole("heading", { name: /cuéntanos tu punto de partida/i }),
 		).toBeVisible();
 	});
 
@@ -83,7 +83,7 @@ test.describe("session route flow", () => {
 
 		await expect(page).toHaveURL("/onboarding");
 		await expect(
-			page.getByRole("heading", { name: /onboarding process/i }),
+			page.getByRole("heading", { name: /cuéntanos tu punto de partida/i }),
 		).toBeVisible();
 	});
 
@@ -104,7 +104,7 @@ test.describe("session route flow", () => {
 		);
 		await expect(page.getByText(/sesión.*caduc/i)).toBeVisible();
 		await expect(
-			page.getByRole("heading", { name: /onboarding process/i }),
+			page.getByRole("heading", { name: /cuéntanos tu punto de partida/i }),
 		).toHaveCount(0);
 	});
 
