@@ -2,7 +2,8 @@ from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from typing import Any
 
-from sqlalchemy import text
+from sqlalchemy import bindparam, text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.engine import Connection, Engine
 
 from app.core.database import owner_connection
@@ -17,10 +18,10 @@ _READ_SNAPSHOT = text(
 )
 _UPSERT_SNAPSHOT = text("""
     INSERT INTO onboarding_snapshots (owner_id, snapshot)
-    VALUES (:owner_id, CAST(:snapshot AS jsonb))
+    VALUES (:owner_id, :snapshot)
     ON CONFLICT (owner_id) DO UPDATE SET snapshot = EXCLUDED.snapshot
     WHERE onboarding_snapshots.snapshot IS DISTINCT FROM EXCLUDED.snapshot
-""")
+""").bindparams(bindparam("snapshot", type_=JSONB()))
 
 
 def _owner_value(owner_id: UserId | str) -> str:
