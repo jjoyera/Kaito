@@ -66,12 +66,20 @@ La regla de organización es **Screaming Architecture**: la estructura comunica 
 ```text
 apps/web/
 ├── app/                             # Solo rutas y orquestación Next.js
-│   └── (auth)/login/page.tsx        # Compone/importa la feature auth
+│   ├── page.tsx                     # Redirige `/` a `/login`
+│   └── (auth)/
+│       ├── login/page.tsx           # Compone/importa el login
+│       └── register/page.tsx        # Compone/importa el registro
 └── features/
     └── auth/                        # Única capacidad real actual
+        ├── _components/             # Formularios de login y registro
+        ├── _domain/                 # Validaciones puras de auth
+        ├── _adapters/
+        ├── _use-cases/
+        └── _infrastructure/supabase/
 ```
 
-El traslado a los destinos con prefijo `_` está completo. PR 2 permanece sin iniciar y añadirá las fronteras de ruta únicamente con autorización separada.
+El registro comparte el formato de tarjeta de autenticación centrada del login. Su validación de email y contraseñas pertenece al dominio frontend de auth.
 
 ### Forma ilustrativa cuando existan consumidores reales
 
@@ -136,7 +144,8 @@ Principio: separar por **frontera de aplicación** primero (`web` vs `api`) y po
 - `_infrastructure/` identifica plumbing de proveedores. En el alcance actual, los clientes Supabase pertenecen a `features/auth/_infrastructure/supabase/` y el fetch autenticado a `features/auth/_adapters/`.
 - `apps/web/shared/` solo recibe código consumido por **al menos dos features reales distintas**. Login, guard de servidor y proxy son varios consumidores en runtime de auth, pero cuentan como una sola feature.
 - Se prohíben abstracciones compartidas especulativas, carpetas vacías de features futuras y cajones genéricos `utils`/`helpers`.
-- `app/(auth)/login/page.tsx` permanece como orquestación de ruta e importa la feature auth.
+- `app/(auth)/login/page.tsx` y `app/(auth)/register/page.tsx` permanecen como orquestación de ruta e importan la feature auth.
+- `features/auth/_components/` contiene los formularios de login y registro; `_domain/` contiene sus reglas puras de validación.
 
 La promoción a `shared/` se reconsiderará cuando onboarding u otra capacidad real sea el segundo consumidor. Hasta entonces, repetir una frontera pequeña es preferible a anticipar una abstracción.
 
@@ -198,13 +207,21 @@ En módulos simples/CRUD, se permite simplificación sin imponer todas las capas
 
 ## 8) Arquitectura de autenticación/sesión (Supabase + FastAPI)
 
-### Flujo de autenticación
+### Estado actual
 
-1. Usuario se registra/inicia sesión desde `apps/web` usando Supabase Auth.
-2. Supabase emite JWT de sesión.
-3. `apps/web` envía JWT al backend en cada request de negocio.
-4. `apps/api` valida firma/claims del JWT y construye contexto de identidad.
-5. Solo tras validar identidad se ejecutan casos de uso de Kaito.
+- `/` redirige a `/login`.
+- `/login` inicia sesión mediante Supabase Auth y enlaza a `/register` con `Crear cuenta`.
+- `/register` solicita email, contraseña y repetición, con validación local de formato, fortaleza y coincidencia.
+- El registro todavía no llama a Supabase/backend, no crea cuenta ni sesión y no entrega el flujo al onboarding.
+
+### Flujo objetivo de autenticación
+
+1. El usuario inicia sesión o solicita el registro desde `apps/web`.
+2. En login, Supabase Auth ya valida credenciales y emite la sesión. La integración equivalente para signup se incorporará en una tarea posterior.
+3. Solo cuando Supabase/backend confirme el alta, el registro podrá crear la cuenta/sesión y continuar hacia onboarding.
+4. `apps/web` envía el JWT al backend en cada request de negocio.
+5. `apps/api` valida firma/claims del JWT y construye contexto de identidad.
+6. Solo tras validar identidad se ejecutan casos de uso de Kaito.
 
 ### Principios de seguridad de identidad
 
@@ -251,10 +268,12 @@ La IA solo usa contexto trazable del dominio MVP y reglas de:
 
 ### 10.1 Registro / login
 
-1. `web` ejecuta registro/login con Supabase Auth.
-2. Supabase devuelve sesión/JWT.
-3. `web` consume API de `apps/api` con JWT.
-4. `api` valida JWT y resuelve estado funcional inicial (onboarding, generar plan o dashboard).
+1. `/` dirige al usuario a `/login`, desde donde puede iniciar sesión o abrir `/register`.
+2. El login ejecuta la autenticación con Supabase y recibe la sesión/JWT.
+3. El registro valida localmente email, fortaleza de contraseña y coincidencia de la repetición; el signup con Supabase/backend queda pendiente.
+4. Cuando el backend confirme el alta, `web` podrá obtener la sesión y continuar hacia onboarding.
+5. Con una sesión válida, `web` consume `apps/api` con JWT.
+6. `api` valida el JWT y resuelve el estado funcional inicial (onboarding, generar plan o dashboard).
 
 ### 10.2 Onboarding + elegibilidad de enfoque
 
@@ -304,8 +323,8 @@ La IA solo usa contexto trazable del dominio MVP y reglas de:
 
 ### Frontend (`apps/web`)
 
-- Pruebas de UI/flujo y validaciones de formularios (Zod + capa de presentación).
-- E2E con Playwright sobre flujos críticos (registro/login, onboarding, generación, log, ajuste).
+- Pruebas de UI/flujo y validaciones de formularios (Zod + capa de presentación), incluidas las reglas locales del registro.
+- E2E con Playwright sobre flujos críticos; actualmente existen pruebas de la UI de registro y su acceso desde login.
 
 ### IA
 

@@ -54,16 +54,22 @@ El sistema debe permitir que una persona cree una cuenta en Kaito mediante email
 
 ### Requisitos
 
-- El usuario debe poder introducir un email.
-- El usuario debe poder introducir una contraseña.
-- El sistema debe validar que el email tenga un formato válido.
-- El sistema debe impedir registrar dos cuentas con el mismo email.
-- El sistema debe crear una cuenta asociada al usuario.
-- Después del registro, el usuario debe poder continuar hacia el onboarding inicial.
+- El usuario debe poder introducir un email, una contraseña y la repetición de la contraseña.
+- La interfaz debe validar localmente que el email tenga un formato válido.
+- La contraseña debe tener al menos 8 caracteres e incluir mayúscula, minúscula, número y símbolo.
+- La repetición de contraseña debe coincidir con la contraseña.
+- La interfaz debe mostrar feedback local, claro y específico para corregir los campos inválidos antes de enviar el registro.
+- El backend debe impedir registrar dos cuentas con el mismo email.
+- El sistema solo debe considerar creada la cuenta cuando el backend confirme el alta.
+- Después de la creación confirmada de la cuenta y sesión correspondiente, el usuario debe poder continuar hacia el onboarding inicial.
+
+### Estado de implementación
+
+La ruta `/register` y las validaciones locales están disponibles. La integración de alta con Supabase/backend, la creación de cuenta o sesión y la transición al onboarding están pendientes de una tarea posterior.
 
 ### Resultado esperado
 
-El usuario queda identificado en la plataforma y puede empezar el proceso de configuración de su plan.
+Tras la confirmación del backend, el usuario queda identificado en la plataforma y puede empezar el proceso de configuración de su plan.
 
 ## RF-02 Login de usuario
 
@@ -350,7 +356,9 @@ El usuario entiende qué ha ocurrido y cuál es la siguiente acción posible.
 
 El MVP estará correctamente cubierto si:
 
-- El usuario puede registrarse con email y contraseña.
+- El usuario puede registrarse con email, contraseña y repetición de contraseña.
+- El registro valida formato de email, fortaleza y coincidencia de contraseñas, y muestra feedback local comprensible.
+- La cuenta solo se considera creada cuando el backend confirma el alta.
 - El usuario puede iniciar sesión con email y contraseña.
 - Los profesores pueden acceder a un usuario demo para probar el TFM.
 - Kaito identifica si el usuario necesita onboarding, generación de plan o dashboard.
