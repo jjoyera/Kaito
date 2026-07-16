@@ -5,18 +5,17 @@
 </p>
 
 Kaito es una aplicación web para actuar como coach de IA para corredores de
-ultradistancia. El repositorio ya contiene el scaffold runnable del monorepo,
-validación de CI, límites iniciales de autenticación y documentación de producto
-/ marca para guiar las siguientes pantallas.
+ultradistancia. El producto ya permite crear una cuenta, iniciar sesión y comenzar
+un onboarding privado conectado al API; el resto de la experiencia se incorpora de
+forma incremental.
 
 ## Estado actual
 
-El proyecto todavía está en fase temprana: hay base técnica y una primera pantalla
-funcional de acceso para usuarios finales.
+El estado implementado entrega autenticación y el primer paso del nuevo onboarding.
 
 | Área | Estado |
 | --- | --- |
-| Web | Next.js App Router con `/login`, registro Supabase en `/register` y wizard `/onboarding`. |
+| Web | Next.js App Router con signup/login/sesión y onboarding privado en `/onboarding`. |
 | API | FastAPI con health check, verificación JWT Supabase vía JWKS y persistencia de onboarding. |
 | Auth | Signup/login con Supabase, handoff de confirmación a login, backend protegido con `GET /auth/me` y `/onboarding` privado. |
 | Marca | Paleta y assets iniciales bajo `docs/` y `apps/web/public/`. |
@@ -70,7 +69,11 @@ pnpm dev:web
 
 La app web queda disponible en `http://localhost:3000`.
 
-Ejecuta la API desde `apps/api`:
+Para arrancar la API necesitas una base de datos accesible y configurar
+`DATABASE_URL` y `DATABASE_EXPECTED_ROLE=kaito_api_login`, además de la
+configuración de autenticación y CORS aplicable. Consulta valores y comportamiento
+en [`apps/api/README.md`](apps/api/README.md); nunca guardes credenciales reales en
+el repositorio.
 
 ```bash
 cd apps/api
@@ -172,6 +175,9 @@ por paso, limpieza condicional de campos, mapeo de diagnósticos del backend a
 pasos, y los casos de uso de carga/guardado/completado. Tampoco requiere
 cuentas reales de Supabase ni el API corriendo.
 
+La verificación más reciente superó lint, build, 54 tests unitarios de
+onboarding, 33 E2E en modo desarrollo y 1 E2E sobre el build de producción.
+
 ## Arquitectura frontend
 
 La web sigue Screaming Architecture: `app/` solo orquesta Next.js y cada capacidad real vive en `features/`. El código solo pasa a `shared/` cuando lo consumen dos features reales distintas. Consulta las reglas y el árbol vigente en [`docs/08-architecture.md`](docs/08-architecture.md) y la guía de contribución en [`apps/web/README.md`](apps/web/README.md).
@@ -192,7 +198,8 @@ openspec/              Artefactos SDD/OpenSpec.
 
 ## Funcionalidades actuales
 
-- Home web scaffold que confirma que el frontend arranca.
+- Acceso, registro y resolución de sesión con Supabase, con entrega autenticada
+  hacia una ruta privada.
 - Assets iniciales de marca en `apps/web/public/assets/brand/`.
 - Paleta visual inicial en `docs/09-brand-palette.md`.
 - API FastAPI con `GET /health`.
@@ -205,15 +212,20 @@ openspec/              Artefactos SDD/OpenSpec.
   cooldown ante límites de frecuencia y resultados propios de Kaito. Una sesión
   inmediata continúa a onboarding; un resultado sin sesión continúa a login con
   orientación neutral de confirmación y sin exponer el email.
-- Wizard privado `/onboarding` (protegido por proxy y comprobación de servidor)
-  con los 5 pasos del contrato canónico (objetivo, historial previo, últimas 4
-  semanas, disponibilidad, restricciones): resume desde un borrador guardado,
-  valida cada paso antes de avanzar, guarda al avanzar, navegación directa
-  entre pasos ya alcanzados sin perder respuestas, y maneja la degradación a
-  `incomplete` que puede devolver el backend al completar.
-- Validación básica: lint/build de web, tests unitarios auth y onboarding, E2E
-  Playwright de login y onboarding (incluido un chequeo de producción del
-  login) y lint/smoke/tests de API, incluida la prueba RLS de dos usuarios.
+- `/onboarding` privado presenta primero la propuesta de valor y el CTA
+  `Crear mi plan`. Su Paso 1 rediseñado muestra `Paso 1 de 7` y `14%`, permite
+  elegir solo Trail o Ultra y solicita distancia, desnivel positivo y fecha
+  objetivo; no muestra tecnicidad, altitud máxima ni botón de retroceso.
+- Solo el Paso 1 usa por ahora el nuevo diseño visual de siete pasos. Los pasos
+  internos posteriores (historial, últimas 4 semanas, disponibilidad y
+  restricciones), junto con carga, guardado y finalización, siguen operativos y
+  se rediseñarán incrementalmente; esto no significa que existan siete pasos de
+  UI terminados.
+- Persistencia de onboarding por usuario con defensa en profundidad mediante
+  transacciones con ownership y RLS; su documentación operativa detallada y el
+  endurecimiento de credenciales de despliegue permanecen pendientes.
+- Validación de web con lint, build, tests unitarios y E2E de desarrollo y
+  producción; la API conserva lint, smoke, tests y prueba RLS de dos usuarios.
 - Paquete `@kaito/api-client` reservado para un futuro cliente generado; hoy no
   exporta código ni contratos de producto.
 

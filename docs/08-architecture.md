@@ -4,7 +4,7 @@
 
 Este documento define la arquitectura técnica objetivo del MVP de Kaito para implementación futura, con decisiones defendibles para revisión arquitectónica del TFM.
 
-Se centra en **cómo se organiza el sistema** (fronteras, responsabilidades, flujos, seguridad, datos, IA y operación) sin crear todavía scaffolding, código ni tareas de implementación.
+Se centra en **cómo se organiza el sistema** (fronteras, responsabilidades, flujos, seguridad, datos, IA y operación), distinguiendo el estado implementado de la arquitectura objetivo.
 
 ---
 
@@ -67,19 +67,18 @@ La regla de organización es **Screaming Architecture**: la estructura comunica 
 apps/web/
 ├── app/                             # Solo rutas y orquestación Next.js
 │   ├── page.tsx                     # Redirige `/` a `/login`
-│   └── (auth)/
-│       ├── login/page.tsx           # Compone/importa el login
-│       └── register/page.tsx        # Compone/importa el registro
+│   ├── (auth)/                      # Login y registro
+│   └── (private)/onboarding/        # Ruta privada y composición
 └── features/
-    └── auth/                        # Única capacidad real actual
-        ├── _components/             # Formularios de login y registro
-        ├── _domain/                 # Validaciones puras de auth
-        ├── _adapters/
-        ├── _use-cases/
-        └── _infrastructure/supabase/
+    ├── auth/                        # Componentes, dominio, adaptadores e infraestructura
+    └── onboarding/
+        ├── _components/             # Intro, wizard y pasos
+        ├── _domain/                 # Validación y reglas puras
+        ├── _adapters/               # Contrato con el API
+        └── _use-cases/              # Carga, guardado y finalización
 ```
 
-El registro comparte el formato de tarjeta de autenticación centrada del login. Su validación de email y contraseñas pertenece al dominio frontend de auth.
+Auth y onboarding son capacidades reales. En onboarding, solo el Paso 1 tiene el nuevo diseño visual de siete pasos; los pasos internos posteriores siguen operativos y se rediseñan incrementalmente.
 
 ### Forma ilustrativa cuando existan consumidores reales
 
@@ -94,7 +93,7 @@ apps/web/
 │   │   ├── _domain/                 # solo reglas/tipos puros, si se justifica
 │   │   └── _infrastructure/
 │   │       └── supabase/            # construcción de clientes actual
-│   └── <otra-capacidad-real>/       # solo cuando se implemente
+│   └── onboarding/                  # segunda capacidad real actual
 └── shared/                          # solo tras dos features reales consumidoras
 ```
 
@@ -139,15 +138,13 @@ Principio: separar por **frontera de aplicación** primero (`web` vs `api`) y po
 ### Decisión y reglas de ownership
 
 - `apps/web/app/` contiene exclusivamente routing y orquestación de Next.js: rutas, layouts, `loading`/`error`, metadata y cableado de políticas de ruta. No contiene lógica de producto.
-- `apps/web/features/<capability>/` posee cada capacidad real. En auth se usa el vocabulario `_components/`, `_adapters/`, `_use-cases/` y, solo si existen reglas/tipos puros que lo justifiquen, `_domain/`.
+- `apps/web/features/<capability>/` posee cada capacidad real. Auth y onboarding usan `_components/`, `_adapters/`, `_use-cases/` y, cuando hay reglas/tipos puros, `_domain/`.
 - `<feature>.container.tsx` es opcional y solo existe para orquestación genuina de múltiples concerns; nunca se añade mecánicamente.
 - `_infrastructure/` identifica plumbing de proveedores. En el alcance actual, los clientes Supabase pertenecen a `features/auth/_infrastructure/supabase/` y el fetch autenticado a `features/auth/_adapters/`.
-- `apps/web/shared/` solo recibe código consumido por **al menos dos features reales distintas**. Login, guard de servidor y proxy son varios consumidores en runtime de auth, pero cuentan como una sola feature.
+- `apps/web/shared/` solo recibe código consumido por **al menos dos features reales distintas**; auth y onboarding ya comparten únicamente las fronteras justificadas.
 - Se prohíben abstracciones compartidas especulativas, carpetas vacías de features futuras y cajones genéricos `utils`/`helpers`.
-- `app/(auth)/login/page.tsx` y `app/(auth)/register/page.tsx` permanecen como orquestación de ruta e importan la feature auth.
-- `features/auth/_components/` contiene los formularios de login y registro; `_domain/` contiene sus reglas puras de validación.
-
-La promoción a `shared/` se reconsiderará cuando onboarding u otra capacidad real sea el segundo consumidor. Hasta entonces, repetir una frontera pequeña es preferible a anticipar una abstracción.
+- `app/(auth)/login/page.tsx`, `app/(auth)/register/page.tsx` y `app/(private)/onboarding/page.tsx` permanecen como orquestación de ruta e importan sus features.
+- `features/auth/_components/` contiene los formularios de acceso; `features/onboarding/` contiene componentes, dominio, adaptador API y casos de uso del flujo privado.
 
 ### Reglas funcionales
 
@@ -369,7 +366,7 @@ En cada cambio relevante:
 
 - Docker como estrategia de estandarización de entorno para `web`, `api` y servicios necesarios.
 - Objetivo: paridad razonable local/CI/entornos de despliegue.
-- No define todavía `Dockerfile`/compose concretos en esta fase documental.
+- Los `Dockerfile` locales y `compose.yaml` ya definen los servicios `web` y `api`; no constituyen configuración de despliegue ni CD.
 
 ---
 
@@ -389,7 +386,7 @@ Estas extensiones deben respetar las invariantes actuales y no romper la trazabi
 ## 16) No-objetivos explícitos de la fase actual
 
 - No crear microservicios.
-- No crear scaffolding, carpetas de app ni código de implementación.
+- No ampliar estructura ni código fuera de capacidades reales del MVP.
 - No definir integración completa con Strava en MVP.
 - No introducir RAG operativo en MVP.
 - No introducir workers en MVP.

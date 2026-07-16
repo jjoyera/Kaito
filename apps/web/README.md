@@ -1,13 +1,12 @@
 # Kaito web
 
-## Current auth routes
+## Current routes and flow
 
-- `/` redirects to `/login`.
-- `/login` signs in through Supabase and links to `/register` with `Crear cuenta`.
-- `/register` uses the same centered auth-card layout and asks for email, password, and repeated password.
-- Registration currently validates locally: email format; at least 8 password characters with uppercase, lowercase, number, and symbol; and matching passwords.
-- Supabase/backend signup, account or session creation, and the onboarding handoff are not implemented yet. They are planned for a later task.
-- Register validation and E2E UI tests are available.
+- `/` redirects to `/login`; `/login` and `/register` implement Supabase sign-up, sign-in, and session resolution.
+- A valid session hands off to `/onboarding`, a private route protected by the proxy and a server-side check.
+- Onboarding starts with a value-proposition introduction and the `Crear mi plan` CTA.
+- Step 1 displays `Paso 1 de 7` and `14%`, offers only Trail or Ultra, and asks for distance, positive elevation, and target date. It has no technicality, maximum-altitude, or back controls.
+- Only Step 1 uses the new seven-step visual design. Later internal steps remain functional while their UI is redesigned incrementally; seven visual steps are not yet delivered.
 
 ## Contribution and ownership
 
@@ -23,7 +22,13 @@ See `docs/08-architecture.md` for the authoritative architecture.
 
 Supabase SSR owns session-cookie storage and rotation. Do not independently force `HttpOnly`, because supported browser flows may require browser-readable cookies. The root `proxy.ts` applies route policy only to `/login` and `/onboarding`; it refreshes the session, preserves refresh cookies, and forces `Secure` on response session cookies in production. Deploy production behind HTTPS. Refresh/provider failures emit only the stable `auth_session_resolution_failed` telemetry event, without provider details, tokens, or cookie values. CSP, output encoding, dependency hygiene, and XSS prevention remain required defenses.
 
-Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for production sign-in. They are public browser configuration, not service-role credentials; never expose access tokens, refresh tokens, JWT secrets, or `SUPABASE_SERVICE_ROLE_KEY`.
+Configure these public browser variables:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `NEXT_PUBLIC_KAITO_API_URL`
+
+They are public configuration, not service-role credentials. Never expose access or refresh tokens, JWT secrets, `SUPABASE_SERVICE_ROLE_KEY`, or other secrets in the web app.
 
 ## Frontend observability (Sentry)
 

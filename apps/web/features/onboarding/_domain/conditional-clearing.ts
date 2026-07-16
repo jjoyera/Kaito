@@ -5,8 +5,20 @@ import type {
 } from "./step-validation";
 
 const HIDDEN_GOAL_FIELDS: Record<Modality, readonly (keyof GoalDraft)[]> = {
-	trail: ["obstacle_count", "obstacle_difficulty", "target_loops"],
-	ultra_trail: ["obstacle_count", "obstacle_difficulty", "target_loops"],
+	trail: [
+		"technicality",
+		"max_altitude_m",
+		"obstacle_count",
+		"obstacle_difficulty",
+		"target_loops",
+	],
+	ultra_trail: [
+		"technicality",
+		"max_altitude_m",
+		"obstacle_count",
+		"obstacle_difficulty",
+		"target_loops",
+	],
 	ocr: [
 		"positive_elevation_m",
 		"technicality",
