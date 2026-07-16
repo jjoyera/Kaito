@@ -190,8 +190,16 @@ test.describe("/login", () => {
 
 		await expect(page).toHaveURL("/onboarding");
 		await expect(
-			page.getByRole("heading", { name: "Cuéntanos tu punto de partida" }),
+			page.getByRole("heading", {
+				name: "Tu plan de entrenamiento, hecho a tu medida",
+			}),
 		).toBeVisible();
+		await expect(
+			page.getByRole("button", { name: "Crear mi plan" }),
+		).toBeVisible();
+		await expect(
+			page.getByRole("heading", { name: "Cuéntanos tu punto de partida" }),
+		).toHaveCount(0);
 	});
 
 	test("exposes field and form feedback to assistive technology", async ({
