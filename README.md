@@ -11,7 +11,7 @@ forma incremental.
 
 ## Estado actual
 
-El estado implementado entrega autenticación y el primer paso del nuevo onboarding.
+El estado implementado entrega autenticación y los dos primeros pasos del nuevo onboarding.
 
 | Área | Estado |
 | --- | --- |
@@ -216,11 +216,10 @@ openspec/              Artefactos SDD/OpenSpec.
   `Crear mi plan`. Su Paso 1 rediseñado muestra `Paso 1 de 7` y `14%`, permite
   elegir solo Trail o Ultra y solicita distancia, desnivel positivo y fecha
   objetivo; no muestra tecnicidad, altitud máxima ni botón de retroceso.
-- Solo el Paso 1 usa por ahora el nuevo diseño visual de siete pasos. Los pasos
-  internos posteriores (historial, últimas 4 semanas, disponibilidad y
-  restricciones), junto con carga, guardado y finalización, siguen operativos y
-  se rediseñarán incrementalmente; esto no significa que existan siete pasos de
-  UI terminados.
+- Los Pasos 1 y 2 usan el nuevo diseño visual de siete pasos. El Paso 2 recoge
+  distancia completada, terreno habitual, experiencia en montaña y frecuencia
+  previa en Trail o Ultra. Los pasos restantes siguen operativos y se
+  rediseñarán incrementalmente; aún no existen siete pasos de UI terminados.
 - Persistencia de onboarding por usuario con defensa en profundidad mediante
   transacciones con ownership y RLS; su documentación operativa detallada y el
   endurecimiento de credenciales de despliegue permanecen pendientes.

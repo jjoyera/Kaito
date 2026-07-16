@@ -78,7 +78,7 @@ apps/web/
         └── _use-cases/              # Carga, guardado y finalización
 ```
 
-Auth y onboarding son capacidades reales. En onboarding, solo el Paso 1 tiene el nuevo diseño visual de siete pasos; los pasos internos posteriores siguen operativos y se rediseñan incrementalmente.
+Auth y onboarding son capacidades reales. En onboarding, los Pasos 1–2 tienen el nuevo diseño visual de siete pasos; los pasos internos posteriores siguen operativos y se rediseñan incrementalmente.
 
 ### Forma ilustrativa cuando existan consumidores reales
 

@@ -263,6 +263,12 @@ export function OnboardingWizard() {
 		}));
 	}
 
+	function handleBack() {
+		setStepIndex((current) => Math.max(0, current - 1));
+		setFieldErrors({});
+		setSaveStatus("idle");
+	}
+
 	async function handleNext() {
 		const currentStep = ONBOARDING_STEPS[stepIndex];
 		const errors = validateStep(currentStep.id, draft);
@@ -347,6 +353,14 @@ export function OnboardingWizard() {
 					</p>
 				</header>
 			) : null}
+			{currentStep.id === "prior_history" ? (
+				<header className="onboarding-step-intro">
+					<h1>¿Cuál es tu experiencia previa?</h1>
+					<p>
+						Necesito saber de dónde partes para no pedirte ni de más ni de menos.
+					</p>
+				</header>
+			) : null}
 
 			<div className="onboarding-wizard-card">
 				{currentStep.id === "goal" ? (
@@ -359,6 +373,7 @@ export function OnboardingWizard() {
 				{currentStep.id === "prior_history" ? (
 					<PriorHistoryStep
 						value={draft.profile.prior_history ?? {}}
+						goalModality={draft.goal.modality}
 						errors={fieldErrors}
 						onChange={updatePriorHistory}
 					/>
@@ -393,7 +408,18 @@ export function OnboardingWizard() {
 				) : null}
 
 				<div className="onboarding-step-actions">
+					{stepIndex > 0 ? (
+						<button
+							className="onboarding-back-action"
+							type="button"
+							disabled={saveStatus === "saving"}
+							onClick={handleBack}
+						>
+							<span aria-hidden="true">←</span> Atrás
+						</button>
+					) : null}
 					<button
+						className="onboarding-next-action"
 						type="button"
 						disabled={saveStatus === "saving"}
 						onClick={handleNext}

@@ -75,30 +75,26 @@ describe("validateStep(goal)", () => {
 });
 
 describe("validateStep(prior_history)", () => {
-	test("flags every required field as missing when blank", () => {
+	test("requires the four answers visible in step 2", () => {
 		const errors = validateStep("prior_history", draft());
-		assert.equal(errors["profile.prior_history.training_years"], "required");
-		assert.equal(
-			errors["profile.prior_history.completed_race_count_range"],
-			"required",
-		);
-		assert.equal(
-			errors["profile.prior_history.practiced_modalities"],
-			"required",
-		);
+		assert.deepEqual(errors, {
+			"profile.prior_history.longest_completed_distance_km": "required",
+			"profile.prior_history.habitual_terrain": "required",
+			"profile.prior_history.mountain_experience": "required",
+			"profile.prior_history.prior_modality_race_frequency": "required",
+		});
 	});
 
-	test("accepts a new runner explicitly reporting no prior experience", () => {
+	test("accepts dedicated step 2 values without requiring hidden legacy fields", () => {
 		const errors = validateStep(
 			"prior_history",
 			draft({
 				profile: {
 					prior_history: {
-						training_years: 0,
-						completed_race_count_range: "none",
 						longest_completed_distance_km: 0,
-						practiced_modalities: [],
-						practiced_terrain: [],
+						habitual_terrain: "mixed",
+						mountain_experience: "low",
+						prior_modality_race_frequency: "never",
 					},
 				},
 			}),
@@ -106,24 +102,32 @@ describe("validateStep(prior_history)", () => {
 		assert.deepEqual(errors, {});
 	});
 
-	test("rejects training_years that are not whole or half years", () => {
+	test("rejects invalid dedicated values and negative distance", () => {
 		const errors = validateStep(
 			"prior_history",
 			draft({
 				profile: {
 					prior_history: {
-						training_years: 1.3,
-						completed_race_count_range: "one_to_three",
-						longest_completed_distance_km: 10,
-						practiced_modalities: ["trail"],
-						practiced_terrain: ["trail"],
-					},
+						longest_completed_distance_km: -1,
+						habitual_terrain: "forest",
+						mountain_experience: "expert",
+						prior_modality_race_frequency: "sometimes",
+					} as OnboardingSnapshotDraft["profile"]["prior_history"],
 				},
 			}),
 		);
 		assert.equal(
-			errors["profile.prior_history.training_years"],
+			errors["profile.prior_history.longest_completed_distance_km"],
 			"out_of_range",
+		);
+		assert.equal(errors["profile.prior_history.habitual_terrain"], "invalid_type");
+		assert.equal(
+			errors["profile.prior_history.mountain_experience"],
+			"invalid_type",
+		);
+		assert.equal(
+			errors["profile.prior_history.prior_modality_race_frequency"],
+			"invalid_type",
 		);
 	});
 });
