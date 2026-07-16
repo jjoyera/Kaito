@@ -9,6 +9,9 @@ export type RaceCountRange =
 	| "eleven_to_twenty_five"
 	| "twenty_six_plus";
 export type PracticedTerrain = "road" | "trail" | "mountain" | "mixed";
+export type HabitualTerrain = "mountain" | "trail" | "road" | "mixed";
+export type MountainExperience = "low" | "medium" | "high";
+export type PriorModalityRaceFrequency = "never" | "once" | "multiple";
 export type WeekDay =
 	| "monday"
 	| "tuesday"
@@ -36,6 +39,9 @@ export type PriorHistoryDraft = {
 	longest_completed_distance_km?: number;
 	practiced_modalities?: Modality[];
 	practiced_terrain?: PracticedTerrain[];
+	habitual_terrain?: HabitualTerrain;
+	mountain_experience?: MountainExperience;
+	prior_modality_race_frequency?: PriorModalityRaceFrequency;
 };
 
 export type BaselineDraft = {
@@ -73,25 +79,22 @@ export type FieldErrorCode =
 
 export type FieldErrors = Partial<Record<string, FieldErrorCode>>;
 
-const MODALITIES = new Set<Modality>([
-	"trail",
-	"ultra_trail",
-	"ocr",
-	"backyard",
-]);
 const GOAL_MODALITIES = new Set<Modality>(["trail", "ultra_trail"]);
-const RACE_COUNT_RANGES = new Set<RaceCountRange>([
-	"none",
-	"one_to_three",
-	"four_to_ten",
-	"eleven_to_twenty_five",
-	"twenty_six_plus",
-]);
-const TERRAINS = new Set<PracticedTerrain>([
-	"road",
-	"trail",
+const HABITUAL_TERRAINS = new Set<HabitualTerrain>([
 	"mountain",
+	"trail",
+	"road",
 	"mixed",
+]);
+const MOUNTAIN_EXPERIENCE = new Set<MountainExperience>([
+	"low",
+	"medium",
+	"high",
+]);
+const PRIOR_RACE_FREQUENCIES = new Set<PriorModalityRaceFrequency>([
+	"never",
+	"once",
+	"multiple",
 ]);
 const WEEK_DAYS = new Set<WeekDay>([
 	"monday",
@@ -196,23 +199,6 @@ export function validatePriorHistoryStep(
 ): FieldErrors {
 	const errors: FieldErrors = {};
 
-	if (priorHistory.training_years === undefined) {
-		errors["profile.prior_history.training_years"] = "required";
-	} else if (
-		!isNonNegativeNumber(priorHistory.training_years, { halfStep: true })
-	) {
-		errors["profile.prior_history.training_years"] = "out_of_range";
-	}
-
-	if (priorHistory.completed_race_count_range === undefined) {
-		errors["profile.prior_history.completed_race_count_range"] = "required";
-	} else if (
-		!RACE_COUNT_RANGES.has(priorHistory.completed_race_count_range)
-	) {
-		errors["profile.prior_history.completed_race_count_range"] =
-			"invalid_type";
-	}
-
 	if (priorHistory.longest_completed_distance_km === undefined) {
 		errors["profile.prior_history.longest_completed_distance_km"] =
 			"required";
@@ -223,22 +209,27 @@ export function validatePriorHistoryStep(
 			"out_of_range";
 	}
 
-	if (priorHistory.practiced_modalities === undefined) {
-		errors["profile.prior_history.practiced_modalities"] = "required";
-	} else if (
-		!priorHistory.practiced_modalities.every((item) =>
-			MODALITIES.has(item),
-		)
-	) {
-		errors["profile.prior_history.practiced_modalities"] = "invalid_type";
+	if (priorHistory.habitual_terrain === undefined) {
+		errors["profile.prior_history.habitual_terrain"] = "required";
+	} else if (!HABITUAL_TERRAINS.has(priorHistory.habitual_terrain)) {
+		errors["profile.prior_history.habitual_terrain"] = "invalid_type";
 	}
 
-	if (priorHistory.practiced_terrain === undefined) {
-		errors["profile.prior_history.practiced_terrain"] = "required";
+	if (priorHistory.mountain_experience === undefined) {
+		errors["profile.prior_history.mountain_experience"] = "required";
+	} else if (!MOUNTAIN_EXPERIENCE.has(priorHistory.mountain_experience)) {
+		errors["profile.prior_history.mountain_experience"] = "invalid_type";
+	}
+
+	if (priorHistory.prior_modality_race_frequency === undefined) {
+		errors["profile.prior_history.prior_modality_race_frequency"] = "required";
 	} else if (
-		!priorHistory.practiced_terrain.every((item) => TERRAINS.has(item))
+		!PRIOR_RACE_FREQUENCIES.has(
+			priorHistory.prior_modality_race_frequency,
+		)
 	) {
-		errors["profile.prior_history.practiced_terrain"] = "invalid_type";
+		errors["profile.prior_history.prior_modality_race_frequency"] =
+			"invalid_type";
 	}
 
 	return errors;

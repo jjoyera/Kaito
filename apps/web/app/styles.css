@@ -698,10 +698,72 @@ p {
 	outline-offset: 2px;
 }
 
-.onboarding-goal-metrics {
+.onboarding-goal-metrics,
+.onboarding-prior-history-row {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: 1rem;
+}
+
+.onboarding-prior-history {
+	gap: 1.35rem;
+}
+
+.onboarding-number-with-suffix {
+	position: relative;
+}
+
+.onboarding-number-with-suffix input {
+	padding-right: 3rem !important;
+}
+
+.onboarding-number-with-suffix span {
+	position: absolute;
+	top: 50%;
+	right: 1rem;
+	color: var(--color-text-secondary);
+	transform: translateY(-50%);
+}
+
+.onboarding-pill-options {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.65rem;
+}
+
+.onboarding-choice-pill {
+	position: relative;
+	cursor: pointer;
+}
+
+.onboarding-choice-pill input {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	opacity: 0;
+}
+
+.onboarding-choice-pill span {
+	display: inline-flex;
+	align-items: center;
+	min-height: 2.55rem;
+	border: 1.5px solid rgb(23 33 27 / 13%);
+	border-radius: 999px;
+	color: var(--color-text-secondary);
+	font-size: 0.9rem;
+	font-weight: 650;
+	padding: 0.55rem 1.05rem;
+}
+
+.onboarding-choice-pill input:checked + span {
+	border-color: var(--color-primary);
+	background: rgb(47 93 80 / 8%);
+	color: var(--color-primary-dark);
+}
+
+.onboarding-choice-pill input:focus-visible + span {
+	outline: 3px solid rgb(232 137 58 / 40%);
+	outline-offset: 2px;
 }
 
 .onboarding-field {
@@ -813,7 +875,9 @@ p {
 
 .onboarding-step-actions {
 	display: flex;
-	justify-content: flex-end;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
 	border-top: 1px solid rgb(23 33 27 / 8%);
 	padding-top: 1.5rem;
 }
@@ -836,9 +900,25 @@ p {
 	transition: background-color 160ms ease, transform 160ms ease;
 }
 
+.onboarding-step-actions .onboarding-next-action {
+	margin-left: auto;
+}
+
+.onboarding-step-actions .onboarding-back-action {
+	min-width: auto;
+	background: transparent;
+	color: var(--color-text-secondary);
+	padding-inline: 0.35rem;
+}
+
 .onboarding-step-actions button:hover:not(:disabled) {
 	background: var(--color-primary-dark);
 	transform: translateY(-1px);
+}
+
+.onboarding-step-actions .onboarding-back-action:hover:not(:disabled) {
+	background: transparent;
+	color: var(--color-primary-dark);
 }
 
 .onboarding-step-actions button:focus-visible {
@@ -891,7 +971,8 @@ p {
 		border-radius: 1.25rem;
 	}
 
-	.onboarding-goal-metrics {
+	.onboarding-goal-metrics,
+	.onboarding-prior-history-row {
 		grid-template-columns: 1fr;
 	}
 

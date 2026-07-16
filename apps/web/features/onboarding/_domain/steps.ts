@@ -33,6 +33,9 @@ export const ONBOARDING_STEPS: readonly StepDefinition[] = [
 			"profile.prior_history.longest_completed_distance_km",
 			"profile.prior_history.practiced_modalities",
 			"profile.prior_history.practiced_terrain",
+			"profile.prior_history.habitual_terrain",
+			"profile.prior_history.mountain_experience",
+			"profile.prior_history.prior_modality_race_frequency",
 		],
 	},
 	{

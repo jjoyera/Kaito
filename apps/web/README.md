@@ -6,7 +6,7 @@
 - A valid session hands off to `/onboarding`, a private route protected by the proxy and a server-side check.
 - Onboarding starts with a value-proposition introduction and the `Crear mi plan` CTA.
 - Step 1 displays `Paso 1 de 7` and `14%`, offers only Trail or Ultra, and asks for distance, positive elevation, and target date. It has no technicality, maximum-altitude, or back controls.
-- Only Step 1 uses the new seven-step visual design. Later internal steps remain functional while their UI is redesigned incrementally; seven visual steps are not yet delivered.
+- Steps 1–2 use the new seven-step visual design. Step 2 collects longest completed distance, habitual terrain, mountain experience, and prior Trail/Ultra race frequency. Later steps remain functional while their UI is redesigned incrementally; seven visual steps are not yet delivered.
 
 ## Contribution and ownership
 
