@@ -79,7 +79,7 @@ const MODALITIES = new Set<Modality>([
 	"ocr",
 	"backyard",
 ]);
-const TECHNICALITIES = new Set<Technicality>(["low", "medium", "high"]);
+const GOAL_MODALITIES = new Set<Modality>(["trail", "ultra_trail"]);
 const RACE_COUNT_RANGES = new Set<RaceCountRange>([
 	"none",
 	"one_to_three",
@@ -105,16 +105,8 @@ const WEEK_DAYS = new Set<WeekDay>([
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 const CONDITIONAL_GOAL_FIELDS: Record<Modality, readonly string[]> = {
-	trail: [
-		"goal.target_distance_km",
-		"goal.positive_elevation_m",
-		"goal.technicality",
-	],
-	ultra_trail: [
-		"goal.target_distance_km",
-		"goal.positive_elevation_m",
-		"goal.technicality",
-	],
+	trail: ["goal.target_distance_km", "goal.positive_elevation_m"],
+	ultra_trail: ["goal.target_distance_km", "goal.positive_elevation_m"],
 	ocr: ["goal.target_distance_km", "goal.obstacle_count"],
 	backyard: ["goal.target_loops"],
 };
@@ -146,7 +138,7 @@ export function validateGoalStep(goal: GoalDraft): FieldErrors {
 
 	if (goal.modality === undefined) {
 		errors["goal.modality"] = "required";
-	} else if (!MODALITIES.has(goal.modality)) {
+	} else if (!GOAL_MODALITIES.has(goal.modality)) {
 		errors["goal.modality"] = "invalid_type";
 	}
 
@@ -156,21 +148,8 @@ export function validateGoalStep(goal: GoalDraft): FieldErrors {
 		errors["goal.target_date"] = "invalid_type";
 	}
 
-	if (
-		goal.max_altitude_m !== undefined &&
-		!isNonNegativeInteger(goal.max_altitude_m)
-	) {
-		errors["goal.max_altitude_m"] = "invalid_type";
-	}
-	if (
-		goal.obstacle_difficulty !== undefined &&
-		!TECHNICALITIES.has(goal.obstacle_difficulty)
-	) {
-		errors["goal.obstacle_difficulty"] = "invalid_type";
-	}
-
 	const conditionalFields =
-		goal.modality && MODALITIES.has(goal.modality)
+		goal.modality && GOAL_MODALITIES.has(goal.modality)
 			? CONDITIONAL_GOAL_FIELDS[goal.modality]
 			: [];
 
@@ -196,11 +175,6 @@ function applyConditionalGoalCheck(
 			if (goal.positive_elevation_m === undefined) errors[field] = "required";
 			else if (!isPositiveNumber(goal.positive_elevation_m))
 				errors[field] = "out_of_range";
-			return;
-		case "goal.technicality":
-			if (goal.technicality === undefined) errors[field] = "required";
-			else if (!TECHNICALITIES.has(goal.technicality))
-				errors[field] = "invalid_type";
 			return;
 		case "goal.obstacle_count":
 			if (goal.obstacle_count === undefined) errors[field] = "required";

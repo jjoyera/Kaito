@@ -10,13 +10,22 @@ API backend de Kaito construida con FastAPI (Python 3.12+).
 
 ### Instalar dependencias y arrancar
 
+El arranque requiere `DATABASE_URL` y
+`DATABASE_EXPECTED_ROLE=kaito_api_login`. Las rutas privadas necesitan además la
+configuración de autenticación descrita abajo y `KAITO_WEB_ORIGIN` debe declarar
+el origen web autorizado para llamadas desde el navegador.
+
 ```bash
 cd apps/api
 uv sync            # instala deps de runtime y dev
 uv run uvicorn app.main:app --reload
 ```
 
-La API quedará disponible en `http://localhost:8000`.
+La API quedará disponible en `http://localhost:8000` cuando pueda conectar con la
+base de datos usando el rol esperado. Usa siempre credenciales de runtime con
+mínimo privilegio y no las guardes en el repositorio. La guía operativa del Session
+Pooler cloud y del rol de runtime queda pendiente de documentación específica;
+no copies referencias, hosts, contraseñas ni URLs con credenciales en este documento.
 
 ### Verificar el health check
 
@@ -158,7 +167,7 @@ onboarding de Supabase Server) y **no se deriva** de `SUPABASE_URL`.
 
 Cuando `SUPABASE_JWKS_URL` está vacío o no definido (independientemente de si `SUPABASE_URL` está definido):
 
-- El backend **arranca normalmente** — no hay ningún error de importación.
+- Con la base de datos configurada, el backend **arranca normalmente** — no hay ningún error de autenticación durante el arranque.
 - `GET /health` sigue respondiendo `200 {"status": "ok"}`.
 - `GET /auth/me` y cualquier ruta protegida devuelven `503 {"detail": "Authentication is not configured"}`.
 - No se filtra material secreto ni información del proveedor en las respuestas.
@@ -179,9 +188,10 @@ curl http://localhost:8000/auth/me
 # → 503 {"detail": "Authentication is not configured"}
 ```
 
-### Patrón de ruta protegida (uso futuro)
+### Patrón de ruta protegida
 
-Para proteger cualquier ruta de dominio futura, usa `Depends(get_current_user)` como **dependencia estándar requerida**:
+Las rutas de onboarding ya usan este límite. Para proteger cualquier otra ruta de
+dominio, usa `Depends(get_current_user)` como **dependencia estándar requerida**:
 
 ```python
 from fastapi import APIRouter, Depends

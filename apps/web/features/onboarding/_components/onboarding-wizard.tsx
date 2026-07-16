@@ -32,7 +32,7 @@ import { CompletionView } from "./completion-view";
 import { GoalStep } from "./goal-step";
 import { PriorHistoryStep } from "./prior-history-step";
 import { RestrictionsStep } from "./restrictions-step";
-import { StepNavigator, type StepStatus } from "./step-navigator";
+import { StepNavigator } from "./step-navigator";
 
 type Phase = "loading" | "ready" | "load_error" | "completed";
 type SaveStatus = "idle" | "saving" | "save_error";
@@ -117,8 +117,7 @@ export function OnboardingExperience() {
 
 	if (hasStarted) {
 		return (
-			<section className="onboarding-flow" aria-labelledby="onboarding-flow-title">
-				<h1 id="onboarding-flow-title">Cuéntanos tu punto de partida</h1>
+			<section className="onboarding-flow" aria-label="Configura tu plan">
 				<OnboardingWizard />
 			</section>
 		);
@@ -178,9 +177,7 @@ export function OnboardingWizard() {
 	const [phase, setPhase] = useState<Phase>("loading");
 	const [draft, setDraft] = useState<OnboardingSnapshotDraft>(blankDraft);
 	const [stepIndex, setStepIndex] = useState(0);
-	const [furthestReachedIndex, setFurthestReachedIndex] = useState(0);
 	const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-	const [diagnostics, setDiagnostics] = useState<DiagnosticsByField>({});
 	const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
 
 	useEffect(() => {
@@ -204,7 +201,6 @@ export function OnboardingWizard() {
 				outcome.result.diagnostics,
 			);
 			setDraft(loadedDraft);
-			setDiagnostics(loadedDiagnostics);
 
 			if (outcome.result.snapshot.state === "completed") {
 				setPhase("completed");
@@ -216,7 +212,6 @@ export function OnboardingWizard() {
 				loadedDiagnostics,
 			);
 			setStepIndex(resumeIndex);
-			setFurthestReachedIndex(resumeIndex);
 			setPhase("ready");
 		});
 		return () => {
@@ -290,25 +285,23 @@ export function OnboardingWizard() {
 			return;
 		}
 		setSaveStatus("idle");
-		setDiagnostics(toDiagnosticsByField(outcome.result.diagnostics));
 
 		if (outcome.status === "completed") {
 			setPhase("completed");
 			return;
 		}
 		if (outcome.status === "demoted") {
+			setStepIndex(
+				firstIncompleteStepIndex(
+					cleared,
+					toDiagnosticsByField(outcome.result.diagnostics),
+				),
+			);
+			setFieldErrors({});
 			return;
 		}
 
-		const nextIndex = stepIndex + 1;
-		setStepIndex(nextIndex);
-		setFurthestReachedIndex((current) => Math.max(current, nextIndex));
-		setFieldErrors({});
-	}
-
-	function handleJump(index: number) {
-		if (index > furthestReachedIndex) return;
-		setStepIndex(index);
+		setStepIndex(stepIndex + 1);
 		setFieldErrors({});
 	}
 
@@ -333,19 +326,9 @@ export function OnboardingWizard() {
 		return <CompletionView />;
 	}
 
-	const statuses: StepStatus[] = ONBOARDING_STEPS.map((step, index) => {
-		if (index > furthestReachedIndex) return "not_reached";
-		const hasLocalErrors =
-			Object.keys(validateStep(step.id, draft)).length > 0;
-		const hasDiagnostic = step.fields.some(
-			(field) => diagnostics[field] !== undefined,
-		);
-		return hasLocalErrors || hasDiagnostic ? "incomplete" : "complete";
-	});
-
 	const currentStep = ONBOARDING_STEPS[stepIndex];
 	const isLastStep = stepIndex === ONBOARDING_STEPS.length - 1;
-	let nextButtonLabel = "Siguiente";
+	let nextButtonLabel = "Continuar";
 	if (saveStatus === "saving") {
 		nextButtonLabel = "Guardando…";
 	} else if (isLastStep) {
@@ -354,58 +337,71 @@ export function OnboardingWizard() {
 
 	return (
 		<div className="onboarding-wizard">
-			<StepNavigator
-				currentStepIndex={stepIndex}
-				statuses={statuses}
-				onJump={handleJump}
-			/>
+			<StepNavigator currentStepIndex={stepIndex} />
 
 			{currentStep.id === "goal" ? (
-				<GoalStep value={draft.goal} errors={fieldErrors} onChange={updateGoal} />
-			) : null}
-			{currentStep.id === "prior_history" ? (
-				<PriorHistoryStep
-					value={draft.profile.prior_history ?? {}}
-					errors={fieldErrors}
-					onChange={updatePriorHistory}
-				/>
-			) : null}
-			{currentStep.id === "baseline" ? (
-				<BaselineStep
-					value={draft.profile.baseline_4_weeks ?? {}}
-					errors={fieldErrors}
-					onChange={updateBaseline}
-				/>
-			) : null}
-			{currentStep.id === "availability" ? (
-				<AvailabilityStep
-					value={draft.profile.availability ?? {}}
-					errors={fieldErrors}
-					onChange={updateAvailability}
-				/>
-			) : null}
-			{currentStep.id === "restrictions" ? (
-				<RestrictionsStep
-					value={draft.profile.restrictions ?? {}}
-					errors={fieldErrors}
-					onChange={updateRestrictions}
-				/>
+				<header className="onboarding-step-intro">
+					<h1>Empecemos por tu objetivo</h1>
+					<p>
+						Cuéntame qué carrera tienes en mente. Es la brújula de todo tu plan.
+					</p>
+				</header>
 			) : null}
 
-			{saveStatus === "save_error" ? (
-				<p className="onboarding-form-error" role="alert">
-					No hemos podido guardar este paso. Revisa tu conexión e inténtalo de
-					nuevo; tus respuestas no se han perdido.
-				</p>
-			) : null}
+			<div className="onboarding-wizard-card">
+				{currentStep.id === "goal" ? (
+					<GoalStep
+						value={draft.goal}
+						errors={fieldErrors}
+						onChange={updateGoal}
+					/>
+				) : null}
+				{currentStep.id === "prior_history" ? (
+					<PriorHistoryStep
+						value={draft.profile.prior_history ?? {}}
+						errors={fieldErrors}
+						onChange={updatePriorHistory}
+					/>
+				) : null}
+				{currentStep.id === "baseline" ? (
+					<BaselineStep
+						value={draft.profile.baseline_4_weeks ?? {}}
+						errors={fieldErrors}
+						onChange={updateBaseline}
+					/>
+				) : null}
+				{currentStep.id === "availability" ? (
+					<AvailabilityStep
+						value={draft.profile.availability ?? {}}
+						errors={fieldErrors}
+						onChange={updateAvailability}
+					/>
+				) : null}
+				{currentStep.id === "restrictions" ? (
+					<RestrictionsStep
+						value={draft.profile.restrictions ?? {}}
+						errors={fieldErrors}
+						onChange={updateRestrictions}
+					/>
+				) : null}
 
-			<button
-				type="button"
-				disabled={saveStatus === "saving"}
-				onClick={handleNext}
-			>
-				{nextButtonLabel}
-			</button>
+				{saveStatus === "save_error" ? (
+					<p className="onboarding-form-error" role="alert">
+						No hemos podido guardar este paso. Revisa tu conexión e inténtalo de
+						nuevo; tus respuestas no se han perdido.
+					</p>
+				) : null}
+
+				<div className="onboarding-step-actions">
+					<button
+						type="button"
+						disabled={saveStatus === "saving"}
+						onClick={handleNext}
+					>
+						{nextButtonLabel} <span aria-hidden="true">→</span>
+					</button>
+				</div>
+			</div>
 		</div>
 	);
 }

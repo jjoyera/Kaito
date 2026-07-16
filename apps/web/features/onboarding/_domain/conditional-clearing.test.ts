@@ -24,7 +24,7 @@ describe("clearHiddenGoalFields", () => {
 		assert.equal(cleared.target_date, "2026-12-01");
 	});
 
-	test("keeps trail/ultra-trail fields but clears OCR/backyard-only fields", () => {
+	test("keeps visible Trail fields and clears every hidden goal field", () => {
 		const goal = {
 			modality: "trail" as const,
 			target_date: "2026-12-01",
@@ -39,7 +39,7 @@ describe("clearHiddenGoalFields", () => {
 
 		assert.equal(cleared.target_distance_km, 42);
 		assert.equal(cleared.positive_elevation_m, 1500);
-		assert.equal(cleared.technicality, "medium");
+		assert.equal(cleared.technicality, undefined);
 		assert.equal(cleared.obstacle_count, undefined);
 		assert.equal(cleared.target_loops, undefined);
 	});

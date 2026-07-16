@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   web:
-    name: Web scaffold validation
+    name: Web
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

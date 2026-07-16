@@ -65,6 +65,15 @@ El usuario empieza el proceso de configuración inicial del plan.
 
 El usuario necesita introducir su información sin sentirse abrumado y entender por qué Kaito le pide esos datos.
 
+### Estado de implementación actual
+
+> `/onboarding` ya entrega una introducción de valor, el CTA `Crear mi plan` y el
+> Paso 1 rediseñado (`Paso 1 de 7`, `14%`). Este paso expone solo Trail y Ultra y
+> solicita distancia, desnivel positivo y fecha objetivo. El resto del recorrido
+> descrito abajo es comportamiento objetivo y se implementa o rediseña de forma
+> incremental; OCR y Backyard siguen siendo requisitos de producto, aunque ahora
+> no se muestran en la interfaz.
+
 ### Recorrido principal
 
 1. Kaito pregunta por el objetivo deportivo del usuario.

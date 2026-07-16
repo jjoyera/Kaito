@@ -20,7 +20,7 @@ describe("validateStep(goal)", () => {
 		assert.equal(errors["goal.target_date"], "required");
 	});
 
-	test("accepts a valid trail goal with its conditional fields", () => {
+	test("accepts a valid Trail goal with the three visible race-detail fields", () => {
 		const errors = validateStep(
 			"goal",
 			draft({
@@ -29,14 +29,13 @@ describe("validateStep(goal)", () => {
 					target_date: "2026-12-01",
 					target_distance_km: 42,
 					positive_elevation_m: 1500,
-					technicality: "medium",
 				},
 			}),
 		);
 		assert.deepEqual(errors, {});
 	});
 
-	test("requires trail-specific fields but not OCR/backyard-specific ones", () => {
+	test("requires distance and elevation, but not technicality or altitude", () => {
 		const errors = validateStep(
 			"goal",
 			draft({
@@ -45,46 +44,33 @@ describe("validateStep(goal)", () => {
 		);
 		assert.equal(errors["goal.target_distance_km"], "required");
 		assert.equal(errors["goal.positive_elevation_m"], "required");
-		assert.equal(errors["goal.technicality"], "required");
-		assert.equal(errors["goal.obstacle_count"], undefined);
-		assert.equal(errors["goal.target_loops"], undefined);
+		assert.equal(errors["goal.technicality"], undefined);
+		assert.equal(errors["goal.max_altitude_m"], undefined);
 	});
 
-	test("requires only target_loops for backyard", () => {
+	test("accepts Ultra with the same fields as Trail", () => {
 		const errors = validateStep(
 			"goal",
 			draft({
-				goal: { modality: "backyard", target_date: "2026-12-01" },
+				goal: {
+					modality: "ultra_trail",
+					target_date: "2026-12-01",
+					target_distance_km: 65,
+					positive_elevation_m: 3400,
+				},
 			}),
 		);
-		assert.deepEqual(Object.keys(errors), ["goal.target_loops"]);
+		assert.deepEqual(errors, {});
 	});
 
-	test("requires distance and obstacle_count for OCR, not elevation/technicality", () => {
+	test("rejects race types that are not currently offered in step 1", () => {
 		const errors = validateStep(
 			"goal",
 			draft({
 				goal: { modality: "ocr", target_date: "2026-12-01" },
 			}),
 		);
-		assert.equal(errors["goal.target_distance_km"], "required");
-		assert.equal(errors["goal.obstacle_count"], "required");
-		assert.equal(errors["goal.positive_elevation_m"], undefined);
-		assert.equal(errors["goal.technicality"], undefined);
-	});
-
-	test("rejects target_loops below 1", () => {
-		const errors = validateStep(
-			"goal",
-			draft({
-				goal: {
-					modality: "backyard",
-					target_date: "2026-12-01",
-					target_loops: 0,
-				},
-			}),
-		);
-		assert.equal(errors["goal.target_loops"], "out_of_range");
+		assert.equal(errors["goal.modality"], "invalid_type");
 	});
 });
 
