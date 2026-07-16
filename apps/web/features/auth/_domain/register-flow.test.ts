@@ -37,10 +37,7 @@ describe("registerFlowReducer", () => {
 		);
 	});
 
-	it("recovers duplicate and system feedback on field edits", () => {
-		assert.deepEqual(registerFlowReducer({ kind: "duplicate_account" }, { type: "edit" }), {
-			kind: "idle",
-		});
+	it("recovers system feedback on field edits", () => {
 		assert.deepEqual(registerFlowReducer({ kind: "system_error" }, { type: "edit" }), {
 			kind: "idle",
 		});

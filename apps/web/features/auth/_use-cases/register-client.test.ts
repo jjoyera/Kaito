@@ -19,14 +19,14 @@ describe("mapProviderRegisterResult", () => {
 		});
 	});
 
-	it("allow-lists duplicate errors and never includes retry metadata", () => {
+	it("maps duplicate errors to the same neutral confirmation guidance", () => {
 		for (const code of ["user_already_exists", "email_exists"]) {
 			assert.deepEqual(
 				mapProviderRegisterResult({
 					ok: false,
 					error: { code, status: 422, retryAfterSeconds: 5 },
 				}),
-				{ status: "duplicate_account" },
+				{ status: "confirmation_required" },
 			);
 		}
 	});
@@ -104,6 +104,42 @@ describe("createRegisterWithPassword", () => {
 		});
 		assert.equal(reports.length, 1);
 		assert.match(String(reports[0]), /registration provider timeout/);
+	});
+
+	it("blocks retries after a timeout until the original provider request settles", async () => {
+		const reports: unknown[] = [];
+		let calls = 0;
+		let settleOriginal!: (result: { ok: true; hasSession: false }) => void;
+		const register = createRegisterWithPassword(
+			async () => {
+				calls += 1;
+				if (calls === 1) {
+					return new Promise((resolve) => {
+						settleOriginal = resolve;
+					});
+				}
+				return { ok: true, hasSession: true };
+			},
+			(error) => reports.push(error),
+			5,
+		);
+
+		assert.deepEqual(await register({ email: "x@y.dev", password: "secret" }), {
+			status: "system_error",
+		});
+		assert.deepEqual(await register({ email: "x@y.dev", password: "secret" }), {
+			status: "system_error",
+		});
+		assert.equal(calls, 1);
+		assert.match(String(reports.at(-1)), /still pending after timeout/);
+
+		settleOriginal({ ok: true, hasSession: false });
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		assert.deepEqual(await register({ email: "x@y.dev", password: "secret" }), {
+			status: "authenticated",
+		});
+		assert.equal(calls, 2);
 	});
 
 	it("converts adapter and reporter throws to system_error", async () => {

@@ -91,19 +91,15 @@ test.describe("/register", () => {
 		await expect(page.getByText(POST_SIGNUP_CONFIRMATION_COPY)).toHaveCount(0);
 	});
 
-	test("keeps duplicate feedback inline, focused, editable, and free of recovery UI", async ({ page }) => {
+	test("routes provider duplicate responses through neutral confirmation guidance", async ({ page }) => {
 		await page.goto("/register");
 		await fillRegistration(page, "duplicate@example.com");
 		await page.getByRole("button", { name: "Crear cuenta" }).click();
 
-		const feedback = page.getByRole("alert").filter({ hasText: "Ya existe una cuenta" });
-		await expect(feedback).toBeVisible();
-		await expect(page.locator(".register-feedback")).toBeFocused();
-		await expect(page.getByRole("link", { name: "Iniciar sesión" })).toHaveAttribute("href", "/login");
+		await expect(page).toHaveURL("/login");
+		await expect(page.getByRole("status")).toHaveText(POST_SIGNUP_CONFIRMATION_COPY);
+		await expect(page.getByText("Ya existe una cuenta")).toHaveCount(0);
 		await expect(page.getByText(/recuperar|olvidaste/i)).toHaveCount(0);
-		await page.getByLabel("Correo electrónico").fill("new@example.com");
-		await expect(feedback).toHaveCount(0);
-		await expect(page.getByRole("button", { name: "Crear cuenta" })).toBeEnabled();
 	});
 
 	test("distinguishes a system failure and permits a successful retry", async ({ page }) => {

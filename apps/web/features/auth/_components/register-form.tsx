@@ -1,7 +1,6 @@
 "use client";
 
 import * as Sentry from "@sentry/nextjs";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useReducer, useRef, useState } from "react";
 
@@ -33,7 +32,6 @@ import {
 	type RegisterWithPassword,
 } from "../_use-cases/register-client";
 
-const DUPLICATE_ACCOUNT_MESSAGE = "Ya existe una cuenta con ese correo electrónico.";
 const SYSTEM_ERROR_MESSAGE =
 	"Kaito no puede crear tu cuenta ahora mismo. Inténtalo de nuevo en unos minutos.";
 
@@ -48,7 +46,9 @@ export function RegisterForm() {
 	const pendingSubmission = useRef(false);
 	const nextRequestId = useRef(0);
 	const feedbackRef = useRef<HTMLDivElement>(null);
-	const register = createDefaultRegisterWithPassword();
+	const registerRef = useRef<RegisterWithPassword | null>(null);
+	registerRef.current ??= createDefaultRegisterWithPassword();
+	const register = registerRef.current;
 
 	useEffect(() => {
 		const now = currentTime();
@@ -72,7 +72,7 @@ export function RegisterForm() {
 	}, [activeRetryAt]);
 
 	useEffect(() => {
-		if (flow.kind === "duplicate_account" || flow.kind === "rate_limited" || flow.kind === "system_error") {
+		if (flow.kind === "rate_limited" || flow.kind === "system_error") {
 			feedbackRef.current?.focus();
 		}
 	}, [flow.kind]);
@@ -217,9 +217,6 @@ export function RegisterForm() {
 				</div>
 
 				<div className="register-feedback" ref={feedbackRef} tabIndex={-1}>
-					{flow.kind === "duplicate_account" ? (
-						<p className="login-form-error" role="alert">{DUPLICATE_ACCOUNT_MESSAGE} <Link href="/login">Iniciar sesión</Link>.</p>
-					) : null}
 					{isLimited ? (
 						<><p className="login-form-error" role="alert">Se han realizado demasiados intentos de registro.</p><p id="register-cooldown">Podrás intentarlo de nuevo en {remaining} segundos.</p></>
 					) : null}
@@ -258,7 +255,7 @@ async function resolveTestRegisterOutcome(email: string, callCount: number): Pro
 		await new Promise((resolve) => setTimeout(resolve, 2_000));
 		return { status: "system_error" };
 	}
-	if (email === "duplicate@example.com") return { status: "duplicate_account" };
+	if (email === "duplicate@example.com") return { status: "confirmation_required" };
 	if (email === "rate-limit@example.com") return { status: "rate_limited" };
 	if (email === "short-rate-limit@example.com" && callCount === 1) return { status: "rate_limited", retryAfterSeconds: 2 };
 	if (email === "system-once@example.com" && callCount === 1) return { status: "system_error" };

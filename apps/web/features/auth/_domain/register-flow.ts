@@ -6,14 +6,12 @@ export type RegisterFlowState =
 	| { kind: "idle" }
 	| { kind: "submitting"; requestId: number }
 	| { kind: "navigating"; destination: "onboarding" | "login" }
-	| { kind: "duplicate_account" }
 	| { kind: "rate_limited"; retryAt: number; now: number }
 	| { kind: "system_error" };
 
 export type RegisterSettlement =
 	| "authenticated"
 	| "confirmation_required"
-	| "duplicate_account"
 	| "system_error";
 
 export type RegisterFlowEvent =
@@ -30,7 +28,7 @@ export function registerFlowReducer(
 	event: RegisterFlowEvent,
 ): RegisterFlowState {
 	if (event.type === "submit") {
-		return state.kind === "idle" || state.kind === "duplicate_account" || state.kind === "system_error"
+		return state.kind === "idle" || state.kind === "system_error"
 			? { kind: "submitting", requestId: event.requestId }
 			: state;
 	}
@@ -54,9 +52,7 @@ export function registerFlowReducer(
 		return event.now >= state.retryAt ? { kind: "idle" } : { ...state, now: event.now };
 	}
 	if (event.type === "edit") {
-		return state.kind === "duplicate_account" || state.kind === "system_error"
-			? { kind: "idle" }
-			: state;
+		return state.kind === "system_error" ? { kind: "idle" } : state;
 	}
 	if (event.type === "navigation_error" && state.kind === "navigating") {
 		return { kind: "system_error" };
