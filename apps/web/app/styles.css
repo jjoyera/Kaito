@@ -221,11 +221,20 @@ p {
 	border-color: var(--color-error);
 }
 
+.login-field-hint,
+.login-field-error,
+.login-form-error {
+	font-size: 0.9375rem;
+	line-height: 1.5;
+}
+
+.login-field-hint {
+	color: var(--color-text-secondary);
+}
+
 .login-field-error,
 .login-form-error {
 	color: var(--color-error);
-	font-size: 0.9375rem;
-	line-height: 1.5;
 }
 
 .login-form-error {
@@ -261,6 +270,26 @@ p {
 .login-form button:disabled {
 	cursor: not-allowed;
 	opacity: 0.72;
+}
+
+.login-register-prompt {
+	margin-top: 1rem;
+	font-size: 0.95rem;
+	line-height: 1.5;
+	text-align: center;
+}
+
+.login-register-prompt a {
+	color: var(--color-primary-dark);
+	font-weight: 800;
+	text-decoration-thickness: 0.12em;
+	text-underline-offset: 0.18em;
+}
+
+.login-register-prompt a:focus-visible {
+	border-radius: 0.25rem;
+	outline: 3px solid rgb(232 137 58 / 55%);
+	outline-offset: 3px;
 }
 
 @keyframes login-card-enter {

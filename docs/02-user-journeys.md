@@ -16,7 +16,7 @@ Este usuario no busca únicamente una lista de entrenamientos. Necesita entender
 
 | Recorrido | Objetivo del usuario | Resultado esperado |
 | --- | --- | --- |
-| Primer acceso | Empezar a usar Kaito desde cero | El usuario entiende qué hace la aplicación e inicia el onboarding |
+| Primer acceso | Acceder con una cuenta existente o iniciar el registro | El usuario autenticado puede continuar hacia el onboarding |
 | Onboarding | Compartir contexto deportivo y elegir enfoque del plan | Kaito recopila la información necesaria, recomienda un enfoque y permite elegir entre opciones elegibles |
 | Generación del plan | Obtener una planificación personalizada | El usuario recibe un plan inicial asociado a su objetivo |
 | Consulta del dashboard | Entender el estado actual de su preparación | El usuario ve KPIs, calendario semanal y próximos entrenamientos |
@@ -36,14 +36,20 @@ El usuario necesita entender rápidamente qué problema resuelve Kaito y qué se
 
 ### Recorrido principal
 
-1. El usuario accede a la aplicación.
-2. Kaito presenta su propuesta de valor de forma breve.
-3. El usuario identifica que la aplicación puede ayudarle a preparar su objetivo deportivo.
-4. El usuario inicia el onboarding.
+1. El usuario accede a `/` y la aplicación lo redirige a `/login`.
+2. Si ya tiene una cuenta, introduce email y contraseña e inicia sesión mediante Supabase.
+3. Si es nuevo, selecciona `Crear cuenta` y accede a `/register`.
+4. En el registro introduce email, contraseña y repetición de contraseña.
+5. La interfaz valida localmente el formato del email, que la contraseña tenga al menos 8 caracteres e incluya mayúscula, minúscula, número y símbolo, y que ambas contraseñas coincidan.
+6. Una vez que el alta sea confirmada por el backend, el usuario podrá continuar hacia el onboarding.
+
+### Estado actual y siguiente paso
+
+La pantalla de registro y sus validaciones locales ya existen. El alta mediante Supabase/backend, la creación de cuenta o sesión y la transición al onboarding quedan para una tarea posterior.
 
 ### Resultado esperado
 
-El usuario entiende que Kaito generará un plan de entrenamiento personalizado a partir de su contexto, experiencia, disponibilidad y objetivo.
+El usuario puede elegir entre iniciar sesión o crear una cuenta; tras una autenticación confirmada, continúa hacia el onboarding para configurar su plan.
 
 ## Journey 2: Onboarding inicial
 
@@ -218,8 +224,9 @@ La interacción conversacional con Kaito para resolver dudas concretas sobre un 
 
 Los journeys estarán correctamente cubiertos si el MVP permite demostrar que:
 
-- El usuario puede iniciar Kaito y comprender su propuesta de valor.
-- El usuario puede completar un onboarding inicial sin fricción excesiva.
+- El usuario que accede a `/` llega a `/login` y puede elegir entre iniciar sesión o ir a `/register`.
+- El registro solicita email, contraseña y repetición, y muestra feedback local para los datos inválidos.
+- El usuario puede completar un onboarding inicial sin fricción excesiva una vez autenticado.
 - Kaito recomienda un enfoque (Camino Kaio, Modo Z o Kaioken), permite elegir entre los elegibles y muestra los bloqueados con motivo.
 - Kaito puede generar un plan inicial a partir del contexto del usuario.
 - El usuario puede consultar el estado del plan desde un dashboard.

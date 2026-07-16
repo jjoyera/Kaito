@@ -19,7 +19,7 @@ test("no DSN renders the app without Sentry ingestion requests", async ({
 
 	await page.goto("/");
 	await expect(
-		page.getByRole("heading", { name: "Project scaffold is running." }),
+		page.getByRole("heading", { name: /inicia sesión/i }),
 	).toBeVisible();
 
 	// Give any accidental async SDK transport during normal boot/render a brief

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { LoginForm } from "../../../features/auth/_components/login-form";
@@ -33,6 +34,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 				<p className="login-intro">Accede a tu espacio de entrenamiento</p>
 				{message ? <p role="alert">{message}</p> : null}
 				<LoginForm returnTo={destination} />
+				<p className="login-register-prompt">
+					¿Aún no tienes cuenta? <Link href="/register">Crear cuenta</Link>
+				</p>
 			</section>
 		</main>
 	);

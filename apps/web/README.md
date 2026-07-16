@@ -1,5 +1,14 @@
 # Kaito web
 
+## Current auth routes
+
+- `/` redirects to `/login`.
+- `/login` signs in through Supabase and links to `/register` with `Crear cuenta`.
+- `/register` uses the same centered auth-card layout and asks for email, password, and repeated password.
+- Registration currently validates locally: email format; at least 8 password characters with uppercase, lowercase, number, and symbol; and matching passwords.
+- Supabase/backend signup, account or session creation, and the onboarding handoff are not implemented yet. They are planned for a later task.
+- Register validation and E2E UI tests are available.
+
 ## Contribution and ownership
 
 - Keep `app/` limited to Next.js routes, layouts, loading/error, metadata, and route-policy wiring. Route pages import product features.

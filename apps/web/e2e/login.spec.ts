@@ -14,6 +14,10 @@ test.describe("/login", () => {
 		await expect(
 			page.getByRole("button", { name: "Iniciar sesión" }),
 		).toBeVisible();
+		await expect(page.getByRole("link", { name: "Crear cuenta" })).toHaveAttribute(
+			"href",
+			"/register",
+		);
 
 		await page.keyboard.press("Tab");
 		await expect(page.getByLabel("Correo electrónico")).toBeFocused();
@@ -23,6 +27,17 @@ test.describe("/login", () => {
 		await expect(
 			page.getByRole("button", { name: "Iniciar sesión" }),
 		).toBeFocused();
+	});
+
+	test("navigates to registration from the create account link", async ({ page }) => {
+		await page.goto("/login");
+
+		await page.getByRole("link", { name: "Crear cuenta" }).click();
+
+		await expect(page).toHaveURL("/register");
+		await expect(
+			page.getByRole("heading", { name: "Crea tu cuenta" }),
+		).toBeVisible();
 	});
 
 	test("validates required fields locally without attempting authentication", async ({

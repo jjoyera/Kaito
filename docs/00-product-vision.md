@@ -42,16 +42,17 @@ La propuesta de valor se apoya en tres ideas principales:
 
 La primera experiencia de uso de Kaito se centrará en validar el flujo principal del producto:
 
-1. El usuario entra por primera vez en la aplicación.
-2. Kaito inicia un onboarding pregunta a pregunta.
-3. El usuario define su estado actual, experiencia, disponibilidad y objetivo.
-4. Kaito muestra un estado de generación del plan.
-5. Se genera el plan inicial.
-6. El usuario accede al dashboard.
-7. El dashboard muestra KPIs, calendario semanal y próximos entrenamientos.
-8. Cada entrenamiento explica su propósito.
-9. El usuario puede marcar entrenamientos como completados, fallidos o mal realizados.
-10. Kaito recalcula el plan si detecta desviaciones relevantes.
+1. El usuario entra por primera vez en la aplicación y accede al login.
+2. Si ya tiene cuenta, inicia sesión; si es nuevo, pasa por el registro.
+3. Una vez autenticado, Kaito inicia un onboarding pregunta a pregunta.
+4. El usuario define su estado actual, experiencia, disponibilidad y objetivo.
+5. Kaito muestra un estado de generación del plan.
+6. Se genera el plan inicial.
+7. El usuario accede al dashboard.
+8. El dashboard muestra KPIs, calendario semanal y próximos entrenamientos.
+9. Cada entrenamiento explica su propósito.
+10. El usuario puede marcar entrenamientos como completados, fallidos o mal realizados.
+11. Kaito recalcula el plan si detecta desviaciones relevantes.
 
 ## Alcance del MVP
 
