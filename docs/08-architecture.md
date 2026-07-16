@@ -211,17 +211,21 @@ En módulos simples/CRUD, se permite simplificación sin imponer todas las capas
 
 - `/` redirige a `/login`.
 - `/login` inicia sesión mediante Supabase Auth y enlaza a `/register` con `Crear cuenta`.
-- `/register` solicita email, contraseña y repetición, con validación local de formato, fortaleza y coincidencia.
-- El registro todavía no llama a Supabase/backend, no crea cuenta ni sesión y no entrega el flujo al onboarding.
+- `/register` solicita email, contraseña y repetición, valida localmente formato, fortaleza y coincidencia, y ejecuta signup mediante Supabase Auth.
+- `features/auth` posee la normalización de resultados, la máquina de estados del registro, el cooldown persistido por pestaña, la capa modal accesible no nativa y el bridge de confirmación hacia login; `app/(auth)/` se limita a routing y composición.
+- Una sesión inmediata entrega el flujo a `/onboarding`. Un resultado sin sesión crea un nonce efímero y no sensible, redirige a `/login` y permite mostrar una sola vez orientación neutral. El proveedor puede ocultar duplicados con ese mismo resultado, por lo que la interfaz no afirma que el correo se haya enviado definitivamente.
+- El resultado de confirmación requerida se ha comprobado contra Supabase real. La sesión inmediata real y la compatibilidad manual con gestores de contraseñas permanecen sin verificar.
+- No existe todavía una capacidad de recuperación de contraseña.
 
-### Flujo objetivo de autenticación
+### Flujo actual de autenticación
 
 1. El usuario inicia sesión o solicita el registro desde `apps/web`.
-2. En login, Supabase Auth ya valida credenciales y emite la sesión. La integración equivalente para signup se incorporará en una tarea posterior.
-3. Solo cuando Supabase/backend confirme el alta, el registro podrá crear la cuenta/sesión y continuar hacia onboarding.
-4. `apps/web` envía el JWT al backend en cada request de negocio.
-5. `apps/api` valida firma/claims del JWT y construye contexto de identidad.
-6. Solo tras validar identidad se ejecutan casos de uso de Kaito.
+2. Supabase Auth es propietario de la validación de credenciales, creación de cuenta y emisión de sesión; la web solo normaliza sus resultados a estados propios de Kaito.
+3. Durante signup, la web evita envíos duplicados. Si Supabase limita la frecuencia, aplica el plazo fiable del proveedor o un fallback de 60 segundos y bloquea todos los reintentos hasta que venza.
+4. Una sesión inmediata continúa a `/onboarding`. Sin sesión, un nonce de 30 segundos vincula el handoff a `/login`; el aviso se consume una vez, elimina el parámetro de la URL y no contiene email, credenciales ni payload del proveedor.
+5. `apps/web` envía el JWT al backend en cada request de negocio.
+6. `apps/api` valida firma/claims del JWT y construye contexto de identidad.
+7. Solo tras validar identidad se ejecutan casos de uso de Kaito.
 
 ### Principios de seguridad de identidad
 
@@ -270,10 +274,11 @@ La IA solo usa contexto trazable del dominio MVP y reglas de:
 
 1. `/` dirige al usuario a `/login`, desde donde puede iniciar sesión o abrir `/register`.
 2. El login ejecuta la autenticación con Supabase y recibe la sesión/JWT.
-3. El registro valida localmente email, fortaleza de contraseña y coincidencia de la repetición; el signup con Supabase/backend queda pendiente.
-4. Cuando el backend confirme el alta, `web` podrá obtener la sesión y continuar hacia onboarding.
-5. Con una sesión válida, `web` consume `apps/api` con JWT.
-6. `api` valida el JWT y resuelve el estado funcional inicial (onboarding, generar plan o dashboard).
+3. El registro valida localmente email, fortaleza de contraseña y coincidencia; después solicita el alta a Supabase mediante el adaptador de auth.
+4. Con sesión inmediata, `web` continúa hacia onboarding. Sin sesión, entrega el flujo a login mediante el bridge efímero y muestra la orientación neutral de confirmación sin asegurar que se haya enviado correo.
+5. Los resultados explícitos de duplicado, límite de frecuencia y fallo de sistema permanecen en registro; el límite activa el cooldown y no existe CTA de recuperación de contraseña.
+6. Con una sesión válida, `web` consume `apps/api` con JWT.
+7. `api` valida el JWT y resuelve el estado funcional inicial (onboarding, generar plan o dashboard).
 
 ### 10.2 Onboarding + elegibilidad de enfoque
 
@@ -324,7 +329,7 @@ La IA solo usa contexto trazable del dominio MVP y reglas de:
 ### Frontend (`apps/web`)
 
 - Pruebas de UI/flujo y validaciones de formularios (Zod + capa de presentación), incluidas las reglas locales del registro.
-- E2E con Playwright sobre flujos críticos; actualmente existen pruebas de la UI de registro y su acceso desde login.
+- E2E con Playwright sobre login y registro: validación, overlay accesible, resultados Supabase normalizados, handoff a onboarding/login, bridge de confirmación de un solo uso, privacidad y cooldown.
 
 ### IA
 

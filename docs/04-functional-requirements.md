@@ -59,17 +59,21 @@ El sistema debe permitir que una persona cree una cuenta en Kaito mediante email
 - La contraseña debe tener al menos 8 caracteres e incluir mayúscula, minúscula, número y símbolo.
 - La repetición de contraseña debe coincidir con la contraseña.
 - La interfaz debe mostrar feedback local, claro y específico para corregir los campos inválidos antes de enviar el registro.
-- El backend debe impedir registrar dos cuentas con el mismo email.
-- El sistema solo debe considerar creada la cuenta cuando el backend confirme el alta.
-- Después de la creación confirmada de la cuenta y sesión correspondiente, el usuario debe poder continuar hacia el onboarding inicial.
+- Supabase Auth es responsable de crear la cuenta y determinar si el alta devuelve una sesión inmediata o requiere confirmación posterior.
+- Si Supabase devuelve una sesión inmediata, el sistema debe continuar automáticamente hacia `/onboarding`.
+- Si Supabase no devuelve sesión, el sistema debe continuar hacia `/login` y mostrar una sola vez el texto neutral `Si los datos son correctos, recibirás un correo para confirmar tu cuenta. Si ya tienes una cuenta, inicia sesión.` sin exponer el email ni afirmar que el correo se envió definitivamente.
+- El sistema debe admitir que Supabase oculte una cuenta duplicada mediante el mismo resultado sin sesión. Solo debe mostrar feedback explícito de duplicado cuando el proveedor lo identifique como tal.
+- Ante un límite de frecuencia, el sistema debe bloquear todos los reintentos durante el plazo fiable indicado por el proveedor o durante 60 segundos como fallback, y reactivarlos automáticamente al vencer.
+- Los errores explícitos de cuenta duplicada, límite de frecuencia o sistema deben permanecer accesibles en `/register` y permitir una recuperación coherente.
+- Esta capacidad no incluye recuperación de contraseña ni debe mostrar enlaces o acciones de recuperación inexistentes.
 
 ### Estado de implementación
 
-La ruta `/register` y las validaciones locales están disponibles. La integración de alta con Supabase/backend, la creación de cuenta o sesión y la transición al onboarding están pendientes de una tarea posterior.
+El registro mediante Supabase, la separación entre sesión inmediata y resultado sin sesión, el handoff a `/onboarding` o `/login`, el cooldown y el feedback accesible están implementados. El flujo real con confirmación requerida se ha comprobado; la sesión inmediata real y la compatibilidad manual con gestores de contraseñas permanecen sin verificar.
 
 ### Resultado esperado
 
-Tras la confirmación del backend, el usuario queda identificado en la plataforma y puede empezar el proceso de configuración de su plan.
+El resultado comunicado por Supabase determina el siguiente paso: una sesión inmediata continúa hacia onboarding y un resultado sin sesión entrega el flujo a login con orientación neutral para confirmar la cuenta.
 
 ## RF-02 Login de usuario
 
@@ -358,7 +362,7 @@ El MVP estará correctamente cubierto si:
 
 - El usuario puede registrarse con email, contraseña y repetición de contraseña.
 - El registro valida formato de email, fortaleza y coincidencia de contraseñas, y muestra feedback local comprensible.
-- La cuenta solo se considera creada cuando el backend confirma el alta.
+- El resultado de Supabase determina si existe sesión inmediata o si el usuario debe continuar por la confirmación desde login, sin afirmar que se haya enviado un correo cuando el proveedor lo oculta.
 - El usuario puede iniciar sesión con email y contraseña.
 - Los profesores pueden acceder a un usuario demo para probar el TFM.
 - Kaito identifica si el usuario necesita onboarding, generación de plan o dashboard.

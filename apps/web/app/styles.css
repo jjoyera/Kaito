@@ -223,7 +223,8 @@ p {
 
 .login-field-hint,
 .login-field-error,
-.login-form-error {
+.login-form-error,
+.login-form-success {
 	font-size: 0.9375rem;
 	line-height: 1.5;
 }
@@ -240,6 +241,15 @@ p {
 .login-form-error {
 	border-left: 3px solid var(--color-error);
 	padding-left: 0.75rem;
+}
+
+.login-form-success {
+	border-left: 3px solid var(--color-success);
+	border-radius: 0.5rem;
+	background: rgb(79 138 91 / 10%);
+	color: var(--color-success-text);
+	font-weight: 700;
+	padding: 0.75rem;
 }
 
 .login-form button {
@@ -272,6 +282,57 @@ p {
 	opacity: 0.72;
 }
 
+.auth-processing-overlay-backdrop {
+	position: fixed;
+	inset: 0;
+	z-index: 1000;
+	display: grid;
+	place-items: center;
+	background: rgb(23 33 27 / 52%);
+	backdrop-filter: blur(2px);
+	padding: 1rem;
+}
+
+.auth-processing-overlay {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	align-items: center;
+	gap: 1rem;
+	width: min(100%, 27rem);
+	border: 1px solid rgb(23 33 27 / 10%);
+	border-radius: 1.25rem;
+	background: var(--color-surface);
+	color: var(--color-text-primary);
+	padding: 2rem;
+	box-shadow: 0 1.5rem 4rem rgb(23 33 27 / 24%);
+	outline: none;
+}
+
+.auth-processing-overlay-content {
+	display: grid;
+	gap: 0.35rem;
+}
+
+.auth-processing-overlay-content h2 {
+	margin: 0;
+	font-size: 1.25rem;
+	line-height: 1.3;
+}
+
+.auth-processing-overlay-content p {
+	font-size: 1rem;
+	line-height: 1.5;
+}
+
+.auth-processing-overlay-spinner {
+	width: 2.5rem;
+	height: 2.5rem;
+	border: 0.3rem solid rgb(47 93 80 / 20%);
+	border-top-color: var(--color-primary);
+	border-radius: 50%;
+	animation: auth-processing-overlay-spin 800ms linear infinite;
+}
+
 .login-register-prompt {
 	margin-top: 1rem;
 	font-size: 0.95rem;
@@ -290,6 +351,12 @@ p {
 	border-radius: 0.25rem;
 	outline: 3px solid rgb(232 137 58 / 55%);
 	outline-offset: 3px;
+}
+
+@keyframes auth-processing-overlay-spin {
+	to {
+		transform: rotate(1turn);
+	}
 }
 
 @keyframes login-card-enter {
@@ -315,6 +382,7 @@ p {
 }
 
 @media (prefers-reduced-motion: reduce) {
+	.auth-processing-overlay-spinner { animation: none; border-style: dotted; }
 	*,
 	*::before,
 	*::after {

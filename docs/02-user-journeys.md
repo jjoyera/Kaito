@@ -41,15 +41,19 @@ El usuario necesita entender rápidamente qué problema resuelve Kaito y qué se
 3. Si es nuevo, selecciona `Crear cuenta` y accede a `/register`.
 4. En el registro introduce email, contraseña y repetición de contraseña.
 5. La interfaz valida localmente el formato del email, que la contraseña tenga al menos 8 caracteres e incluya mayúscula, minúscula, número y símbolo, y que ambas contraseñas coincidan.
-6. Una vez que el alta sea confirmada por el backend, el usuario podrá continuar hacia el onboarding.
+6. Al enviar datos válidos, una capa modal accesible y no nativa bloquea envíos duplicados solo mientras Supabase procesa la solicitud.
+7. Si Supabase devuelve una sesión inmediata, el usuario continúa automáticamente hacia `/onboarding`.
+8. Si Supabase no devuelve sesión, la aplicación redirige a `/login` y muestra una sola vez el aviso neutral: `Si los datos son correctos, recibirás un correo para confirmar tu cuenta. Si ya tienes una cuenta, inicia sesión.` El aviso no asegura que el correo se haya enviado, ya que el proveedor puede ocultar con el mismo resultado que la cuenta ya exista.
+9. Si Supabase identifica explícitamente una cuenta duplicada o un error inesperado, el feedback permanece en `/register` y permite corregir o reintentar. No existe todavía recuperación de contraseña.
+10. Ante un límite de frecuencia, el formulario bloquea todos los reintentos durante el plazo indicado por metadatos fiables del proveedor o, si no existen, durante 60 segundos; después se habilita automáticamente.
 
-### Estado actual y siguiente paso
+### Estado actual
 
-La pantalla de registro y sus validaciones locales ya existen. El alta mediante Supabase/backend, la creación de cuenta o sesión y la transición al onboarding quedan para una tarea posterior.
+El registro real mediante Supabase, sus resultados de sesión inmediata o confirmación pendiente, el handoff a login/onboarding, el cooldown y el feedback accesible ya están implementados. La comprobación real del camino con sesión inmediata y la compatibilidad manual con gestores de contraseñas siguen pendientes; el camino real con confirmación requerida sí se ha comprobado.
 
 ### Resultado esperado
 
-El usuario puede elegir entre iniciar sesión o crear una cuenta; tras una autenticación confirmada, continúa hacia el onboarding para configurar su plan.
+El usuario puede elegir entre iniciar sesión o crear una cuenta. Una sesión confirmada continúa hacia onboarding; un resultado sin sesión entrega el flujo a login con orientación neutral para confirmar la cuenta.
 
 ## Journey 2: Onboarding inicial
 
@@ -225,7 +229,9 @@ La interacción conversacional con Kaito para resolver dudas concretas sobre un 
 Los journeys estarán correctamente cubiertos si el MVP permite demostrar que:
 
 - El usuario que accede a `/` llega a `/login` y puede elegir entre iniciar sesión o ir a `/register`.
-- El registro solicita email, contraseña y repetición, y muestra feedback local para los datos inválidos.
+- El registro solicita email, contraseña y repetición, muestra feedback local para datos inválidos y procesa un único intento mediante Supabase.
+- Una sesión inmediata continúa a onboarding; un resultado sin sesión continúa a login con orientación neutral, sin afirmar que el correo se envió definitivamente.
+- Los límites de frecuencia bloquean reintentos durante el cooldown y no se presenta recuperación de contraseña mientras esa capacidad no exista.
 - El usuario puede completar un onboarding inicial sin fricción excesiva una vez autenticado.
 - Kaito recomienda un enfoque (Camino Kaio, Modo Z o Kaioken), permite elegir entre los elegibles y muestra los bloqueados con motivo.
 - Kaito puede generar un plan inicial a partir del contexto del usuario.

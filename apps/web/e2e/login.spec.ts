@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
 
+const POST_SIGNUP_CONFIRMATION_COPY =
+	"Si los datos son correctos, recibirás un correo para confirmar tu cuenta. Si ya tienes una cuenta, inicia sesión.";
+
 test.describe("/login", () => {
 	test("shows labeled email/password controls and supports keyboard navigation", async ({
 		page,
@@ -220,6 +223,36 @@ test.describe("/login", () => {
 				.getByRole("alert")
 				.filter({ hasText: "La contraseña es obligatoria." }),
 		).toBeVisible();
+	});
+
+	test("shows signup confirmation only for a matching one-time tab record", async ({ page }) => {
+		const nonce = "123e4567-e89b-42d3-a456-426614174000";
+		await page.addInitScript(({ nonce }) => {
+			sessionStorage.setItem(
+				`kaito:auth:signup-confirmation:${nonce}`,
+				JSON.stringify({ version: 1, createdAt: Date.now() }),
+			);
+		}, { nonce });
+		await page.goto(`/login?returnTo=%2Fonboarding&signupConfirmation=${nonce}`);
+
+		const banner = page.getByRole("status");
+		await expect(banner).toHaveText(POST_SIGNUP_CONFIRMATION_COPY);
+		await expect(page).toHaveURL("/login?returnTo=%2Fonboarding");
+		await page.reload();
+		await expect(page.getByText(POST_SIGNUP_CONFIRMATION_COPY)).toHaveCount(0);
+	});
+
+	test("does not show a confirmation claim for direct or malformed navigation", async ({ page }) => {
+		for (const path of [
+			"/login",
+			"/login?signupConfirmation=123e4567-e89b-42d3-a456-426614174000",
+			"/login?signupConfirmation=malformed",
+			"/login?signupConfirmation=123e4567-e89b-42d3-a456-426614174000&signupConfirmation=123e4567-e89b-42d3-a456-426614174000",
+		]) {
+			await page.goto(path);
+			await expect(page.getByText(POST_SIGNUP_CONFIRMATION_COPY)).toHaveCount(0);
+			await expect(page.getByRole("button", { name: "Iniciar sesión" })).toBeVisible();
+		}
 	});
 
 	test("keeps the form usable without decorative motion at narrow and wide viewports", async ({
