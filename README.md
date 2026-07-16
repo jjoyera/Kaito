@@ -16,9 +16,9 @@ funcional de acceso para usuarios finales.
 
 | Área | Estado |
 | --- | --- |
-| Web | Next.js App Router con home scaffold, pantalla `/login` y wizard `/onboarding`. |
+| Web | Next.js App Router con `/login`, registro Supabase en `/register` y wizard `/onboarding`. |
 | API | FastAPI con health check, verificación JWT Supabase vía JWKS y persistencia de onboarding. |
-| Auth | Backend protegido con `GET /auth/me`; `/login` auth-aware y `/onboarding` privado con sesión Supabase. |
+| Auth | Signup/login con Supabase, handoff de confirmación a login, backend protegido con `GET /auth/me` y `/onboarding` privado. |
 | Marca | Paleta y assets iniciales bajo `docs/` y `apps/web/public/`. |
 | SDD | Cambios guiados por OpenSpec en `openspec/changes/`. |
 
@@ -163,9 +163,9 @@ uv run python -c "from app.main import app"
 uv run pytest
 ```
 
-`pnpm test:web-auth` cubre los contratos frontend de login: validación local,
-normalización de resultados de auth y handoff autenticado centralizado. No requiere
-cuentas reales de Supabase.
+`pnpm test:web-auth` cubre los contratos frontend de login y registro: validación local,
+normalización de resultados de auth, cooldown, bridge de confirmación y handoff
+autenticado. No requiere cuentas reales de Supabase.
 
 `pnpm test:web-onboarding` cubre el wizard de onboarding: pasos y validación
 por paso, limpieza condicional de campos, mapeo de diagnósticos del backend a
@@ -201,8 +201,10 @@ openspec/              Artefactos SDD/OpenSpec.
 - Pantalla `/login` auth-aware para usuarios existentes, con validación local,
   estados de carga y errores seguros; el handoff autenticado usa una URL local
   validada o `/onboarding`.
-- Contratos frontend de login para validar email/password, mapear resultados de
-  proveedor a estados propios de Kaito y centralizar el handoff autenticado.
+- Registro Supabase en `/register` con validación local, procesamiento accesible,
+  cooldown ante límites de frecuencia y resultados propios de Kaito. Una sesión
+  inmediata continúa a onboarding; un resultado sin sesión continúa a login con
+  orientación neutral de confirmación y sin exponer el email.
 - Wizard privado `/onboarding` (protegido por proxy y comprobación de servidor)
   con los 5 pasos del contrato canónico (objetivo, historial previo, últimas 4
   semanas, disponibilidad, restricciones): resume desde un borrador guardado,
@@ -215,9 +217,9 @@ openspec/              Artefactos SDD/OpenSpec.
 - Paquete `@kaito/api-client` reservado para un futuro cliente generado; hoy no
   exporta código ni contratos de producto.
 
-Todavía no hay signup, password reset, magic links, social auth, demo access,
-selección de enfoque de plan, dashboard, Strava, IA/RAG, planes de
-entrenamiento reales ni despliegue/CD.
+Todavía no hay password reset, magic links, social auth, demo access, selección de
+enfoque de plan, dashboard, Strava, IA/RAG, planes de entrenamiento reales ni
+despliegue/CD.
 
 ## Flujo SDD/OpenSpec
 
