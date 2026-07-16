@@ -71,8 +71,16 @@ test.describe("session route flow", () => {
 		).toHaveCount(0);
 		await navigation;
 		await expect(
-			page.getByRole("heading", { name: /cuéntanos tu punto de partida/i }),
+			page.getByRole("heading", {
+				name: "Tu plan de entrenamiento, hecho a tu medida",
+			}),
 		).toBeVisible();
+		await expect(
+			page.getByRole("button", { name: "Crear mi plan" }),
+		).toBeVisible();
+		await expect(
+			page.getByRole("heading", { name: /cuéntanos tu punto de partida/i }),
+		).toHaveCount(0);
 	});
 
 	test("uses onboarding as the safe post-login handoff", async ({ page }) => {
@@ -83,8 +91,16 @@ test.describe("session route flow", () => {
 
 		await expect(page).toHaveURL("/onboarding");
 		await expect(
-			page.getByRole("heading", { name: /cuéntanos tu punto de partida/i }),
+			page.getByRole("heading", {
+				name: "Tu plan de entrenamiento, hecho a tu medida",
+			}),
 		).toBeVisible();
+		await expect(
+			page.getByRole("button", { name: "Crear mi plan" }),
+		).toBeVisible();
+		await expect(
+			page.getByRole("heading", { name: /cuéntanos tu punto de partida/i }),
+		).toHaveCount(0);
 	});
 
 	test("renders bounded expiry context but not private content for an invalid session", async ({

@@ -34,6 +34,11 @@ async function authenticate(page: Page) {
 	]);
 }
 
+async function startOnboarding(page: Page) {
+	await page.goto("/onboarding");
+	await page.getByRole("button", { name: "Crear mi plan" }).click();
+}
+
 const VALID_TRAIL_GOAL = {
 	modality: "trail",
 	target_date: "2026-12-01",
@@ -88,7 +93,7 @@ test.describe("onboarding wizard", () => {
 			});
 		});
 
-		await page.goto("/onboarding");
+		await startOnboarding(page);
 
 		await expect(
 			page.getByRole("group", { name: "¿Cómo han sido tus últimas 4 semanas?" }),
@@ -132,7 +137,7 @@ test.describe("onboarding wizard", () => {
 			});
 		});
 
-		await page.goto("/onboarding");
+		await startOnboarding(page);
 		await page.selectOption("#goal-modality", "trail");
 		await page.fill("#goal-target-date", "2026-12-01");
 		await page.fill("#goal-target-distance-km", "42");
@@ -159,7 +164,7 @@ test.describe("onboarding wizard", () => {
 			await route.fulfill({ status: 404, body: "not found" });
 		});
 
-		await page.goto("/onboarding");
+		await startOnboarding(page);
 		await page.selectOption("#goal-modality", "trail");
 		// target_date is left empty on purpose.
 		await page.getByRole("button", { name: "Siguiente" }).click();
@@ -196,7 +201,7 @@ test.describe("onboarding wizard", () => {
 			});
 		});
 
-		await page.goto("/onboarding");
+		await startOnboarding(page);
 		await page.selectOption("#goal-modality", "trail");
 		await page.fill("#goal-target-date", "2026-12-01");
 		await page.fill("#goal-target-distance-km", "42");
@@ -248,7 +253,7 @@ test.describe("onboarding wizard", () => {
 			});
 		});
 
-		await page.goto("/onboarding");
+		await startOnboarding(page);
 		await page.selectOption("#goal-modality", "ocr");
 		await page.fill("#goal-target-date", "2026-12-01");
 		await page.fill("#goal-target-distance-km", "15");
@@ -308,7 +313,7 @@ test.describe("onboarding wizard", () => {
 			});
 		});
 
-		await page.goto("/onboarding");
+		await startOnboarding(page);
 		await expect(
 			page.getByRole("group", {
 				name: "¿Tienes restricciones o molestias a tener en cuenta?",
@@ -373,7 +378,7 @@ test.describe("onboarding wizard", () => {
 			});
 		});
 
-		await page.goto("/onboarding");
+		await startOnboarding(page);
 		await expect(
 			page.getByRole("group", {
 				name: "¿Tienes restricciones o molestias a tener en cuenta?",
