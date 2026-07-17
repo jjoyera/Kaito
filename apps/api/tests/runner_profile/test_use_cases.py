@@ -307,6 +307,35 @@ def test_save_then_read_round_trips_exact_availability_for_the_same_owner():
     assert len(repository.read_calls) == 1
 
 
+def test_equivalent_save_retry_keeps_one_current_exact_availability_snapshot():
+    snapshot = _completed_snapshot()
+    repository = StatefulRecordingRepository()
+    transactions = RecordingTransactions(repository)
+    user = UserContext("runner-1")
+    command = SaveOnboardingInput(
+        snapshot=snapshot, validation_date=date(2026, 7, 13)
+    )
+
+    save_onboarding(user, command, transactions)
+    retried = save_onboarding(user, command, transactions)
+    loaded = read_onboarding(
+        user,
+        ReadOnboardingInput(validation_date=date(2026, 7, 13)),
+        transactions,
+    )
+
+    expected_minutes_by_day = {"monday": 45, "wednesday": 75, "saturday": 120}
+    if (
+        retried.snapshot.profile["availability"]["minutes_by_day"]
+        != expected_minutes_by_day
+        or loaded.snapshot.profile["availability"]["minutes_by_day"]
+        != expected_minutes_by_day
+    ):
+        pytest.fail("availability round-trip mismatch", pytrace=False)
+    assert len(repository.upserts) == 2
+    assert len(repository.read_calls) == 1
+
+
 def test_save_retains_modality_specific_clearing_after_contract_reduction():
     snapshot = _completed_snapshot()
     snapshot["goal"].update(

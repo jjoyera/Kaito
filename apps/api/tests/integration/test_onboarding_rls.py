@@ -156,13 +156,38 @@ def _adopt_claims(connection: psycopg.Connection, user_id: str) -> None:
     result = connection.execute(
         "SELECT session_user, current_user, auth.uid()::text, NOT r.rolsuper, NOT r.rolbypassrls, NOT r.rolinherit FROM pg_catalog.pg_roles r WHERE r.rolname = session_user"
     ).fetchone()
-    assert result == (LOGIN_ROLE, "authenticated", user_id, True, True, True)
+    if result != (LOGIN_ROLE, "authenticated", user_id, True, True, True):
+        pytest.fail("authenticated identity context mismatch")
 
 
-def _insert(connection: psycopg.Connection, owner_id: str, retry: bool = True) -> int:
+def _availability_snapshot(minutes_by_day: dict[str, int]) -> dict[str, object]:
+    return {
+        "contract_version": "1",
+        "state": "incomplete",
+        "profile": {"availability": {"minutes_by_day": minutes_by_day}},
+        "goal": {},
+    }
+
+
+def _assert_availability(actual: object, expected: dict[str, int]) -> None:
+    if actual != expected:
+        pytest.fail("availability round-trip mismatch")
+
+
+def _insert(
+    connection: psycopg.Connection,
+    owner_id: str,
+    snapshot: dict[str, object],
+    retry: bool = True,
+) -> int:
     return connection.execute(
-        "INSERT INTO public.onboarding_snapshots (owner_id, snapshot) VALUES (%s, jsonb_build_object('contract_version', '1', 'state', 'incomplete'))" + (" ON CONFLICT (owner_id) DO UPDATE SET snapshot = EXCLUDED.snapshot" if retry else ""),
-        (owner_id,),
+        "INSERT INTO public.onboarding_snapshots (owner_id, snapshot) VALUES (%s, %s)"
+        + (
+            " ON CONFLICT (owner_id) DO UPDATE SET snapshot = EXCLUDED.snapshot"
+            if retry
+            else ""
+        ),
+        (owner_id, json.dumps(snapshot)),
     ).rowcount
 
 def _run_migration(connection: psycopg.Connection) -> None:
@@ -229,12 +254,20 @@ def test_schema_rejects_missing_or_null_contract_fields(identities: RlsFixture, 
 def test_equivalent_retry_preserves_updated_at(identities: RlsFixture) -> None:
     with _as_user(identities, identities.first_user) as connection:
         connection.execute("SET TIME ZONE 'Pacific/Auckland'")
-        _insert(connection, identities.first_user)
+        _insert(
+            connection,
+            identities.first_user,
+            _availability_snapshot({"monday": 45, "wednesday": 75, "saturday": 120}),
+        )
         original = connection.execute("SELECT created_at, updated_at, clock_timestamp() FROM public.onboarding_snapshots WHERE owner_id = %s", (identities.first_user,)).fetchone()
         assert original[0] == original[1] and abs((original[2] - original[0]).total_seconds()) < 1
         connection.commit()
         _adopt_claims(connection, identities.first_user)
-        _insert(connection, identities.first_user)
+        _insert(
+            connection,
+            identities.first_user,
+            _availability_snapshot({"monday": 45, "wednesday": 75, "saturday": 120}),
+        )
         connection.commit()
         _adopt_claims(connection, identities.first_user)
         retried = connection.execute("SELECT updated_at FROM public.onboarding_snapshots WHERE owner_id = %s", (identities.first_user,)).fetchone()
@@ -242,43 +275,113 @@ def test_equivalent_retry_preserves_updated_at(identities: RlsFixture) -> None:
 
 
 @pytest.mark.parametrize("actor", ["first_user", "second_user"])
-def test_cross_owner_insert_is_denied_while_target_row_is_absent(identities: RlsFixture, actor: str) -> None:
+def test_cross_owner_insert_is_denied_while_target_row_is_absent(
+    identities: RlsFixture, actor: str
+) -> None:
     owner_id = getattr(identities, actor)
     foreign_id = getattr(identities, "second_user" if actor == "first_user" else "first_user")
     with psycopg.connect(identities.db_url, autocommit=True) as admin:
-        _insert(admin, owner_id)
-        admin.execute("DELETE FROM public.onboarding_snapshots WHERE owner_id = ANY(%s::uuid[])", ([foreign_id],))
-        assert admin.execute("SELECT count(*) FROM public.onboarding_snapshots WHERE owner_id = %s", (owner_id,)).fetchone() == (1,)
+        admin.execute(
+            "DELETE FROM public.onboarding_snapshots WHERE owner_id = ANY(%s::uuid[])",
+            ([owner_id, foreign_id],),
+        )
     with _as_user(identities, owner_id) as connection:
         with pytest.raises(psycopg.errors.InsufficientPrivilege):
-            _insert(connection, foreign_id, retry=False)
+            _insert(
+                connection,
+                foreign_id,
+                _availability_snapshot({"monday": 45, "wednesday": 75, "saturday": 120}),
+                retry=False,
+            )
         connection.rollback()
-    with psycopg.connect(identities.db_url) as admin:
-        assert admin.execute("SELECT count(*) FROM public.onboarding_snapshots WHERE owner_id = %s", (foreign_id,)).fetchone() == (0,)
+    with _as_user(identities, foreign_id) as foreign:
+        assert (
+            foreign.execute(
+                "SELECT count(*) FROM public.onboarding_snapshots WHERE owner_id = %s",
+                (foreign_id,),
+            ).fetchone()
+            == (0,)
+        )
 
 
 @pytest.mark.parametrize("actor", ["first_user", "second_user"])
-def test_each_owner_crud_and_cross_owner_data_access_is_denied(identities: RlsFixture, actor: str) -> None:
+def test_each_owner_crud_and_cross_owner_data_access_is_denied(
+    identities: RlsFixture, actor: str
+) -> None:
     owner_id = getattr(identities, actor)
     foreign_id = getattr(identities, "second_user" if actor == "first_user" else "first_user")
+    foreign_minutes = {"tuesday": 45, "thursday": 75, "sunday": 120}
+    owner_minutes = {"monday": 45, "wednesday": 75, "saturday": 120}
+    updated_owner_minutes = {"monday": 60, "wednesday": 75, "saturday": 120}
     with _as_user(identities, foreign_id) as foreign:
-        assert _insert(foreign, foreign_id) == 1
+        assert _insert(foreign, foreign_id, _availability_snapshot(foreign_minutes)) == 1
         foreign.commit()
         _adopt_claims(foreign, foreign_id)
-        foreign_before = foreign.execute("SELECT snapshot FROM public.onboarding_snapshots WHERE owner_id = %s", (foreign_id,)).fetchone()
+        foreign_snapshot = foreign.execute(
+            "SELECT snapshot -> 'profile' -> 'availability' -> 'minutes_by_day' "
+            "FROM public.onboarding_snapshots WHERE owner_id = %s",
+            (foreign_id,),
+        ).fetchone()
+        _assert_availability(foreign_snapshot[0], foreign_minutes)
     with _as_user(identities, owner_id) as connection:
-        assert _insert(connection, owner_id) == 1
+        assert _insert(connection, owner_id, _availability_snapshot(owner_minutes)) == 1
         connection.commit()
         _adopt_claims(connection, owner_id)
-        assert connection.execute("SELECT count(*) FROM public.onboarding_snapshots WHERE owner_id = %s", (owner_id,)).fetchone() == (1,)
-        assert connection.execute("SELECT count(*) FROM public.onboarding_snapshots WHERE owner_id = %s", (foreign_id,)).fetchone() == (0,)
-        assert connection.execute("UPDATE public.onboarding_snapshots SET snapshot = %s WHERE owner_id = %s", (json.dumps({"contract_version": "1", "state": "completed"}), foreign_id)).rowcount == 0
-        assert connection.execute("DELETE FROM public.onboarding_snapshots WHERE owner_id = %s", (foreign_id,)).rowcount == 0
-        assert connection.execute("UPDATE public.onboarding_snapshots SET snapshot = %s WHERE owner_id = %s", (json.dumps({"contract_version": "1", "state": "completed"}), owner_id)).rowcount == 1
+        own_snapshot = connection.execute(
+            "SELECT snapshot -> 'profile' -> 'availability' -> 'minutes_by_day' "
+            "FROM public.onboarding_snapshots WHERE owner_id = %s",
+            (owner_id,),
+        ).fetchone()
+        _assert_availability(own_snapshot[0], owner_minutes)
+        assert (
+            connection.execute(
+                "SELECT count(*) FROM public.onboarding_snapshots WHERE owner_id = %s",
+                (foreign_id,),
+            ).fetchone()
+            == (0,)
+        )
+        assert (
+            connection.execute(
+                "UPDATE public.onboarding_snapshots SET snapshot = %s WHERE owner_id = %s",
+                (json.dumps(_availability_snapshot(updated_owner_minutes)), foreign_id),
+            ).rowcount
+            == 0
+        )
+        assert (
+            connection.execute(
+                "DELETE FROM public.onboarding_snapshots WHERE owner_id = %s",
+                (foreign_id,),
+            ).rowcount
+            == 0
+        )
+        assert (
+            connection.execute(
+                "UPDATE public.onboarding_snapshots SET snapshot = %s WHERE owner_id = %s",
+                (json.dumps(_availability_snapshot(updated_owner_minutes)), owner_id),
+            ).rowcount
+            == 1
+        )
         connection.commit()
         _adopt_claims(connection, owner_id)
-        assert connection.execute("DELETE FROM public.onboarding_snapshots WHERE owner_id = %s", (owner_id,)).rowcount == 1
+        updated_snapshot = connection.execute(
+            "SELECT snapshot -> 'profile' -> 'availability' -> 'minutes_by_day' "
+            "FROM public.onboarding_snapshots WHERE owner_id = %s",
+            (owner_id,),
+        ).fetchone()
+        _assert_availability(updated_snapshot[0], updated_owner_minutes)
+        assert (
+            connection.execute(
+                "DELETE FROM public.onboarding_snapshots WHERE owner_id = %s",
+                (owner_id,),
+            ).rowcount
+            == 1
+        )
         connection.commit()
     with _as_user(identities, foreign_id) as foreign:
         _adopt_claims(foreign, foreign_id)
-        assert foreign.execute("SELECT snapshot FROM public.onboarding_snapshots WHERE owner_id = %s", (foreign_id,)).fetchone() == foreign_before
+        preserved_snapshot = foreign.execute(
+            "SELECT snapshot -> 'profile' -> 'availability' -> 'minutes_by_day' "
+            "FROM public.onboarding_snapshots WHERE owner_id = %s",
+            (foreign_id,),
+        ).fetchone()
+        _assert_availability(preserved_snapshot[0], foreign_minutes)

@@ -50,24 +50,42 @@ describe("saveOnboardingStep", () => {
 			}),
 		);
 
-		assert.equal(
-			capturedBody,
-			JSON.stringify({
-				snapshot: {
-					contract_version: "1",
-					state: "incomplete",
-					profile: {
+		assert.ok(
+			capturedBody ===
+				JSON.stringify({
+					snapshot: {
+						contract_version: "1",
+						state: "incomplete",
+						profile: {
 							availability: {
 								minutes_by_day: { monday: 45, wednesday: 75, saturday: 120 },
 							},
 							restrictions: { has_restrictions: false },
 						},
-					goal: { modality: "trail" },
-				},
-				validation_date: "2026-07-13",
-			}),
+						goal: { modality: "trail" },
+					},
+					validation_date: "2026-07-13",
+				}),
+			"onboarding payload mismatch",
 		);
 		assert.equal(outcome.status, "saved");
+		const request = JSON.parse(capturedBody ?? "{}") as {
+			snapshot?: {
+				profile?: { availability?: { minutes_by_day?: unknown } };
+				goal?: Record<string, unknown>;
+			};
+		};
+		assert.ok(
+			JSON.stringify(request.snapshot?.profile?.availability?.minutes_by_day) ===
+				JSON.stringify({ monday: 45, wednesday: 75, saturday: 120 }),
+			"availability round-trip mismatch",
+		);
+		assert.equal("baseMode" in (request.snapshot?.profile?.availability ?? {}), false);
+		assert.equal("pendingDays" in (request.snapshot?.profile?.availability ?? {}), false);
+		assert.equal("categories" in (request.snapshot?.profile?.availability ?? {}), false);
+		assert.equal("ranges" in (request.snapshot?.profile?.availability ?? {}), false);
+		assert.equal("training_years" in (request.snapshot?.profile ?? {}), false);
+		assert.equal("technicality" in (request.snapshot?.goal ?? {}), false);
 	});
 
 	it("reports an error without throwing when the save fails, so local answers are preserved", async () => {

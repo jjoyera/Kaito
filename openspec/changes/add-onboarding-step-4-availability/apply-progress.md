@@ -499,3 +499,108 @@ Parent-owned lifecycle actions remain unchanged. **Next boundary:** Section 6 ex
 - The Playwright dev server changed generated `apps/web/next-env.d.ts` to its development route reference. That command side effect was restored to its pre-batch content before completion; it is not a remaining change.
 - Task checkboxes remain honest and unchanged because the already-completed deferred Section 5 rows need no new task state.
 - Nothing was staged or committed.
+
+## Work unit 6: exact API, JSONB, and RLS persistence proof
+
+- **Boundary:** Section 6 only; focused web/API contract characterization and local-Supabase RLS fixture proof.
+- **Commit target:** `test(onboarding): verify availability persistence and rls`.
+- **Commit status:** Nothing staged or committed.
+- **Delivery / PR boundary:** Assigned persistence-proof slice under the approved delivery path. The remaining RLS proof is blocked by the local Docker daemon.
+
+### Structured status consumed
+
+- Change: `add-onboarding-step-4-availability`; authoritative OpenSpec `applyState: ready`, `nextRecommended: apply`.
+- Action context: `repo-local`; every modified path is under the repository-root allowed edit root.
+- Strict TDD / characterization mode is active. The task forecast remains high risk, but the parent assigned this bounded Section 6 slice.
+
+### TDD Cycle Evidence
+
+| Task | Test files | Layer | Safety net | RED / characterization | GREEN | TRIANGULATE | REFACTOR |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Exact web/API persistence boundary | `apps/web/features/onboarding/_use-cases/{save-onboarding-step,load-onboarding-draft}.test.ts`, `apps/api/tests/runner_profile/{test_use_cases,test_router,test_repository}.py` | Unit/API | PASS: 7 web and 55 API tests | Added exact sparse PUT/GET, omitted UI/removed-field, retry, and JSONB-shape assertions first. Existing behavior was GREEN on first run. | No production change; only test fixtures/assertions were required. | PASS: 7 web and 58 API tests. Invalid-write atomicity remains covered by the existing focused API cases. | Bounded `availability round-trip mismatch` failures avoid snapshot interpolation. |
+| Local Supabase nested JSONB/RLS | `apps/api/tests/integration/test_onboarding_rls.py` | Local Supabase integration | Ruff PASS | Added two-identity exact nested-map fixture coverage for own CRUD and foreign select/insert/update/delete isolation; no service-role result is RLS evidence. | Not reached: local Supabase could not start because Docker daemon access failed. | BLOCKED: reset and integration suite could not execute. | Deferred; no production/schema/policy change is permitted or made. |
+
+### Completed implementation tasks
+
+- The Section 6 RED/characterization and minimum GREEN fixture rows are visibly `[x]` in `tasks.md`.
+- The three Section 6 RLS TRIANGULATE/REFACTOR rows remain `[ ]`; local-Supabase proof is not claimed.
+
+### Files changed
+
+- `apps/web/features/onboarding/_use-cases/{save-onboarding-step,load-onboarding-draft}.test.ts`
+- `apps/api/tests/runner_profile/{test_use_cases,test_router,test_repository}.py`
+- `apps/api/tests/integration/test_onboarding_rls.py`
+- `openspec/changes/add-onboarding-step-4-availability/{tasks,apply-progress}.md`
+
+No API production module, migration, schema, policy, column, index, JSONB transformation, Alembic artifact, dependency, lockfile, Step 4 UI/wizard/style, E2E, or runtime documentation file changed.
+
+### Verification evidence
+
+- `cd apps/web && pnpm exec tsx --test features/onboarding/_use-cases/save-onboarding-step.test.ts features/onboarding/_use-cases/load-onboarding-draft.test.ts` — PASS: 7 tests.
+- `cd apps/api && uv run pytest tests/runner_profile/test_use_cases.py tests/runner_profile/test_router.py tests/runner_profile/test_repository.py -q` — PASS: 58 tests.
+- `cd apps/api && uv run ruff check tests/integration/test_onboarding_rls.py tests/runner_profile/test_use_cases.py tests/runner_profile/test_router.py tests/runner_profile/test_repository.py` — PASS.
+- `npx supabase@2.39.2 start` then `npx supabase@2.39.2 db reset --local`, followed by `cd apps/api && uv run pytest tests/integration/test_onboarding_rls.py -q` — BLOCKED: Docker daemon unavailable; integration run reported 4 unit-only passes and 20 setup errors. This is environment evidence, not an RLS pass.
+- `pnpm test:portable-paths` — PASS: 25 tests (baseline; re-run required before completion).
+
+### Safeguards and deviations
+
+- Characterization was GREEN on first execution for web/API boundaries; no production defect was invented and no production edit followed.
+- RLS helpers compare exact nested availability using the bounded message `availability round-trip mismatch`; assertions and logging do not emit snapshots, schedules, SQL parameters, bearer credentials, or owner identifiers. Service-role access remains setup/cleanup only and supplies no RLS result count.
+- `apps/web/next-env.d.ts` is clean. Changed tracked documentation uses repository-relative paths; no machine-specific path was added.
+- **Deviation / blocker:** Docker is unavailable, so the required authenticated non-privileged two-owner local-Supabase proof remains unverified. Do not treat this work unit as ready to commit.
+
+### Authored-line ledger
+
+- Work unit 6 focused tests and RLS fixture: 246 additions / 29 deletions = 275 authored lines before SDD artifact updates.
+- Task checkbox update: 2 additions / 2 deletions = 4 authored lines before this progress update.
+- Cumulative application/test work through this partial Section 6 slice: 1,632 additions / 403 deletions = 2,035 authored lines before current SDD artifact updates.
+- No schema/migration or production-code lines were authored.
+
+### Remaining tasks and next boundary
+
+- [ ] TRIANGULATE: run local Supabase with `npx supabase@2.39.2 start` and `npx supabase@2.39.2 db reset --local`, then run `cd apps/api && uv run pytest tests/integration/test_onboarding_rls.py -q` with two authenticated non-privileged identities; prove own-row nested JSONB insert/select/update/delete and foreign-owner select/insert/update/delete denial or zero affected rows. <!-- sdd-owner: implementation -->
+- [ ] TRIANGULATE: verify the RLS assertions use no service-role result, compare exact nested values through bounded messages such as `availability round-trip mismatch`, and ensure tests/logging never print snapshots, schedules, SQL parameters, bearer credentials, or owner identifiers. <!-- sdd-owner: implementation -->
+- [ ] REFACTOR: retain characterization coverage if the existing JSONB/RLS implementation is already correct, document any Docker/Supabase environment block as failed verification rather than a pass, and confirm no schema, policy, column, index, transformation, Alembic, or migration artifact was introduced. <!-- sdd-owner: implementation -->
+
+**Next boundary:** restore Docker/Supabase, run the exact local reset and RLS command successfully, then re-read `tasks.md` before marking the remaining Section 6 rows. Parent lifecycle/review remains deferred.
+
+### Work unit 6 RLS resumption
+
+- **Status:** Complete for the assigned Section 6 scope. Docker availability was confirmed before execution.
+- **TDD characterization:** The existing persistence/RLS boundary was GREEN after the focused fixture coverage; no production defect, schema change, policy change, or migration was invented. A final test-fixture refactor replaced an identity-bearing assertion with the bounded `authenticated identity context mismatch` message, then the local suite was rerun successfully.
+- **Local proof:** `npx supabase@2.39.2 start`, `npx supabase@2.39.2 db reset --local`, and `cd apps/api && uv run pytest tests/integration/test_onboarding_rls.py -q` completed successfully: 24 passed. The fixture creates two authenticated non-privileged identities and proves own-row insert/select/update/delete with nested JSONB availability, exact owner-only round trips, equivalent retry behavior, and foreign-owner select/insert/update/delete denial or zero affected rows.
+- **RLS evidence boundary:** Service-role access is used only to create and remove test identities; no service-role result count is used as RLS evidence. Exact nested-value comparison failures are bounded as `availability round-trip mismatch`. Test logging and assertion messages do not interpolate snapshots, schedules, credentials, owner identifiers, or SQL parameters.
+- **Focused quality checks:** focused Ruff, portable-path checks (25 tests), whitespace validation, generated-file guard, repository-relative documentation-path scan, and protected production/schema path guard all passed.
+- **Task state:** all five Section 6 implementation-owned rows are visibly `[x]` in `tasks.md`.
+- **No scope expansion:** no API production file, migration, schema, policy, column, index, JSONB transformation, Alembic artifact, dependency, lockfile, Step 4 UI/wizard/style, E2E, or runtime documentation file changed. Nothing was staged or committed.
+
+### Updated authored-line ledger
+
+- Work unit 6 test and fixture changes: 248 additions / 30 deletions = 278 authored lines before this resumption record.
+- Section 6 task state: 5 additions / 5 deletions = 10 authored lines before this resumption record.
+- Cumulative application/test work through Section 6: 1,634 additions / 404 deletions = 2,038 authored lines before current SDD artifact updates.
+
+### Remaining tasks and next boundary
+
+Section 6 is complete. Exact unchecked implementation-owned work now begins with Section 7 final regression; all parent-owned lifecycle rows remain deferred and unchanged. The next recommended action is parent lifecycle/review, not a commit from this apply executor.
+
+### Work unit 6 targeted privacy correction
+
+- **Reason:** Independent verification found four full-object/full-payload equality assertions that could disclose onboarding snapshots or exact schedules through failure diffs.
+- **Correction:** Replaced those comparisons in the focused save/load web tests and router tests with fixed-message boolean/conditional assertions. Exact canonical equality is preserved; failures now use only `onboarding payload mismatch`, `onboarding response mismatch`, or `availability round-trip mismatch`. The API conditional failure uses `pytest.fail(..., pytrace=False)`.
+- **Scope:** Test-only. No production, schema, migration, policy, dependency, lockfile, UI, E2E, or runtime-documentation change. Section 6 task checkboxes remain `[x]` because this corrects evidence privacy, not the proven behavior.
+- **Verification:** focused web save/load tests passed (7); focused router tests passed (18); focused Ruff and portable-path checks passed (25); `git diff --check` passed. The RLS fixture was unchanged by this correction, so the previously passing local-Supabase RLS evidence remains applicable and was not rerun.
+- **Guards:** no generated `apps/web/next-env.d.ts` change, no staged paths, no protected production/schema path change, and no machine-specific path in this tracked artifact. Nothing was committed.
+
+### Privacy-correction ledger
+
+- Correction delta before this progress update: 23 additions / 14 deletions across focused tests.
+- Cumulative Section 6 application/test delta before this progress update: 2,075 authored lines. The correction remains within the approved work-unit boundary.
+
+### Work unit 6 second targeted privacy correction
+
+- **Reason:** Independent verification found remaining pytest assertion-rewriting paths in changed router, use-case, and repository tests that could disclose owner identifiers, SQL parameter maps, exact schedules, or snapshots on failure.
+- **Correction:** Added bounded test-local equality/absence helpers that use explicit conditions and `pytest.fail(..., pytrace=False)`. Converted every sensitive comparison in the changed Section 6 Python test hunks to fixed-message proof. Exact owner binding, exact nested availability, response equality, retry behavior, and repository read behavior remain asserted without rendering compared values.
+- **Audit:** Reviewed all changed Section 6 Python test hunks for owner, parameter, snapshot, and schedule comparisons. Bounded failures are limited to fixed messages; no sensitive value is interpolated. The RLS fixture was unchanged, so its prior local-Supabase 24-pass evidence remains applicable.
+- **Verification:** focused API tests passed (58); focused web save/load tests passed (7); focused Ruff and portable-path checks passed (25); `git diff --check` passed. Generated-file, staging, protected production/schema, and repository-relative documentation-path guards passed.
+- **Task state:** Section 6 remains complete; no checkbox changed for this evidence-only correction. Nothing was staged or committed.

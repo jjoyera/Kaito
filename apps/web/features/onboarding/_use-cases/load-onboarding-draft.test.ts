@@ -30,15 +30,40 @@ function dependencies(
 }
 
 describe("loadOnboardingDraft", () => {
-	it("hydrates from a stored snapshot", async () => {
+	it("hydrates the exact sparse availability returned by GET", async () => {
+		let requestedUrl: string | undefined;
 		const outcome = await loadOnboardingDraft(
 			"2026-07-13",
-			dependencies(
-				async () =>
-					new Response(JSON.stringify(storedResult), { status: 200 }),
-			),
+			dependencies(async (input) => {
+				requestedUrl = String(input);
+				return new Response(JSON.stringify(storedResult), { status: 200 });
+			}),
 		);
-		assert.deepEqual(outcome, { status: "loaded", result: storedResult });
+		assert.equal(
+			requestedUrl,
+			"https://api.kaito.test/runner-profile/onboarding?validation_date=2026-07-13",
+		);
+		assert.ok(
+			JSON.stringify(outcome) ===
+				JSON.stringify({ status: "loaded", result: storedResult }),
+			"onboarding response mismatch",
+		);
+		if (outcome.status !== "loaded") {
+			assert.fail("expected loaded onboarding draft");
+		}
+		assert.ok(
+			JSON.stringify(outcome.result.snapshot.profile.availability?.minutes_by_day) ===
+				JSON.stringify({ monday: 45, wednesday: 75, saturday: 120 }),
+			"availability round-trip mismatch",
+		);
+		assert.equal(
+			"baseMode" in (outcome.result.snapshot.profile.availability ?? {}),
+			false,
+		);
+		assert.equal(
+			"pendingDays" in (outcome.result.snapshot.profile.availability ?? {}),
+			false,
+		);
 	});
 
 	it("starts blank when there is no stored snapshot yet", async () => {
