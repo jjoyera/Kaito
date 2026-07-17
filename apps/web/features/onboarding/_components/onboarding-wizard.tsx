@@ -1,10 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { getAccessToken } from "../../auth/_adapters/get-access-token";
 import { isTestAuthAdapterEnabledInBrowser } from "../../../shared/testing/test-auth-adapter";
 import type { OnboardingApiDependencies } from "../_adapters/onboarding-api";
+import {
+	hydrateAvailability,
+	reduceAvailability,
+	toAvailabilityDraft,
+	validateAvailabilityInteraction,
+	type AvailabilityAction,
+	type AvailabilityInteractionState,
+	type AvailabilityIssue,
+} from "../_domain/availability-model";
 import {
 	applyConditionalClearing,
 	createBlankWizardDraft,
@@ -14,7 +23,6 @@ import {
 } from "../_domain/wizard-draft";
 import {
 	validateStep,
-	type AvailabilityDraft,
 	type BaselineDraft,
 	type FieldErrors,
 	type GoalDraft,
@@ -32,6 +40,10 @@ import { StepNavigator } from "./step-navigator";
 
 type Phase = "loading" | "ready" | "load_error" | "completed";
 type SaveStatus = "idle" | "saving" | "save_error";
+type WizardState = {
+	draft: OnboardingSnapshotDraft;
+	availability: AvailabilityInteractionState;
+};
 
 function todayIsoDate(): string {
 	const now = new Date();
@@ -51,17 +63,42 @@ function createApiDependencies(): OnboardingApiDependencies {
 	};
 }
 
+function createWizardState(draft: OnboardingSnapshotDraft): WizardState {
+	return {
+		draft,
+		availability: hydrateAvailability(draft.profile.availability?.minutes_by_day ?? {}),
+	};
+}
+
+function projectAvailability(
+	draft: OnboardingSnapshotDraft,
+	availability: AvailabilityInteractionState,
+): OnboardingSnapshotDraft {
+	return {
+		...draft,
+		profile: {
+			...draft.profile,
+			availability: toAvailabilityDraft(availability),
+		},
+	};
+}
+
 export function OnboardingWizard() {
 	const dependencies = useMemo(() => createApiDependencies(), []);
 	const today = useMemo(() => todayIsoDate(), []);
+	const saveInFlight = useRef(false);
 
 	const [phase, setPhase] = useState<Phase>("loading");
-	const [draft, setDraft] = useState<OnboardingSnapshotDraft>(
-		createBlankWizardDraft,
+	const [wizard, setWizard] = useState<WizardState>(() =>
+		createWizardState(createBlankWizardDraft()),
 	);
 	const [stepIndex, setStepIndex] = useState(0);
 	const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+	const [availabilityIssues, setAvailabilityIssues] = useState<
+		readonly AvailabilityIssue[]
+	>([]);
 	const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+	const draft = wizard.draft;
 
 	useEffect(() => {
 		let cancelled = false;
@@ -83,7 +120,7 @@ export function OnboardingWizard() {
 			const loadedDiagnostics = toDiagnosticsByField(
 				outcome.result.diagnostics,
 			);
-			setDraft(loadedDraft);
+			setWizard(createWizardState(loadedDraft));
 
 			if (outcome.result.snapshot.state === "completed") {
 				setPhase("completed");
@@ -98,12 +135,16 @@ export function OnboardingWizard() {
 		};
 	}, [today, dependencies]);
 
+	function updateDraft(update: (current: OnboardingSnapshotDraft) => OnboardingSnapshotDraft) {
+		setWizard((current) => ({ ...current, draft: update(current.draft) }));
+	}
+
 	function updateGoal(patch: Partial<GoalDraft>) {
-		setDraft((current) => ({ ...current, goal: { ...current.goal, ...patch } }));
+		updateDraft((current) => ({ ...current, goal: { ...current.goal, ...patch } }));
 	}
 
 	function updatePriorHistory(patch: Partial<PriorHistoryDraft>) {
-		setDraft((current) => ({
+		updateDraft((current) => ({
 			...current,
 			profile: {
 				...current.profile,
@@ -113,7 +154,7 @@ export function OnboardingWizard() {
 	}
 
 	function updateBaseline(patch: Partial<BaselineDraft>) {
-		setDraft((current) => ({
+		updateDraft((current) => ({
 			...current,
 			profile: {
 				...current.profile,
@@ -122,18 +163,19 @@ export function OnboardingWizard() {
 		}));
 	}
 
-	function updateAvailability(patch: Partial<AvailabilityDraft>) {
-		setDraft((current) => ({
-			...current,
-			profile: {
-				...current.profile,
-				availability: { ...current.profile.availability, ...patch },
-			},
-		}));
+	function updateAvailability(action: AvailabilityAction) {
+		setWizard((current) => {
+			const availability = reduceAvailability(current.availability, action);
+			return {
+				availability,
+				draft: projectAvailability(current.draft, availability),
+			};
+		});
+		setAvailabilityIssues([]);
 	}
 
 	function updateRestrictions(patch: Partial<RestrictionsDraft>) {
-		setDraft((current) => ({
+		updateDraft((current) => ({
 			...current,
 			profile: {
 				...current.profile,
@@ -145,23 +187,41 @@ export function OnboardingWizard() {
 	function handleBack() {
 		setStepIndex((current) => Math.max(0, current - 1));
 		setFieldErrors({});
+		setAvailabilityIssues([]);
 		setSaveStatus("idle");
 	}
 
 	async function handleNext() {
+		if (saveInFlight.current) return;
 		const currentStep = ONBOARDING_STEPS[stepIndex];
-		const errors = validateStep(currentStep.id, draft);
+		const issues =
+			currentStep.id === "availability"
+				? validateAvailabilityInteraction(wizard.availability)
+				: [];
+		if (issues.length > 0) {
+			setAvailabilityIssues(issues);
+			setFieldErrors({});
+			return;
+		}
+
+		const validationDraft =
+			currentStep.id === "availability"
+				? projectAvailability(draft, wizard.availability)
+				: draft;
+		const errors = validateStep(currentStep.id, validationDraft);
 		setFieldErrors(errors);
 		if (Object.keys(errors).length > 0) return;
 
-		const cleared = applyConditionalClearing(draft);
-		setDraft(cleared);
+		const cleared = applyConditionalClearing(validationDraft);
+		setWizard((current) => ({ ...current, draft: cleared }));
 
 		const isLastStep = stepIndex === ONBOARDING_STEPS.length - 1;
+		saveInFlight.current = true;
 		setSaveStatus("saving");
 		const outcome = isLastStep
 			? await completeOnboarding(cleared, today, dependencies)
 			: await saveOnboardingStep(cleared, today, dependencies);
+		saveInFlight.current = false;
 
 		if (outcome.status === "error") {
 			setSaveStatus("save_error");
@@ -186,21 +246,17 @@ export function OnboardingWizard() {
 
 		setStepIndex(stepIndex + 1);
 		setFieldErrors({});
+		setAvailabilityIssues([]);
 	}
 
 	if (phase === "loading") {
-		return (
-			<p aria-live="polite" role="status">
-				Cargando tu onboarding…
-			</p>
-		);
+		return <p aria-live="polite" role="status">Cargando tu onboarding…</p>;
 	}
 
 	if (phase === "load_error") {
 		return (
 			<p className="onboarding-form-error" role="alert">
-				No hemos podido cargar tu onboarding ahora mismo. Inténtalo de nuevo en
-				unos minutos.
+				No hemos podido cargar tu onboarding ahora mismo. Inténtalo de nuevo en unos minutos.
 			</p>
 		);
 	}
@@ -223,13 +279,14 @@ export function OnboardingWizard() {
 				onGoalChange={updateGoal}
 				onPriorHistoryChange={updatePriorHistory}
 				onBaselineChange={updateBaseline}
-				onAvailabilityChange={updateAvailability}
+				availability={wizard.availability}
+				availabilityIssues={availabilityIssues}
+				onAvailabilityAction={updateAvailability}
 				onRestrictionsChange={updateRestrictions}
 			>
 				{saveStatus === "save_error" ? (
 					<p className="onboarding-form-error" role="alert">
-						No hemos podido guardar este paso. Revisa tu conexión e inténtalo de
-						nuevo; tus respuestas no se han perdido.
+						No hemos podido guardar este paso. Revisa tu conexión e inténtalo de nuevo; tus respuestas no se han perdido.
 					</p>
 				) : null}
 

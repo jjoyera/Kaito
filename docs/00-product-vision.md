@@ -45,7 +45,7 @@ La primera experiencia de uso de Kaito se centrará en validar el flujo principa
 1. El usuario entra por primera vez en la aplicación y accede al login.
 2. Si ya tiene cuenta, inicia sesión; si es nuevo, pasa por el registro.
 3. Una vez autenticado, Kaito inicia un onboarding pregunta a pregunta.
-4. El usuario define su estado actual, experiencia, disponibilidad y objetivo.
+4. El usuario define su estado actual, experiencia, disponibilidad y objetivo. En el Paso 4 del recorrido lineal de siete pasos selecciona días y minutos exactos de disponibilidad; las opciones rápidas solo facilitan esa entrada y no se guardan como categorías.
 5. Kaito muestra un estado de generación del plan.
 6. Se genera el plan inicial.
 7. El usuario accede al dashboard.

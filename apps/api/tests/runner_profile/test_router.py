@@ -44,18 +44,17 @@ def _auth_headers() -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
+def _assert_bounded_equal(actual: object, expected: object, message: str) -> None:
+    if actual != expected:
+        pytest.fail(message, pytrace=False)
+
+
 def _snapshot() -> dict:
     return {
         "contract_version": "1",
         "state": "completed",
         "profile": {
-            "prior_history": {
-                "training_years": 1.5,
-                "completed_race_count_range": "one_to_three",
-                "longest_completed_distance_km": 42.2,
-                "practiced_modalities": ["trail"],
-                "practiced_terrain": ["mountain"],
-            },
+            "prior_history": {"longest_completed_distance_km": 42.2},
             "baseline_4_weeks": {
                 "sessions": 12,
                 "distance_km": 75.0,
@@ -64,7 +63,7 @@ def _snapshot() -> dict:
                 "recent_consistency": "fairly_consistent",
             },
             "availability": {
-                "minutes_by_day": {"monday": 60, "wednesday": 60, "saturday": 90}
+                "minutes_by_day": {"monday": 45, "wednesday": 75, "saturday": 120}
             },
             "restrictions": {"has_restrictions": False},
         },
@@ -73,7 +72,6 @@ def _snapshot() -> dict:
             "target_date": "2026-08-01",
             "target_distance_km": 50.0,
             "positive_elevation_m": 1800.0,
-            "technicality": "high",
         },
     }
 
@@ -92,9 +90,15 @@ class _Repository:
         return self.stored
 
     def upsert(self, owner_id, snapshot) -> None:
-        del owner_id, snapshot
+        del owner_id
         if self.error:
             raise self.error
+        self.stored = {
+            "contract_version": snapshot.contract_version,
+            "state": snapshot.state.value,
+            "profile": dict(snapshot.profile),
+            "goal": dict(snapshot.goal),
+        }
 
 
 class _Transactions:
@@ -156,7 +160,39 @@ def test_put_saves_a_snapshot_and_returns_only_snapshot_and_diagnostics(
     )
 
     assert response.status_code == 200
-    assert response.json() == {"snapshot": snapshot, "diagnostics": []}
+    _assert_bounded_equal(
+        response.json(),
+        {"snapshot": snapshot, "diagnostics": []},
+        "onboarding response mismatch",
+    )
+
+
+def test_put_retry_and_get_keep_one_exact_current_availability_snapshot(
+    client: TestClient,
+) -> None:
+    snapshot = _snapshot()
+    for _ in range(2):
+        response = client.put(
+            "/runner-profile/onboarding",
+            headers=_auth_headers(),
+            json={"snapshot": snapshot, "validation_date": _VALIDATION_DATE},
+        )
+        assert response.status_code == 200
+    response = client.get(
+        f"/runner-profile/onboarding?validation_date={_VALIDATION_DATE}",
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 200
+    minutes_by_day = response.json()["snapshot"]["profile"]["availability"][
+        "minutes_by_day"
+    ]
+    _assert_bounded_equal(
+        minutes_by_day,
+        {"monday": 45, "wednesday": 75, "saturday": 120},
+        "availability round-trip mismatch",
+    )
+    assert client.app.state.onboarding_transactions.calls == 3
 
 
 def test_put_maps_malformed_nested_block_to_422_before_persistence(
@@ -177,6 +213,61 @@ def test_put_maps_malformed_nested_block_to_422_before_persistence(
     assert transactions.calls == 0
 
 
+@pytest.mark.parametrize(
+    ("block", "field", "value"),
+    [
+        ("prior_history", "training_years", None),
+        ("prior_history", "completed_race_count_range", "one_to_three"),
+        ("prior_history", "practiced_modalities", ["trail"]),
+        ("prior_history", "practiced_terrain", ["mountain"]),
+        ("goal", "technicality", "high"),
+    ],
+)
+def test_put_rejects_removed_field_with_bounded_response_before_persistence(
+    client: TestClient, block: str, field: str, value: object
+) -> None:
+    snapshot = _snapshot()
+    target = snapshot["goal"] if block == "goal" else snapshot["profile"][block]
+    target[field] = value
+    transactions = client.app.state.onboarding_transactions
+
+    response = client.put(
+        "/runner-profile/onboarding",
+        headers=_auth_headers(),
+        json={"snapshot": snapshot, "validation_date": _VALIDATION_DATE},
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "Invalid onboarding snapshot"}
+    assert field not in response.text
+    _assert_bounded_equal(_OWNER_ID in response.text, False, "owner disclosure")
+    assert transactions.calls == 0
+
+
+@pytest.mark.parametrize(
+    "minutes_by_day",
+    [{"monday": None}, {"holiday": 60}],
+)
+def test_put_rejects_invalid_availability_with_bounded_422(
+    client: TestClient, minutes_by_day: dict[str, int | None]
+) -> None:
+    snapshot = _snapshot()
+    snapshot["profile"]["availability"]["minutes_by_day"] = minutes_by_day
+    transactions = client.app.state.onboarding_transactions
+
+    response = client.put(
+        "/runner-profile/onboarding",
+        headers=_auth_headers(),
+        json={"snapshot": snapshot, "validation_date": _VALIDATION_DATE},
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "Invalid onboarding snapshot"}
+    assert "holiday" not in response.text
+    _assert_bounded_equal(_OWNER_ID in response.text, False, "owner disclosure")
+    assert transactions.calls == 0
+
+
 def test_get_reads_a_snapshot_for_the_explicit_validation_date(
     client: TestClient,
 ) -> None:
@@ -187,7 +278,11 @@ def test_get_reads_a_snapshot_for_the_explicit_validation_date(
     )
 
     assert response.status_code == 200
-    assert response.json() == {"snapshot": snapshot, "diagnostics": []}
+    _assert_bounded_equal(
+        response.json(),
+        {"snapshot": snapshot, "diagnostics": []},
+        "onboarding response mismatch",
+    )
 
 
 @pytest.mark.parametrize("forbidden_field", ["owner_id", "created_at"])
@@ -232,7 +327,7 @@ def test_get_returns_sanitized_500_for_corrupt_stored_data(client: TestClient) -
 
     assert response.status_code == 500
     assert response.json() == {"detail": "Stored onboarding snapshot is invalid"}
-    assert _OWNER_ID not in response.text
+    _assert_bounded_equal(_OWNER_ID in response.text, False, "owner disclosure")
     assert "storage" not in response.text.lower()
 
 
@@ -253,7 +348,7 @@ def test_put_returns_sanitized_503_when_persistence_is_unavailable(
     )
 
     assert raw_payload_marker not in response.text
-    assert _OWNER_ID not in response.text
+    _assert_bounded_equal(_OWNER_ID in response.text, False, "owner disclosure")
     assert "owner" not in response.text.lower()
     assert "storage" not in response.text.lower()
     assert response.status_code == 503

@@ -18,16 +18,8 @@ export function normalizeWizardDraft(
 ): OnboardingSnapshotDraft {
 	return {
 		...draft,
-		profile: {
-			...draft.profile,
-			prior_history: {
-				...draft.profile.prior_history,
-				practiced_modalities:
-					draft.profile.prior_history?.practiced_modalities ?? [],
-				practiced_terrain:
-					draft.profile.prior_history?.practiced_terrain ?? [],
-			},
-		},
+		profile: { ...draft.profile },
+		goal: { ...draft.goal },
 	};
 }
 

@@ -17,11 +17,7 @@ function dependencies(
 const completeSnapshot = {
 	profile: {
 		prior_history: {
-			training_years: 2,
-			completed_race_count_range: "one_to_three" as const,
 			longest_completed_distance_km: 21,
-			practiced_modalities: ["trail" as const],
-			practiced_terrain: ["mountain" as const],
 		},
 		baseline_4_weeks: {
 			sessions: 4,
@@ -40,7 +36,6 @@ const completeSnapshot = {
 		target_date: "2026-12-01",
 		target_distance_km: 42,
 		positive_elevation_m: 1500,
-		technicality: "medium" as const,
 	},
 };
 

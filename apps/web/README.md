@@ -6,7 +6,8 @@
 - A valid session hands off to `/onboarding`, a private route protected by the proxy and a server-side check.
 - Onboarding starts with a value-proposition introduction and the `Crear mi plan` CTA.
 - Step 1 displays `Paso 1 de 7` and `14%`, offers only Trail or Ultra, and asks for distance, positive elevation, and target date. It has no technicality, maximum-altitude, or back controls.
-- Steps 1–2 use the new seven-step visual design. Step 2 collects longest completed distance, habitual terrain, mountain experience, and prior Trail/Ultra race frequency. Later steps remain functional while their UI is redesigned incrementally; seven visual steps are not yet delivered.
+- Steps 1–4 use the linear seven-step visual design. Step 4 displays `Paso 4 de 7` and `57%`, uses compact accessible weekday controls, presets 45/60/120, and exact 15–300 minute overrides. `Varía por día` is derived UI state; the payload contains only the sparse `profile.availability.minutes_by_day` map.
+- Step 4 requires at least three days and 150 weekly minutes. Back keeps mounted local edits without a request; Continue saves before Step 5, blocks duplicate requests, preserves answers for retry, and reloads the last successful exact map. Progress is not clickable and there is no autosave.
 
 ## Contribution and ownership
 
@@ -46,12 +47,10 @@ The integration captures errors and basic performance only. It does not enable r
 Validation commands:
 
 ```bash
-pnpm --filter web test:sentry-scrubbing
+pnpm test:web-onboarding
 pnpm lint:web
 pnpm build:web
-pnpm test:web-docker-build
 pnpm test:web-e2e
-NEXT_PUBLIC_SENTRY_DSN=https://public@example.com/1 pnpm build:web
 ```
 
 If Docker Compose starts an older web image or reports a missing copied file such as `apps/web/instrumentation.ts`, rebuild the local web image before starting it:

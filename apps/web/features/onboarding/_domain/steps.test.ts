@@ -24,11 +24,22 @@ describe("ONBOARDING_STEPS", () => {
 			"goal.target_date",
 			"goal.target_distance_km",
 			"goal.positive_elevation_m",
-			"goal.technicality",
 			"goal.max_altitude_m",
 			"goal.obstacle_count",
 			"goal.obstacle_difficulty",
 			"goal.target_loops",
+		]);
+	});
+
+	test("prior-history step owns only retained contract fields", () => {
+		const priorHistoryStep = ONBOARDING_STEPS.find(
+			(step) => step.id === "prior_history",
+		);
+		assert.deepEqual(priorHistoryStep?.fields, [
+			"profile.prior_history.longest_completed_distance_km",
+			"profile.prior_history.habitual_terrain",
+			"profile.prior_history.mountain_experience",
+			"profile.prior_history.prior_modality_race_frequency",
 		]);
 	});
 

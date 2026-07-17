@@ -135,6 +135,16 @@ conventions:
   commits: conventional-commits-in-english
   docs: >-
     Spanish TFM docs; English technical artifacts unless extending Spanish docs
+  documentation_paths:
+    require_repository_relative_paths: true
+    forbid_personal_absolute_paths: true
+    rule: >-
+      Repository documentation and SDD artifacts MUST use paths relative to the
+      repository root. Personal home directories, usernames, workstation names,
+      and machine-specific absolute paths MUST NOT be written to tracked files.
+    verification: >-
+      Before committing documentation, search changed text for common home-directory
+      prefixes and local identity fragments; any match blocks the commit until replaced.
   frontend:
     architecture: screaming-by-real-capability
     app_directory: nextjs-routing-and-orchestration-only

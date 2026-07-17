@@ -11,7 +11,7 @@ forma incremental.
 
 ## Estado actual
 
-El estado implementado entrega autenticación y los tres primeros pasos del nuevo onboarding.
+El estado implementado entrega autenticación y los cuatro primeros pasos del nuevo onboarding.
 
 | Área | Estado |
 | --- | --- |
@@ -175,9 +175,7 @@ por paso, limpieza condicional de campos, mapeo de diagnósticos del backend a
 pasos, y los casos de uso de carga/guardado/completado. Tampoco requiere
 cuentas reales de Supabase ni el API corriendo.
 
-La verificación más reciente superó TypeScript, lint y Ruff focalizados, build y
-las suites focalizadas de onboarding y perfil del corredor, incluidos 4 E2E de
-onboarding.
+La verificación final superó `pnpm test:web-onboarding`, lint, build y E2E web; Ruff y 199 pruebas API no integradas; y la prueba local de RLS con dos usuarios (24 pruebas).
 
 ## Arquitectura frontend
 
@@ -217,17 +215,10 @@ openspec/              Artefactos SDD/OpenSpec.
   `Crear mi plan`. Su Paso 1 rediseñado muestra `Paso 1 de 7` y `14%`, permite
   elegir solo Trail o Ultra y solicita distancia, desnivel positivo y fecha
   objetivo; no muestra tecnicidad, altitud máxima ni botón de retroceso.
-- Los Pasos 1–3 usan el nuevo diseño visual del recorrido de siete pasos. El
-  Paso 2 recoge la experiencia previa. El Paso 3 resume las cuatro semanas
-  anteriores mediante sesiones, distancia total, desnivel positivo, salida más
-  larga y consistencia reciente; `training_hours` ya no forma parte del contrato.
-  Los pasos restantes siguen operativos, pero aún no tienen el nuevo diseño.
-- Persistencia de onboarding por usuario con snapshots JSONB, sin migración SQL,
-  y defensa en profundidad mediante transacciones con ownership y RLS; su
-  documentación operativa detallada y el endurecimiento de credenciales de
-  despliegue permanecen pendientes.
-- Validación de web con lint, build, tests unitarios y E2E de desarrollo y
-  producción; la API conserva lint, smoke, tests y prueba RLS de dos usuarios.
+- Los Pasos 1–4 usan el diseño visual lineal de siete pasos. El Paso 4 recoge disponibilidad con días compactos, atajos 45/60/120 y ajustes exactos de 15–300 minutos; requiere tres días y 150 minutos semanales. `Varía por día` es solo estado de UI.
+- Continuar guarda el mapa disperso `profile.availability.minutes_by_day` antes de avanzar; Atrás conserva el estado local, y los fallos permiten reintentar sin perder respuestas. No hay autosave ni duración base persistida.
+- Persistencia de onboarding por usuario mediante API protegida, JSONB con ownership y RLS de Supabase; no se añadió migración, compatibilidad para los cinco campos retirados ni almacenamiento de duración base. Consulta los detalles en los documentos de `docs/` y `apps/web/README.md`.
+- La validación incluye lint, build, unitarios y E2E web, Ruff y pruebas API, además de prueba RLS local de dos usuarios.
 - Paquete `@kaito/api-client` reservado para un futuro cliente generado; hoy no
   exporta código ni contratos de producto.
 

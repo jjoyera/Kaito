@@ -2,7 +2,11 @@ import type { ReactNode } from "react";
 
 import type { StepId } from "../_domain/steps";
 import type {
-	AvailabilityDraft,
+	AvailabilityAction,
+	AvailabilityInteractionState,
+	AvailabilityIssue,
+} from "../_domain/availability-model";
+import type {
 	BaselineDraft,
 	FieldErrors,
 	GoalDraft,
@@ -23,7 +27,9 @@ type OnboardingStepContentProps = Readonly<{
 	onGoalChange: (patch: Partial<GoalDraft>) => void;
 	onPriorHistoryChange: (patch: Partial<PriorHistoryDraft>) => void;
 	onBaselineChange: (patch: Partial<BaselineDraft>) => void;
-	onAvailabilityChange: (patch: Partial<AvailabilityDraft>) => void;
+	availability: AvailabilityInteractionState;
+	availabilityIssues: readonly AvailabilityIssue[];
+	onAvailabilityAction: (action: AvailabilityAction) => void;
 	onRestrictionsChange: (patch: Partial<RestrictionsDraft>) => void;
 	children: ReactNode;
 }>;
@@ -35,7 +41,9 @@ export function OnboardingStepContent({
 	onGoalChange,
 	onPriorHistoryChange,
 	onBaselineChange,
-	onAvailabilityChange,
+	availability,
+	availabilityIssues,
+	onAvailabilityAction,
 	onRestrictionsChange,
 	children,
 }: OnboardingStepContentProps) {
@@ -89,11 +97,17 @@ export function OnboardingStepContent({
 			);
 			break;
 		case "availability":
+			heading = (
+				<header className="onboarding-step-intro">
+					<h1>¿Cuándo puedes entrenar?</h1>
+					<p>Diseñaré el plan alrededor de tu vida, no al revés.</p>
+				</header>
+			);
 			body = (
 				<AvailabilityStep
-					value={draft.profile.availability ?? {}}
-					errors={errors}
-					onChange={onAvailabilityChange}
+					value={availability}
+					issues={availabilityIssues}
+					onAction={onAvailabilityAction}
 				/>
 			);
 			break;

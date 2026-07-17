@@ -67,13 +67,11 @@ El usuario necesita introducir su información sin sentirse abrumado y entender 
 
 ### Estado de implementación actual
 
-> `/onboarding` ya entrega una introducción de valor, el CTA `Crear mi plan` y los
-> Pasos 1–3 rediseñados. El primero recoge el objetivo Trail o Ultra; el segundo,
-> la experiencia previa; y el tercero, las cuatro semanas anteriores: sesiones,
-> distancia total, desnivel positivo, salida más larga y consistencia reciente.
-> `training_hours` ya no forma parte del recorrido. Los pasos restantes siguen
-> operativos, pero aún no tienen el nuevo diseño. OCR y Backyard continúan como
-> requisitos de producto, aunque ahora no se muestran en la interfaz.
+> `/onboarding` entrega una introducción de valor, el CTA `Crear mi plan` y los
+> Pasos 1–4 del recorrido visual lineal de siete pasos. El Paso 4 permite elegir
+> días y usar los atajos 45, 60 o 120 minutos, con ajustes exactos por día; exige
+> al menos tres días y 150 minutos semanales. `Varía por día` solo describe el
+> estado visual de valores mixtos y no se persiste.
 
 ### Recorrido principal
 
@@ -84,8 +82,8 @@ El usuario necesita introducir su información sin sentirse abrumado y entender 
    - Backyard Ultra: fecha objetivo del evento, vueltas/horas objetivo, ritmo o duración esperada por vuelta, margen de descanso estimado y estrategia básica de box/transición. En Backyard, la distancia fija no es el objetivo principal.
 4. Kaito pregunta por la experiencia previa del corredor.
 5. El usuario informa sobre su nivel, volumen actual y antecedentes relevantes.
-6. Kaito pregunta por la disponibilidad semanal.
-7. El usuario define días disponibles, restricciones y preferencias básicas.
+6. En el Paso 4, Kaito pregunta por la disponibilidad semanal: el usuario selecciona días, puede aplicar 45, 60 o 120 minutos y ajustar cada día entre 15 y 300 minutos exactos.
+7. El usuario necesita al menos tres días y 150 minutos semanales. Atrás conserva las respuestas locales; Continuar guarda el mapa exacto antes de pasar al siguiente paso. Si falla el guardado, puede reintentar sin perderlas.
 8. Kaito evalúa elegibilidad de enfoques y muestra tarjetas visuales de Camino Kaio, Modo Z y Kaioken.
 9. Kaito recomienda un enfoque según el perfil del corredor.
 10. El usuario elige entre los enfoques elegibles; los bloqueados se muestran con motivo.

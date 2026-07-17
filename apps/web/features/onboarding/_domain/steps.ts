@@ -18,7 +18,6 @@ export const ONBOARDING_STEPS: readonly StepDefinition[] = [
 			"goal.target_date",
 			"goal.target_distance_km",
 			"goal.positive_elevation_m",
-			"goal.technicality",
 			"goal.max_altitude_m",
 			"goal.obstacle_count",
 			"goal.obstacle_difficulty",
@@ -28,11 +27,7 @@ export const ONBOARDING_STEPS: readonly StepDefinition[] = [
 	{
 		id: "prior_history",
 		fields: [
-			"profile.prior_history.training_years",
-			"profile.prior_history.completed_race_count_range",
 			"profile.prior_history.longest_completed_distance_km",
-			"profile.prior_history.practiced_modalities",
-			"profile.prior_history.practiced_terrain",
 			"profile.prior_history.habitual_terrain",
 			"profile.prior_history.mountain_experience",
 			"profile.prior_history.prior_modality_race_frequency",

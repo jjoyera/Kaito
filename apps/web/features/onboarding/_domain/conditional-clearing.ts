@@ -6,14 +6,12 @@ import type {
 
 const HIDDEN_GOAL_FIELDS: Record<Modality, readonly (keyof GoalDraft)[]> = {
 	trail: [
-		"technicality",
 		"max_altitude_m",
 		"obstacle_count",
 		"obstacle_difficulty",
 		"target_loops",
 	],
 	ultra_trail: [
-		"technicality",
 		"max_altitude_m",
 		"obstacle_count",
 		"obstacle_difficulty",
@@ -21,14 +19,12 @@ const HIDDEN_GOAL_FIELDS: Record<Modality, readonly (keyof GoalDraft)[]> = {
 	],
 	ocr: [
 		"positive_elevation_m",
-		"technicality",
 		"max_altitude_m",
 		"target_loops",
 	],
 	backyard: [
 		"target_distance_km",
 		"positive_elevation_m",
-		"technicality",
 		"max_altitude_m",
 		"obstacle_count",
 		"obstacle_difficulty",

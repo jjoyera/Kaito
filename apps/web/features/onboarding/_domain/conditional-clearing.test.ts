@@ -30,7 +30,6 @@ describe("clearHiddenGoalFields", () => {
 			target_date: "2026-12-01",
 			target_distance_km: 42,
 			positive_elevation_m: 1500,
-			technicality: "medium" as const,
 			obstacle_count: 20,
 			target_loops: 12,
 		};
@@ -39,19 +38,17 @@ describe("clearHiddenGoalFields", () => {
 
 		assert.equal(cleared.target_distance_km, 42);
 		assert.equal(cleared.positive_elevation_m, 1500);
-		assert.equal(cleared.technicality, undefined);
 		assert.equal(cleared.obstacle_count, undefined);
 		assert.equal(cleared.target_loops, undefined);
 	});
 
-	test("clears elevation/technicality/max_altitude/target_loops for OCR", () => {
+	test("clears elevation/max_altitude/target_loops for OCR", () => {
 		const goal = {
 			modality: "ocr" as const,
 			target_date: "2026-12-01",
 			target_distance_km: 15,
 			obstacle_count: 20,
 			positive_elevation_m: 500,
-			technicality: "high" as const,
 			max_altitude_m: 300,
 			target_loops: 5,
 		};
@@ -61,7 +58,6 @@ describe("clearHiddenGoalFields", () => {
 		assert.equal(cleared.target_distance_km, 15);
 		assert.equal(cleared.obstacle_count, 20);
 		assert.equal(cleared.positive_elevation_m, undefined);
-		assert.equal(cleared.technicality, undefined);
 		assert.equal(cleared.max_altitude_m, undefined);
 		assert.equal(cleared.target_loops, undefined);
 	});

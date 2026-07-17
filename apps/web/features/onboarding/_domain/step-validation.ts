@@ -1,14 +1,8 @@
+import { hydrateAvailability, validateAvailabilityInteraction } from "./availability-model";
 import type { StepId } from "./steps";
 
 export type Modality = "trail" | "ultra_trail" | "ocr" | "backyard";
-export type Technicality = "low" | "medium" | "high";
-export type RaceCountRange =
-	| "none"
-	| "one_to_three"
-	| "four_to_ten"
-	| "eleven_to_twenty_five"
-	| "twenty_six_plus";
-export type PracticedTerrain = "road" | "trail" | "mountain" | "mixed";
+export type ObstacleDifficulty = "low" | "medium" | "high";
 export type HabitualTerrain = "mountain" | "trail" | "road" | "mixed";
 export type MountainExperience = "low" | "medium" | "high";
 export type PriorModalityRaceFrequency = "never" | "once" | "multiple";
@@ -30,19 +24,14 @@ export type GoalDraft = {
 	target_date?: string;
 	target_distance_km?: number;
 	positive_elevation_m?: number;
-	technicality?: Technicality;
 	max_altitude_m?: number;
 	obstacle_count?: number;
-	obstacle_difficulty?: Technicality;
+	obstacle_difficulty?: ObstacleDifficulty;
 	target_loops?: number;
 };
 
 export type PriorHistoryDraft = {
-	training_years?: number;
-	completed_race_count_range?: RaceCountRange;
 	longest_completed_distance_km?: number;
-	practiced_modalities?: Modality[];
-	practiced_terrain?: PracticedTerrain[];
 	habitual_terrain?: HabitualTerrain;
 	mountain_experience?: MountainExperience;
 	prior_modality_race_frequency?: PriorModalityRaceFrequency;
@@ -105,15 +94,7 @@ const RECENT_CONSISTENCIES = new Set<RecentConsistency>([
 	"fairly_consistent",
 	"very_consistent",
 ]);
-const WEEK_DAYS = new Set<WeekDay>([
-	"monday",
-	"tuesday",
-	"wednesday",
-	"thursday",
-	"friday",
-	"saturday",
-	"sunday",
-]);
+
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 const CONDITIONAL_GOAL_FIELDS: Record<Modality, readonly string[]> = {
@@ -283,41 +264,18 @@ export function validateBaselineStep(baseline: BaselineDraft): FieldErrors {
 export function validateAvailabilityStep(
 	availability: AvailabilityDraft,
 ): FieldErrors {
-	const errors: FieldErrors = {};
 	const minutesByDay = availability.minutes_by_day;
-
 	if (minutesByDay === undefined || Object.keys(minutesByDay).length === 0) {
-		errors["profile.availability.minutes_by_day"] = "required";
-		return errors;
+		return { "profile.availability.minutes_by_day": "required" };
 	}
 
-	const entries = Object.entries(minutesByDay) as Array<
-		[string, number | null | undefined]
-	>;
-	const hasInvalidEntry = entries.some(
-		([day, minutes]) =>
-			!WEEK_DAYS.has(day as WeekDay) ||
-			minutes === null ||
-			minutes === undefined ||
-			!Number.isInteger(minutes) ||
-			minutes < 15 ||
-			minutes > 300,
-	);
-	if (hasInvalidEntry) {
-		errors["profile.availability.minutes_by_day"] = "invalid_type";
-		return errors;
-	}
-
-	const presentDays = entries.length;
-	const totalMinutes = entries.reduce(
-		(sum, [, minutes]) => sum + (minutes ?? 0),
-		0,
-	);
-	if (presentDays < 3 || totalMinutes < 150) {
-		errors["profile.availability.minutes_by_day"] = "out_of_range";
-	}
-
-	return errors;
+	const issues = validateAvailabilityInteraction(hydrateAvailability(minutesByDay));
+	if (issues.length === 0) return {};
+	return {
+		"profile.availability.minutes_by_day": issues.includes("invalid_day_value")
+			? "invalid_type"
+			: "out_of_range",
+	};
 }
 
 export function validateRestrictionsStep(

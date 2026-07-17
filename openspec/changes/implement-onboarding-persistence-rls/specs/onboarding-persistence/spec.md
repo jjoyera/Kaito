@@ -8,7 +8,7 @@ Provide owner-scoped snapshots that preserve the canonical contract.
 
 ### Requirement: Current owner snapshot
 
-At most one JSONB snapshot per owner MUST be current. Existing saves update it; equivalent retries yield the same state. The capability MUST NOT create history.
+At most one JSONB snapshot per owner MUST be current. Existing saves update it; equivalent retries yield the same state. The capability MUST NOT create history. Availability is stored only as the exact sparse `profile.availability.minutes_by_day` JSONB object; no base duration or category is stored.
 
 #### Scenario: Create, update, and retry a snapshot
 
@@ -38,7 +38,7 @@ Save and read operations MUST require `UserContext`. The system MUST derive owne
 
 ### Requirement: Canonical lifecycle preservation
 
-The system MUST support version `"1"` unless an explicit translator exists. It MUST validate before writes and after reads against `onboarding-contract`: sparse typed drafts persist, completed snapshots are valid, invalid completed edits demote to `incomplete`, and hidden answers clear.
+The system MUST support version `"1"`. It MUST validate before writes and after reads against `onboarding-contract`: sparse typed drafts persist, completed snapshots are valid, invalid completed edits demote to `incomplete`, and hidden answers clear. Removed contract fields are rejected rather than translated, sanitized, migrated, or preserved.
 
 #### Scenario: Completed edit demotes safely
 
@@ -64,7 +64,7 @@ Every repository read, create, update, and delete MUST be scoped to the verified
 
 ### Requirement: Executable RLS isolation proof
 
-Development and CI MUST run local Docker-backed Supabase tests using two non-privileged identities. They MUST prove own creation/access and denial of select, insert-for, update, and delete against the other. Privileged connections are outside this RLS proof and MUST NOT satisfy it.
+Development and CI MUST run local Docker-backed Supabase tests using two non-privileged identities. They MUST prove own creation/access and denial of select, insert-for, update, and delete against the other, including exact nested availability values. Privileged connections are outside this RLS proof and MUST NOT satisfy it.
 
 #### Scenario: Two-user policy matrix
 
