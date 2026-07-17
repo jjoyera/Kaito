@@ -47,9 +47,9 @@ Su objetivo es alinear producto, journeys y requisitos funcionales sobre **qué 
 ### `RunnerProfile`
 
 - **Propósito**: persistir la base del onboarding del corredor.
-- **Campos clave**: `id`, `userId`, `experienceLevel`, `currentVolume`, `weeklyAvailability`, `preferences`, `constraints`, `onboardingCompletedAt`.
+- **Campos clave**: `id`, `userId`, `experienceLevel`, `baseline4Weeks`, `weeklyAvailability`, `preferences`, `constraints`, `onboardingCompletedAt`.
 - **Relaciones**: pertenece a un único `User`.
-- **Notas**: suficiente para generar plan inicial, evitando sobre-modelado clínico.
+- **Notas**: `baseline4Weeks` conserva los totales de sesiones, distancia, desnivel positivo y salida más larga de las cuatro semanas anteriores, además de la constancia reciente (`irregular|fairly_consistent|very_consistent`). El contrato activo no contiene horas totales ni ofrece compatibilidad retroactiva con esa forma anterior. El snapshot se persiste como JSONB; los datos de prueba existentes se descartarán manualmente antes del despliegue coordinado, sin migración SQL.
 
 ### `TrainingGoal`
 

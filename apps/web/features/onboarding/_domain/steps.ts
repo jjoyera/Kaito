@@ -42,10 +42,10 @@ export const ONBOARDING_STEPS: readonly StepDefinition[] = [
 		id: "baseline",
 		fields: [
 			"profile.baseline_4_weeks.sessions",
-			"profile.baseline_4_weeks.training_hours",
 			"profile.baseline_4_weeks.distance_km",
 			"profile.baseline_4_weeks.positive_elevation_m",
 			"profile.baseline_4_weeks.longest_outing_km",
+			"profile.baseline_4_weeks.recent_consistency",
 		],
 	},
 	{

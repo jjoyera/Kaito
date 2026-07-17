@@ -699,10 +699,15 @@ p {
 }
 
 .onboarding-goal-metrics,
-.onboarding-prior-history-row {
+.onboarding-prior-history-row,
+.onboarding-baseline-metrics {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: 1rem;
+}
+
+.onboarding-baseline {
+	gap: 1.35rem;
 }
 
 .onboarding-prior-history {
@@ -972,7 +977,8 @@ p {
 	}
 
 	.onboarding-goal-metrics,
-	.onboarding-prior-history-row {
+	.onboarding-prior-history-row,
+	.onboarding-baseline-metrics {
 		grid-template-columns: 1fr;
 	}
 

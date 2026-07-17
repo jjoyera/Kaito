@@ -20,6 +20,9 @@ _RACE_COUNTS = frozenset(
     {"none", "one_to_three", "four_to_ten", "eleven_to_twenty_five", "twenty_six_plus"}
 )
 _TERRAINS = frozenset({"road", "trail", "mountain", "mixed"})
+_RECENT_CONSISTENCIES = frozenset(
+    {"irregular", "fairly_consistent", "very_consistent"}
+)
 
 
 def _diagnostic(code: str, field: str) -> Diagnostic:
@@ -76,6 +79,7 @@ def _validate_structural(profile: dict[str, Any], goal: dict[str, Any]) -> None:
     _validate_profile_blocks(profile)
     _validate_availability(profile)
     _validate_prior_history(profile)
+    _validate_baseline(profile)
     _validate_profile_numbers(profile)
     _validate_restrictions(profile)
     _validate_goal(goal)
@@ -112,6 +116,13 @@ def _validate_prior_history(profile: dict[str, Any]) -> None:
             raise ValueError("malformed_snapshot")
 
 
+def _validate_baseline(profile: dict[str, Any]) -> None:
+    baseline = _mapping(profile.get("baseline_4_weeks", {})) or {}
+    consistency = baseline.get("recent_consistency")
+    if consistency is not None and not isinstance(consistency, str):
+        raise ValueError("malformed_snapshot")
+
+
 def _validate_profile_numbers(profile: dict[str, Any]) -> None:
     prior = _mapping(profile.get("prior_history", {})) or {}
     baseline = _mapping(profile.get("baseline_4_weeks", {})) or {}
@@ -119,7 +130,6 @@ def _validate_profile_numbers(profile: dict[str, Any]) -> None:
         (prior.get("training_years"), False, True),
         (prior.get("longest_completed_distance_km"), False, False),
         (baseline.get("sessions"), False, False),
-        (baseline.get("training_hours"), False, True),
         (baseline.get("distance_km"), False, False),
         (baseline.get("positive_elevation_m"), False, False),
         (baseline.get("longest_outing_km"), False, False),
@@ -180,6 +190,10 @@ def _validate_goal_strings(goal: dict[str, Any]) -> None:
 
 
 def _clear_hidden(profile: dict[str, Any], goal: dict[str, Any]) -> None:
+    baseline = _mapping(profile.get("baseline_4_weeks"))
+    if baseline is not None:
+        baseline.pop("training_hours", None)
+        profile["baseline_4_weeks"] = baseline
     restrictions = _mapping(profile.get("restrictions"))
     if restrictions is not None:
         if restrictions.get("has_restrictions") is False:
@@ -216,6 +230,7 @@ def _completion_diagnostics(
     _add_availability_diagnostics(profile, diagnostics)
     _add_restriction_diagnostics(profile, diagnostics)
     _add_history_diagnostics(profile, diagnostics)
+    _add_baseline_diagnostics(profile, diagnostics)
     _add_goal_diagnostics(goal, validation_date, diagnostics)
     return diagnostics
 
@@ -239,7 +254,6 @@ def _add_required_diagnostics(
             profile.get("baseline_4_weeks", {}),
             (
                 "sessions",
-                "training_hours",
                 "distance_km",
                 "positive_elevation_m",
                 "longest_outing_km",
@@ -306,6 +320,23 @@ def _add_history_diagnostics(
             diagnostics.append(
                 _diagnostic("out_of_range", f"profile.prior_history.{field}")
             )
+
+
+def _add_baseline_diagnostics(
+    profile: JsonObject, diagnostics: list[Diagnostic]
+) -> None:
+    baseline = profile.get("baseline_4_weeks", {})
+    consistency = baseline.get("recent_consistency")
+    if consistency is None:
+        diagnostics.append(
+            _diagnostic("required", "profile.baseline_4_weeks.recent_consistency")
+        )
+    elif consistency not in _RECENT_CONSISTENCIES:
+        diagnostics.append(
+            _diagnostic(
+                "out_of_range", "profile.baseline_4_weeks.recent_consistency"
+            )
+        )
 
 
 def _add_goal_diagnostics(

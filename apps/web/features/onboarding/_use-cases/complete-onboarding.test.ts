@@ -25,10 +25,10 @@ const completeSnapshot = {
 		},
 		baseline_4_weeks: {
 			sessions: 4,
-			training_hours: 5,
 			distance_km: 40,
 			positive_elevation_m: 800,
 			longest_outing_km: 15,
+			recent_consistency: "fairly_consistent" as const,
 		},
 		availability: {
 			minutes_by_day: { monday: 60, wednesday: 60, friday: 60 },

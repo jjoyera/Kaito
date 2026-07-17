@@ -71,6 +71,15 @@ export function OnboardingStepContent({
 			);
 			break;
 		case "baseline":
+			heading = (
+				<header className="onboarding-step-intro">
+					<h1>¿Cómo entrenas ahora mismo?</h1>
+					<p>
+						Todas las respuestas se refieren a las últimas cuatro semanas y nos
+						ayudan a ajustar una progresión segura.
+					</p>
+				</header>
+			);
 			body = (
 				<BaselineStep
 					value={draft.profile.baseline_4_weeks ?? {}}

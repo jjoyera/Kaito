@@ -78,7 +78,7 @@ apps/web/
         └── _use-cases/              # Carga, guardado y finalización
 ```
 
-Auth y onboarding son capacidades reales. En onboarding, los Pasos 1–2 tienen el nuevo diseño visual de siete pasos; los pasos internos posteriores siguen operativos y se rediseñan incrementalmente.
+Auth y onboarding son capacidades reales. En onboarding, los Pasos 1–3 tienen el nuevo diseño visual del recorrido de siete pasos. El Paso 3 captura las cuatro semanas anteriores mediante sesiones, distancia total, desnivel positivo, salida más larga y consistencia reciente; `training_hours` se eliminó. Los pasos internos posteriores siguen operativos, pero aún no tienen el nuevo diseño.
 
 ### Forma ilustrativa cuando existan consumidores reales
 
@@ -193,6 +193,7 @@ En módulos simples/CRUD, se permite simplificación sin imponer todas las capas
 
 - SQLAlchemy como capa ORM/repositorio en backend.
 - Alembic para migraciones versionadas y reproducibles.
+- Los snapshots de onboarding permanecen en JSONB; el Paso 3 no requiere migración SQL.
 
 ### Invariantes de persistencia (MVP)
 
@@ -367,6 +368,7 @@ En cada cambio relevante:
 - Docker como estrategia de estandarización de entorno para `web`, `api` y servicios necesarios.
 - Objetivo: paridad razonable local/CI/entornos de despliegue.
 - Los `Dockerfile` locales y `compose.yaml` ya definen los servicios `web` y `api`; no constituyen configuración de despliegue ni CD.
+- La entrega del Paso 3 coordina API y web desde un estado limpio. La eliminación manual de JSONB de prueba sigue pendiente de evidencia.
 
 ---
 

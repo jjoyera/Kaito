@@ -12,6 +12,10 @@ export type PracticedTerrain = "road" | "trail" | "mountain" | "mixed";
 export type HabitualTerrain = "mountain" | "trail" | "road" | "mixed";
 export type MountainExperience = "low" | "medium" | "high";
 export type PriorModalityRaceFrequency = "never" | "once" | "multiple";
+export type RecentConsistency =
+	| "irregular"
+	| "fairly_consistent"
+	| "very_consistent";
 export type WeekDay =
 	| "monday"
 	| "tuesday"
@@ -46,10 +50,10 @@ export type PriorHistoryDraft = {
 
 export type BaselineDraft = {
 	sessions?: number;
-	training_hours?: number;
 	distance_km?: number;
 	positive_elevation_m?: number;
 	longest_outing_km?: number;
+	recent_consistency?: RecentConsistency;
 };
 
 export type AvailabilityDraft = {
@@ -95,6 +99,11 @@ const PRIOR_RACE_FREQUENCIES = new Set<PriorModalityRaceFrequency>([
 	"never",
 	"once",
 	"multiple",
+]);
+const RECENT_CONSISTENCIES = new Set<RecentConsistency>([
+	"irregular",
+	"fairly_consistent",
+	"very_consistent",
 ]);
 const WEEK_DAYS = new Set<WeekDay>([
 	"monday",
@@ -244,14 +253,6 @@ export function validateBaselineStep(baseline: BaselineDraft): FieldErrors {
 		errors["profile.baseline_4_weeks.sessions"] = "out_of_range";
 	}
 
-	if (baseline.training_hours === undefined) {
-		errors["profile.baseline_4_weeks.training_hours"] = "required";
-	} else if (
-		!isNonNegativeNumber(baseline.training_hours, { halfStep: true })
-	) {
-		errors["profile.baseline_4_weeks.training_hours"] = "out_of_range";
-	}
-
 	if (baseline.distance_km === undefined) {
 		errors["profile.baseline_4_weeks.distance_km"] = "required";
 	} else if (!isNonNegativeNumber(baseline.distance_km)) {
@@ -268,6 +269,12 @@ export function validateBaselineStep(baseline: BaselineDraft): FieldErrors {
 		errors["profile.baseline_4_weeks.longest_outing_km"] = "required";
 	} else if (!isNonNegativeNumber(baseline.longest_outing_km)) {
 		errors["profile.baseline_4_weeks.longest_outing_km"] = "out_of_range";
+	}
+
+	if (baseline.recent_consistency === undefined) {
+		errors["profile.baseline_4_weeks.recent_consistency"] = "required";
+	} else if (!RECENT_CONSISTENCIES.has(baseline.recent_consistency)) {
+		errors["profile.baseline_4_weeks.recent_consistency"] = "invalid_type";
 	}
 
 	return errors;
