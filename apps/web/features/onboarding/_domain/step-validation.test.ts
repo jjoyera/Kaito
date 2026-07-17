@@ -133,26 +133,28 @@ describe("validateStep(prior_history)", () => {
 });
 
 describe("validateStep(baseline)", () => {
-	test("flags every required field as missing when blank", () => {
+	test("requires four preceding-four-week totals and recent consistency", () => {
 		const errors = validateStep("baseline", draft());
-		assert.equal(errors["profile.baseline_4_weeks.sessions"], "required");
-		assert.equal(
-			errors["profile.baseline_4_weeks.training_hours"],
-			"required",
-		);
+		assert.deepEqual(errors, {
+			"profile.baseline_4_weeks.sessions": "required",
+			"profile.baseline_4_weeks.distance_km": "required",
+			"profile.baseline_4_weeks.positive_elevation_m": "required",
+			"profile.baseline_4_weeks.longest_outing_km": "required",
+			"profile.baseline_4_weeks.recent_consistency": "required",
+		});
 	});
 
-	test("accepts an all-zero baseline for a runner starting from rest", () => {
+	test("accepts an all-zero baseline without training hours", () => {
 		const errors = validateStep(
 			"baseline",
 			draft({
 				profile: {
 					baseline_4_weeks: {
 						sessions: 0,
-						training_hours: 0,
 						distance_km: 0,
 						positive_elevation_m: 0,
 						longest_outing_km: 0,
+						recent_consistency: "irregular",
 					},
 				},
 			}),
@@ -160,24 +162,28 @@ describe("validateStep(baseline)", () => {
 		assert.deepEqual(errors, {});
 	});
 
-	test("rejects negative values", () => {
+	test("rejects invalid consistency and negative retained numeric values", () => {
 		const errors = validateStep(
 			"baseline",
 			draft({
 				profile: {
 					baseline_4_weeks: {
 						sessions: 3,
-						training_hours: 4,
 						distance_km: -5,
 						positive_elevation_m: 100,
 						longest_outing_km: 10,
-					},
+						recent_consistency: "sometimes",
+					} as unknown as OnboardingSnapshotDraft["profile"]["baseline_4_weeks"],
 				},
 			}),
 		);
 		assert.equal(
 			errors["profile.baseline_4_weeks.distance_km"],
 			"out_of_range",
+		);
+		assert.equal(
+			errors["profile.baseline_4_weeks.recent_consistency"],
+			"invalid_type",
 		);
 	});
 });

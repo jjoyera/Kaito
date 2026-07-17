@@ -139,6 +139,36 @@ test.describe("onboarding intro and step 1", () => {
 				prior_modality_race_frequency: "once",
 			},
 		});
+		await expect(page.getByText("Paso 3 de 7")).toBeVisible();
+		await expect(page.getByText("43%", { exact: true })).toBeVisible();
+		await expect(
+			page.getByRole("heading", { name: "¿Cómo entrenas ahora mismo?" }),
+		).toBeVisible();
+		await expect(
+			page.getByText(/respuestas se refieren a las últimas cuatro semanas/),
+		).toBeVisible();
+		await page.getByLabel("Sesiones en las últimas 4 semanas").fill("8");
+		await page
+			.getByLabel("Distancia total en las últimas 4 semanas")
+			.fill("50");
+		await page
+			.getByLabel("Desnivel positivo en las últimas 4 semanas")
+			.fill("1200");
+		await page
+			.getByLabel("Salida más larga de las últimas 4 semanas")
+			.fill("18");
+		await page.getByLabel("Bastante constante").check();
+		await expect(page.getByLabel(/Horas totales/)).toHaveCount(0);
+		await page.getByRole("button", { name: "Continuar" }).click();
+		expect(savedSnapshots.at(-1)?.profile).toMatchObject({
+			baseline_4_weeks: {
+				sessions: 8,
+				distance_km: 50,
+				positive_elevation_m: 1200,
+				longest_outing_km: 18,
+				recent_consistency: "fairly_consistent",
+			},
+		});
 	});
 
 	test("uses Ultra wording and keeps step 2 visible on validation errors", async ({

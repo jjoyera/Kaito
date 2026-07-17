@@ -58,10 +58,10 @@ def _snapshot() -> dict:
             },
             "baseline_4_weeks": {
                 "sessions": 12,
-                "training_hours": 8.5,
                 "distance_km": 75.0,
                 "positive_elevation_m": 1200.0,
                 "longest_outing_km": 25.0,
+                "recent_consistency": "fairly_consistent",
             },
             "availability": {
                 "minutes_by_day": {"monday": 60, "wednesday": 60, "saturday": 90}

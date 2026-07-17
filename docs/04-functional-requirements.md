@@ -140,7 +140,8 @@ El sistema debe guiar al usuario mediante un onboarding inicial para recopilar l
   - Trail, ultra-trail y OCR: `targetDistanceKm` y `targetDate`.
   - Backyard Ultra: `targetDate`, `targetLoops` o `targetHours`, `targetLoopDurationMin` (o ritmo equivalente), `expectedRestMarginMin` y notas básicas de estrategia de box/transición. La distancia fija no se usa como objetivo principal.
 - El sistema debe preguntar por la experiencia previa del corredor.
-- El sistema debe recoger el nivel o volumen actual de entrenamiento.
+- El sistema debe recoger, de forma explícita para las cuatro semanas anteriores, las sesiones, la distancia total, el desnivel positivo acumulado, la salida más larga y la constancia reciente (`irregular`, `fairly_consistent` o `very_consistent`). Las horas totales de entrenamiento no forman parte de este paso.
+- Esta revisión sustituye el contrato v1 de forma coordinada y sobre un estado limpio, sin compatibilidad retroactiva para `training_hours`. Los datos JSONB de prueba existentes se descartarán manualmente antes del despliegue; este requisito no acredita que ese borrado operativo ya se haya ejecutado.
 - El sistema debe preguntar por la disponibilidad semanal.
 - El sistema debe permitir indicar restricciones o preferencias básicas.
 - El sistema debe explicar de forma breve por qué solicita esa información.

@@ -28,10 +28,10 @@ The contract MUST use the following stable identifiers, answer types, requiredne
 | profile | `profile.prior_history.practiced_modalities` | explicitly supplied array of enum values: `trail`, `ultra_trail`, `ocr`, `backyard`; MAY be empty | completion-required; modality identifiers; absence means unanswered |
 | profile | `profile.prior_history.practiced_terrain` | explicitly supplied array of enum values: `road`, `trail`, `mountain`, `mixed`; MAY be empty | completion-required; an empty array means no prior terrain experience; absence means unanswered |
 | profile | `profile.baseline_4_weeks.sessions` | non-negative integer | completion-required; sessions in preceding 4 calendar weeks |
-| profile | `profile.baseline_4_weeks.training_hours` | non-negative number in increments of 0.5 | completion-required; hours in preceding 4 calendar weeks; accepts zero, whole hours, and half-hours only |
 | profile | `profile.baseline_4_weeks.distance_km` | non-negative number | completion-required; kilometres in preceding 4 calendar weeks |
 | profile | `profile.baseline_4_weeks.positive_elevation_m` | non-negative number | completion-required; metres in preceding 4 calendar weeks |
 | profile | `profile.baseline_4_weeks.longest_outing_km` | non-negative number | completion-required; kilometres in preceding 4 calendar weeks |
+| profile | `profile.baseline_4_weeks.recent_consistency` | enum: `irregular`, `fairly_consistent`, `very_consistent` | completion-required; perceived consistency across the preceding 4 calendar weeks |
 | profile | `profile.availability.minutes_by_day` | sparse object; only `monday`, `tuesday`, `wednesday`, `thursday`, `friday`, `saturday`, and `sunday` keys are allowed; present values are integers 15–300 | completion-required for at least 3 present days; omitted day means unavailable; null values and unknown keys are invalid |
 | profile | `profile.restrictions.has_restrictions` | boolean | completion-required |
 | profile | `profile.restrictions.detail` | trimmed string, length 1–500 | conditional-required when `has_restrictions=true`; otherwise absent and cleared |
@@ -44,6 +44,8 @@ The contract MUST use the following stable identifiers, answer types, requiredne
 | goal | `goal.obstacle_count` | positive integer, >=1 | conditional-required for `ocr`; obstacles |
 | goal | `goal.obstacle_difficulty` | enum `low`, `medium`, `high` | optional for `ocr` |
 | goal | `goal.target_loops` | positive integer, >=1 | conditional-required for `backyard`; loops |
+
+This change is a coordinated clean-state replacement of the active version 1 contract, with no backward-compatibility promise for the removed `training_hours` field. Existing test JSONB will be discarded manually before deployment; this contract does not claim or verify that operational deletion. API and web MUST be deployed together against the clean state.
 
 The contract MUST NOT include `experience_level`, plan approach, Backyard target hours, cycle duration, rest margin, or box/transition notes. The fixed Backyard cycle is 60 minutes, so downstream derived target hours equal `target_loops` and are not user inputs. Trail and ultra-trail completion requires a technicality answer, while estimated maximum altitude remains optional to avoid blocking runners who do not know it.
 
@@ -81,11 +83,17 @@ The value describes the target event's obstacles rather than the runner's percei
 - WHEN prior history is validated
 - THEN the value is accepted, while values that are negative or not divisible by 0.5 are rejected.
 
-#### Scenario: Baseline training uses whole and half-hours
+#### Scenario: Baseline requires recent consistency rather than training hours
 
-- GIVEN a runner submits `training_hours=0`, `training_hours=3`, or `training_hours=3.5`
+- GIVEN a runner supplies the four baseline numeric answers for the preceding four calendar weeks and `recent_consistency=fairly_consistent`
 - WHEN the previous-four-week baseline is validated
-- THEN the value is accepted, while values that are negative or not divisible by 0.5 are rejected.
+- THEN completion succeeds without `training_hours`, while an absent or noncanonical `recent_consistency` blocks completion.
+
+#### Scenario: Removed training hours do not satisfy completion
+
+- GIVEN a payload has the four retained baseline metrics and a stray `training_hours` key but omits `recent_consistency`
+- WHEN the baseline is validated
+- THEN completion remains blocked because `recent_consistency` is required and no legacy compatibility shape is recognized.
 
 #### Scenario: No practiced terrain uses an empty array
 

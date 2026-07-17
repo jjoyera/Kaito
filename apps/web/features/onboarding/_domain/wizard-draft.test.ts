@@ -20,10 +20,10 @@ const completeDraft: OnboardingSnapshotDraft = {
 		},
 		baseline_4_weeks: {
 			sessions: 4,
-			training_hours: 6,
 			distance_km: 42,
 			positive_elevation_m: 1500,
 			longest_outing_km: 20,
+			recent_consistency: "fairly_consistent" as const,
 		},
 		availability: {
 			minutes_by_day: { monday: 60, wednesday: 60, saturday: 90 },

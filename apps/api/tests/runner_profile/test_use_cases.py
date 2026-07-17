@@ -33,10 +33,10 @@ def _completed_snapshot(*, target_date: str = "2026-08-01") -> dict:
             },
             "baseline_4_weeks": {
                 "sessions": 12,
-                "training_hours": 8.5,
                 "distance_km": 75.0,
                 "positive_elevation_m": 1200.0,
                 "longest_outing_km": 25.0,
+                "recent_consistency": "fairly_consistent",
             },
             "availability": {
                 "minutes_by_day": {"monday": 60, "wednesday": 60, "saturday": 90}
@@ -263,6 +263,86 @@ def test_save_demotes_noncanonical_completed_optional_goal_answers(changes, fiel
 
     assert result.snapshot.state is OnboardingState.INCOMPLETE
     assert any(diagnostic.field == field for diagnostic in result.diagnostics)
+
+
+def test_save_accepts_canonical_baseline_with_recent_consistency():
+    snapshot = _completed_snapshot()
+    repository = RecordingRepository()
+
+    result = save_onboarding(
+        UserContext("runner-1"),
+        SaveOnboardingInput(snapshot=snapshot, validation_date=date(2026, 7, 13)),
+        RecordingTransactions(repository),
+    )
+
+    assert result.snapshot.state is OnboardingState.COMPLETED
+    assert result.diagnostics == ()
+
+
+def test_save_removes_stray_training_hours_from_complete_canonical_baseline():
+    snapshot = _completed_snapshot()
+    snapshot["profile"]["baseline_4_weeks"]["training_hours"] = 8.5
+    repository = RecordingRepository()
+
+    result = save_onboarding(
+        UserContext("runner-1"),
+        SaveOnboardingInput(snapshot=snapshot, validation_date=date(2026, 7, 13)),
+        RecordingTransactions(repository),
+    )
+
+    [(_, persisted)] = repository.upserts
+    assert result.snapshot.state is OnboardingState.COMPLETED
+    assert result.diagnostics == ()
+    assert "training_hours" not in result.snapshot.profile["baseline_4_weeks"]
+    assert "training_hours" not in persisted.profile["baseline_4_weeks"]
+
+
+@pytest.mark.parametrize("value", ["sometimes", 1])
+def test_save_demotes_or_rejects_invalid_recent_consistency(value):
+    snapshot = _completed_snapshot()
+    snapshot["profile"]["baseline_4_weeks"]["recent_consistency"] = value
+    transactions = RecordingTransactions(RecordingRepository())
+
+    if isinstance(value, str):
+        result = save_onboarding(
+            UserContext("runner-1"),
+            SaveOnboardingInput(snapshot=snapshot, validation_date=date(2026, 7, 13)),
+            transactions,
+        )
+        assert result.snapshot.state is OnboardingState.INCOMPLETE
+        assert any(
+            diagnostic.field == "profile.baseline_4_weeks.recent_consistency"
+            for diagnostic in result.diagnostics
+        )
+    else:
+        user = UserContext("runner-1")
+        command = SaveOnboardingInput(
+            snapshot=snapshot, validation_date=date(2026, 7, 13)
+        )
+
+        with pytest.raises(InvalidOnboardingInput, match="^malformed_snapshot$"):
+            save_onboarding(user, command, transactions)
+
+
+def test_stray_training_hours_does_not_replace_required_recent_consistency():
+    snapshot = _completed_snapshot()
+    baseline = snapshot["profile"]["baseline_4_weeks"]
+    baseline.pop("recent_consistency")
+    baseline["training_hours"] = 8.5
+    repository = RecordingRepository(stored=snapshot)
+
+    result = read_onboarding(
+        UserContext("runner-1"),
+        ReadOnboardingInput(validation_date=date(2026, 7, 13)),
+        RecordingTransactions(repository),
+    )
+
+    assert result.snapshot.state is OnboardingState.INCOMPLETE
+    assert any(
+        diagnostic.field == "profile.baseline_4_weeks.recent_consistency"
+        and diagnostic.code == "required"
+        for diagnostic in result.diagnostics
+    )
 
 
 def test_save_clears_hidden_restriction_detail_before_persisting_normalization():

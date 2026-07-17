@@ -68,11 +68,12 @@ El usuario necesita introducir su información sin sentirse abrumado y entender 
 ### Estado de implementación actual
 
 > `/onboarding` ya entrega una introducción de valor, el CTA `Crear mi plan` y los
-> Pasos 1–2 rediseñados. El primero expone solo Trail y Ultra; el segundo recoge
-> distancia completada, terreno habitual, experiencia en montaña y frecuencia
-> previa en la modalidad. El resto del recorrido es comportamiento objetivo y se
-> implementa incrementalmente; OCR y Backyard siguen siendo requisitos de producto,
-> aunque ahora no se muestran en la interfaz.
+> Pasos 1–3 rediseñados. El primero recoge el objetivo Trail o Ultra; el segundo,
+> la experiencia previa; y el tercero, las cuatro semanas anteriores: sesiones,
+> distancia total, desnivel positivo, salida más larga y consistencia reciente.
+> `training_hours` ya no forma parte del recorrido. Los pasos restantes siguen
+> operativos, pero aún no tienen el nuevo diseño. OCR y Backyard continúan como
+> requisitos de producto, aunque ahora no se muestran en la interfaz.
 
 ### Recorrido principal
 

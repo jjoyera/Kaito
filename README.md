@@ -11,7 +11,7 @@ forma incremental.
 
 ## Estado actual
 
-El estado implementado entrega autenticación y los dos primeros pasos del nuevo onboarding.
+El estado implementado entrega autenticación y los tres primeros pasos del nuevo onboarding.
 
 | Área | Estado |
 | --- | --- |
@@ -175,8 +175,9 @@ por paso, limpieza condicional de campos, mapeo de diagnósticos del backend a
 pasos, y los casos de uso de carga/guardado/completado. Tampoco requiere
 cuentas reales de Supabase ni el API corriendo.
 
-La verificación más reciente superó lint, build, 54 tests unitarios de
-onboarding, 33 E2E en modo desarrollo y 1 E2E sobre el build de producción.
+La verificación más reciente superó TypeScript, lint y Ruff focalizados, build y
+las suites focalizadas de onboarding y perfil del corredor, incluidos 4 E2E de
+onboarding.
 
 ## Arquitectura frontend
 
@@ -216,13 +217,15 @@ openspec/              Artefactos SDD/OpenSpec.
   `Crear mi plan`. Su Paso 1 rediseñado muestra `Paso 1 de 7` y `14%`, permite
   elegir solo Trail o Ultra y solicita distancia, desnivel positivo y fecha
   objetivo; no muestra tecnicidad, altitud máxima ni botón de retroceso.
-- Los Pasos 1 y 2 usan el nuevo diseño visual de siete pasos. El Paso 2 recoge
-  distancia completada, terreno habitual, experiencia en montaña y frecuencia
-  previa en Trail o Ultra. Los pasos restantes siguen operativos y se
-  rediseñarán incrementalmente; aún no existen siete pasos de UI terminados.
-- Persistencia de onboarding por usuario con defensa en profundidad mediante
-  transacciones con ownership y RLS; su documentación operativa detallada y el
-  endurecimiento de credenciales de despliegue permanecen pendientes.
+- Los Pasos 1–3 usan el nuevo diseño visual del recorrido de siete pasos. El
+  Paso 2 recoge la experiencia previa. El Paso 3 resume las cuatro semanas
+  anteriores mediante sesiones, distancia total, desnivel positivo, salida más
+  larga y consistencia reciente; `training_hours` ya no forma parte del contrato.
+  Los pasos restantes siguen operativos, pero aún no tienen el nuevo diseño.
+- Persistencia de onboarding por usuario con snapshots JSONB, sin migración SQL,
+  y defensa en profundidad mediante transacciones con ownership y RLS; su
+  documentación operativa detallada y el endurecimiento de credenciales de
+  despliegue permanecen pendientes.
 - Validación de web con lint, build, tests unitarios y E2E de desarrollo y
   producción; la API conserva lint, smoke, tests y prueba RLS de dos usuarios.
 - Paquete `@kaito/api-client` reservado para un futuro cliente generado; hoy no
