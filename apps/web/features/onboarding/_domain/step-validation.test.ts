@@ -112,7 +112,7 @@ describe("validateStep(prior_history)", () => {
 						habitual_terrain: "forest",
 						mountain_experience: "expert",
 						prior_modality_race_frequency: "sometimes",
-					} as OnboardingSnapshotDraft["profile"]["prior_history"],
+					} as unknown as OnboardingSnapshotDraft["profile"]["prior_history"],
 				},
 			}),
 		);

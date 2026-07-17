@@ -4,14 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 
 import { getAccessToken } from "../../auth/_adapters/get-access-token";
 import { isTestAuthAdapterEnabledInBrowser } from "../../../shared/testing/test-auth-adapter";
-import type {
-	OnboardingApiDependencies,
-	OnboardingDiagnostic,
-} from "../_adapters/onboarding-api";
+import type { OnboardingApiDependencies } from "../_adapters/onboarding-api";
 import {
-	clearHiddenGoalFields,
-	clearRestrictionDetail,
-} from "../_domain/conditional-clearing";
+	applyConditionalClearing,
+	createBlankWizardDraft,
+	firstIncompleteStepIndex,
+	normalizeWizardDraft,
+	toDiagnosticsByField,
+} from "../_domain/wizard-draft";
 import {
 	validateStep,
 	type AvailabilityDraft,
@@ -26,37 +26,12 @@ import { ONBOARDING_STEPS } from "../_domain/steps";
 import { completeOnboarding } from "../_use-cases/complete-onboarding";
 import { loadOnboardingDraft } from "../_use-cases/load-onboarding-draft";
 import { saveOnboardingStep } from "../_use-cases/save-onboarding-step";
-import { AvailabilityStep } from "./availability-step";
-import { BaselineStep } from "./baseline-step";
 import { CompletionView } from "./completion-view";
-import { GoalStep } from "./goal-step";
-import { PriorHistoryStep } from "./prior-history-step";
-import { RestrictionsStep } from "./restrictions-step";
+import { OnboardingStepContent } from "./onboarding-step-content";
 import { StepNavigator } from "./step-navigator";
 
 type Phase = "loading" | "ready" | "load_error" | "completed";
 type SaveStatus = "idle" | "saving" | "save_error";
-type DiagnosticsByField = Partial<Record<string, OnboardingDiagnostic>>;
-
-function normalizeDraft(draft: OnboardingSnapshotDraft): OnboardingSnapshotDraft {
-	return {
-		...draft,
-		profile: {
-			...draft.profile,
-			prior_history: {
-				...draft.profile.prior_history,
-				practiced_modalities:
-					draft.profile.prior_history?.practiced_modalities ?? [],
-				practiced_terrain:
-					draft.profile.prior_history?.practiced_terrain ?? [],
-			},
-		},
-	};
-}
-
-function blankDraft(): OnboardingSnapshotDraft {
-	return normalizeDraft({ profile: {}, goal: {} });
-}
 
 function todayIsoDate(): string {
 	const now = new Date();
@@ -64,42 +39,6 @@ function todayIsoDate(): string {
 	const month = String(now.getMonth() + 1).padStart(2, "0");
 	const day = String(now.getDate()).padStart(2, "0");
 	return `${year}-${month}-${day}`;
-}
-
-function toDiagnosticsByField(
-	diagnostics: readonly OnboardingDiagnostic[],
-): DiagnosticsByField {
-	const byField: DiagnosticsByField = {};
-	for (const diagnostic of diagnostics) {
-		byField[diagnostic.field] = diagnostic;
-	}
-	return byField;
-}
-
-function applyConditionalClearing(
-	draft: OnboardingSnapshotDraft,
-): OnboardingSnapshotDraft {
-	return {
-		profile: {
-			...draft.profile,
-			restrictions: draft.profile.restrictions
-				? clearRestrictionDetail(draft.profile.restrictions)
-				: draft.profile.restrictions,
-		},
-		goal: clearHiddenGoalFields(draft.goal),
-	};
-}
-
-function firstIncompleteStepIndex(
-	draft: OnboardingSnapshotDraft,
-	diagnostics: DiagnosticsByField,
-): number {
-	const index = ONBOARDING_STEPS.findIndex(
-		(step) =>
-			Object.keys(validateStep(step.id, draft)).length > 0 ||
-			step.fields.some((field) => diagnostics[field] !== undefined),
-	);
-	return index === -1 ? ONBOARDING_STEPS.length - 1 : index;
 }
 
 function createApiDependencies(): OnboardingApiDependencies {
@@ -112,70 +51,14 @@ function createApiDependencies(): OnboardingApiDependencies {
 	};
 }
 
-export function OnboardingExperience() {
-	const [hasStarted, setHasStarted] = useState(false);
-
-	if (hasStarted) {
-		return (
-			<section className="onboarding-flow" aria-label="Configura tu plan">
-				<OnboardingWizard />
-			</section>
-		);
-	}
-
-	return (
-		<section className="onboarding-intro" aria-labelledby="onboarding-intro-title">
-			<div className="onboarding-intro-content">
-				<header className="onboarding-intro-header">
-					<h1 id="onboarding-intro-title">
-						Tu plan de entrenamiento,
-						<br /> hecho a tu medida
-					</h1>
-					<p>
-						Kaito diseña, explica y adapta tu entrenamiento según tu objetivo, tu
-						fondo y el tiempo real que tienes para entrenar.
-					</p>
-				</header>
-
-				<div className="onboarding-intro-benefits">
-					<article className="onboarding-intro-card">
-						<svg viewBox="0 0 24 24" aria-hidden="true">
-							<circle cx="12" cy="12" r="8.5" />
-							<circle cx="12" cy="12" r="4.5" />
-							<circle cx="12" cy="12" r="1" />
-						</svg>
-						<h2>Plan personalizado</h2>
-						<p>Construido desde tu objetivo real y tu disponibilidad.</p>
-					</article>
-
-					<article className="onboarding-intro-card">
-						<svg viewBox="0 0 24 24" aria-hidden="true">
-							<path d="m3 16 5-5 3 3 7-8" />
-							<path d="m16 6h2v2" />
-						</svg>
-						<h2>Explicaciones claras</h2>
-						<p>Sabes por qué haces cada sesión, no solo qué hacer.</p>
-					</article>
-				</div>
-
-				<button
-					className="onboarding-intro-cta"
-					type="button"
-					onClick={() => setHasStarted(true)}
-				>
-					Crear mi plan <span aria-hidden="true">→</span>
-				</button>
-			</div>
-		</section>
-	);
-}
-
 export function OnboardingWizard() {
 	const dependencies = useMemo(() => createApiDependencies(), []);
 	const today = useMemo(() => todayIsoDate(), []);
 
 	const [phase, setPhase] = useState<Phase>("loading");
-	const [draft, setDraft] = useState<OnboardingSnapshotDraft>(blankDraft);
+	const [draft, setDraft] = useState<OnboardingSnapshotDraft>(
+		createBlankWizardDraft,
+	);
 	const [stepIndex, setStepIndex] = useState(0);
 	const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 	const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
@@ -193,7 +76,7 @@ export function OnboardingWizard() {
 				return;
 			}
 
-			const loadedDraft = normalizeDraft({
+			const loadedDraft = normalizeWizardDraft({
 				profile: outcome.result.snapshot.profile,
 				goal: outcome.result.snapshot.goal,
 			});
@@ -207,11 +90,7 @@ export function OnboardingWizard() {
 				return;
 			}
 
-			const resumeIndex = firstIncompleteStepIndex(
-				loadedDraft,
-				loadedDiagnostics,
-			);
-			setStepIndex(resumeIndex);
+			setStepIndex(firstIncompleteStepIndex(loadedDraft, loadedDiagnostics));
 			setPhase("ready");
 		});
 		return () => {
@@ -273,9 +152,7 @@ export function OnboardingWizard() {
 		const currentStep = ONBOARDING_STEPS[stepIndex];
 		const errors = validateStep(currentStep.id, draft);
 		setFieldErrors(errors);
-		if (Object.keys(errors).length > 0) {
-			return;
-		}
+		if (Object.keys(errors).length > 0) return;
 
 		const cleared = applyConditionalClearing(draft);
 		setDraft(cleared);
@@ -322,84 +199,33 @@ export function OnboardingWizard() {
 	if (phase === "load_error") {
 		return (
 			<p className="onboarding-form-error" role="alert">
-				No hemos podido cargar tu onboarding ahora mismo. Inténtalo de nuevo
-				en unos minutos.
+				No hemos podido cargar tu onboarding ahora mismo. Inténtalo de nuevo en
+				unos minutos.
 			</p>
 		);
 	}
 
-	if (phase === "completed") {
-		return <CompletionView />;
-	}
+	if (phase === "completed") return <CompletionView />;
 
 	const currentStep = ONBOARDING_STEPS[stepIndex];
 	const isLastStep = stepIndex === ONBOARDING_STEPS.length - 1;
 	let nextButtonLabel = "Continuar";
-	if (saveStatus === "saving") {
-		nextButtonLabel = "Guardando…";
-	} else if (isLastStep) {
-		nextButtonLabel = "Completar";
-	}
+	if (saveStatus === "saving") nextButtonLabel = "Guardando…";
+	else if (isLastStep) nextButtonLabel = "Completar";
 
 	return (
 		<div className="onboarding-wizard">
 			<StepNavigator currentStepIndex={stepIndex} />
-
-			{currentStep.id === "goal" ? (
-				<header className="onboarding-step-intro">
-					<h1>Empecemos por tu objetivo</h1>
-					<p>
-						Cuéntame qué carrera tienes en mente. Es la brújula de todo tu plan.
-					</p>
-				</header>
-			) : null}
-			{currentStep.id === "prior_history" ? (
-				<header className="onboarding-step-intro">
-					<h1>¿Cuál es tu experiencia previa?</h1>
-					<p>
-						Necesito saber de dónde partes para no pedirte ni de más ni de menos.
-					</p>
-				</header>
-			) : null}
-
-			<div className="onboarding-wizard-card">
-				{currentStep.id === "goal" ? (
-					<GoalStep
-						value={draft.goal}
-						errors={fieldErrors}
-						onChange={updateGoal}
-					/>
-				) : null}
-				{currentStep.id === "prior_history" ? (
-					<PriorHistoryStep
-						value={draft.profile.prior_history ?? {}}
-						goalModality={draft.goal.modality}
-						errors={fieldErrors}
-						onChange={updatePriorHistory}
-					/>
-				) : null}
-				{currentStep.id === "baseline" ? (
-					<BaselineStep
-						value={draft.profile.baseline_4_weeks ?? {}}
-						errors={fieldErrors}
-						onChange={updateBaseline}
-					/>
-				) : null}
-				{currentStep.id === "availability" ? (
-					<AvailabilityStep
-						value={draft.profile.availability ?? {}}
-						errors={fieldErrors}
-						onChange={updateAvailability}
-					/>
-				) : null}
-				{currentStep.id === "restrictions" ? (
-					<RestrictionsStep
-						value={draft.profile.restrictions ?? {}}
-						errors={fieldErrors}
-						onChange={updateRestrictions}
-					/>
-				) : null}
-
+			<OnboardingStepContent
+				stepId={currentStep.id}
+				draft={draft}
+				errors={fieldErrors}
+				onGoalChange={updateGoal}
+				onPriorHistoryChange={updatePriorHistory}
+				onBaselineChange={updateBaseline}
+				onAvailabilityChange={updateAvailability}
+				onRestrictionsChange={updateRestrictions}
+			>
 				{saveStatus === "save_error" ? (
 					<p className="onboarding-form-error" role="alert">
 						No hemos podido guardar este paso. Revisa tu conexión e inténtalo de
@@ -427,7 +253,7 @@ export function OnboardingWizard() {
 						{nextButtonLabel} <span aria-hidden="true">→</span>
 					</button>
 				</div>
-			</div>
+			</OnboardingStepContent>
 		</div>
 	);
 }
