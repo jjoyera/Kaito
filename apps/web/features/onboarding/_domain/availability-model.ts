@@ -112,7 +112,8 @@ function toggleDay(
 	const isSelected =
 		state.minutesByDay[day] !== undefined || state.pendingDays.includes(day);
 	if (isSelected) {
-		const { [day]: _, ...minutesByDay } = state.minutesByDay;
+		const minutesByDay = { ...state.minutesByDay };
+		delete minutesByDay[day];
 		const pendingDays = state.pendingDays.filter((pendingDay) => pendingDay !== day);
 		return createState(minutesByDay, pendingDays, state.baseMode);
 	}
@@ -152,7 +153,8 @@ function setExactMinutes(
 	minutes: number | undefined,
 ): AvailabilityInteractionState {
 	if (minutes === undefined) {
-		const { [day]: _, ...minutesByDay } = state.minutesByDay;
+		const minutesByDay = { ...state.minutesByDay };
+		delete minutesByDay[day];
 		const pendingDays = state.pendingDays.includes(day)
 			? state.pendingDays
 			: [...state.pendingDays, day];
@@ -203,5 +205,10 @@ function deriveBaseMode(
 }
 
 function isValidExactMinutes(minutes: unknown): minutes is number {
-	return Number.isInteger(minutes) && minutes >= 15 && minutes <= 300;
+	return (
+		typeof minutes === "number" &&
+		Number.isInteger(minutes) &&
+		minutes >= 15 &&
+		minutes <= 300
+	);
 }

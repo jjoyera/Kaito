@@ -39,15 +39,12 @@ const completeDraft: OnboardingSnapshotDraft = {
 };
 
 describe("wizard draft normalization", () => {
-	test("adds the collection defaults expected by the prior-history form", () => {
+	test("does not create removed prior-history collection defaults", () => {
 		const draft = { profile: {}, goal: {} };
 
 		const normalized = normalizeWizardDraft(draft);
 
-		assert.deepEqual(normalized.profile.prior_history, {
-			practiced_modalities: [],
-			practiced_terrain: [],
-		});
+		assert.deepEqual(normalized.profile, {});
 		assert.deepEqual(draft, { profile: {}, goal: {} });
 	});
 
@@ -55,14 +52,8 @@ describe("wizard draft normalization", () => {
 		const first = createBlankWizardDraft();
 		const second = createBlankWizardDraft();
 
-		assert.deepEqual(first, {
-			profile: {
-				prior_history: { practiced_modalities: [], practiced_terrain: [] },
-			},
-			goal: {},
-		});
+		assert.deepEqual(first, { profile: {}, goal: {} });
 		assert.notEqual(first, second);
-		assert.notEqual(first.profile.prior_history, second.profile.prior_history);
 	});
 });
 
@@ -118,7 +109,7 @@ describe("wizard diagnostic navigation", () => {
 	test("selects the first step with a server diagnostic even when locally valid", () => {
 		const diagnostic = {
 			code: "invalid",
-			field: "profile.prior_history.training_years",
+			field: "profile.prior_history.habitual_terrain",
 			message_key: "invalid",
 			severity: "error",
 			metadata: {},

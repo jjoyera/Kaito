@@ -121,3 +121,68 @@ Deferred lifecycle actions (parent-owned; unchanged):
 - [ ] Before each later work unit, choose or confirm the pending chain strategy and PR boundary; after apply, run the required bounded review and lifecycle validation before commit, push, PR, or release, reusing the content-bound receipt rather than opening a new review budget. <!-- sdd-owner: parent -->
 
 Next boundary: Section 3 reduced web contract only. Do not begin API, UI/wizard, persistence/RLS expansion, final regression, or documentation reconciliation without a new assigned batch.
+
+## Work unit 2: reduced web contract
+
+- **Boundary:** Section 3 only; no API, Step 4 component/wizard/style, E2E, RLS, migration, or runtime-documentation files changed.
+- **Commit target:** `refactor(onboarding): remove deprecated profile fields`.
+- **Commit status:** Not staged or committed, as required.
+- **Delivery:** Assigned chained work-unit slice; the high-workload delivery decision is resolved by this explicit boundary.
+
+### Structured status consumed
+
+- Change: `add-onboarding-step-4-availability`
+- Artifact store: `both` (OpenSpec files are authoritative for this batch)
+- Apply state: `ready`; next recommended: `apply`
+- Action context: `repo-local`; repository root is the allowed edit root.
+- Warning: the task forecast is high risk, but the parent assigned this bounded section-3 work unit and target commit.
+
+### TDD Cycle Evidence
+
+| Phase | Evidence | Result |
+| --- | --- | --- |
+| RED | Updated reduced-contract catalog, normalization, diagnostic, conditional-clearing, completion, save, and load fixtures; ran the focused domain/use-case command before production edits. | Expected FAIL: 5 failures. Legacy step ownership still emitted all five fields, legacy diagnostics mapped a removed field, and normalization created removed array defaults. |
+| GREEN | Removed the five properties from canonical web types, ownership, normalization, clearing, fixtures, and API payload typing; renamed `Technicality` to `ObstacleDifficulty`; delegated draft availability validation to the pure model. | PASS: 59 focused tests. |
+| TRIANGULATE | Ran all focused onboarding domain, use-case, and adapter tests; searched onboarding canonical paths for removed fields and payload paths for `baseMode`/`pendingDays`. | PASS: 72 tests; both searches returned no matches. |
+| REFACTOR | Removed obsolete type/default/catalog/clearing entries. The focused build first exposed an existing pure-model type-guard defect; added the minimum `typeof` narrowing and replaced lint-warning destructuring without changing behavior. | PASS: focused tests, lint, and production build. |
+
+### Completed implementation tasks
+
+- Section 3 RED, GREEN, TRIANGULATE, and REFACTOR implementation-owned rows are visibly marked `[x]` in `tasks.md`.
+
+### Files changed
+
+- `apps/web/features/onboarding/_adapters/onboarding-api.ts`
+- `apps/web/features/onboarding/_domain/{availability-model,conditional-clearing,step-validation,steps,wizard-draft}.ts`
+- Corresponding focused domain and use-case tests under `apps/web/features/onboarding/`.
+- `openspec/changes/add-onboarding-step-4-availability/{tasks,apply-progress}.md`
+
+### Verification
+
+- Focused RED command — expected 5 failures.
+- `cd apps/web && pnpm exec tsx --test "features/onboarding/_domain/*.test.ts" "features/onboarding/_use-cases/*.test.ts" "features/onboarding/_adapters/onboarding-api.test.ts"` — PASS: 72 tests.
+- `pnpm lint:web` — PASS.
+- `pnpm build:web` — PASS.
+- `pnpm test:portable-paths` — PASS: 25 tests.
+- `git diff --check` — PASS.
+
+### Authored-line ledger
+
+- Section 3 application source/tests: 79 additions / 111 deletions = 190 authored lines before SDD progress updates.
+- Cumulative application work through Sections 1–3: 510 additions / 111 deletions = 621 authored lines before current SDD metadata updates.
+- This remains below the first 1,000-line checkpoint. No API Python, component/wizard/style, E2E, RLS, migration, dependency, compatibility behavior, or runtime documentation changed.
+
+### Deviations
+
+- No design deviation. The strict build exposed a pre-existing TypeScript narrowing issue in the Section-2 availability model; the minimal type guard correction and lint-safe deletion refactor are included with the model tests.
+
+### Remaining tasks and next boundary
+
+The old remaining-task list above is historical. Section 3 is complete. The next assigned implementation boundary is Section 4 only. Exact unchecked implementation rows:
+
+- [ ] RED: extend `apps/api/tests/runner_profile/test_use_cases.py`, `apps/api/tests/runner_profile/test_router.py`, and `apps/api/tests/runner_profile/test_repository.py` with reduced completion fixtures, one rejection test for each removed key, rejection-before-repository-access, unchanged prior storage after invalid save, stale stored-shape safe failure, exact save/read hydration, split day/total diagnostics, and bounded sanitized HTTP failures. <!-- sdd-owner: implementation -->
+- [ ] GREEN: update `apps/api/app/modules/runner_profile/validation.py` to reject presence of any removed key before transaction access, remove their requiredness/diagnostics/hidden-clearing logic, preserve retained conditional clearing, and distinguish invalid availability, insufficient days, and insufficient weekly total without logging payload or owner data. <!-- sdd-owner: implementation -->
+- [ ] TRIANGULATE: run `cd apps/api && uv run pytest tests/runner_profile/test_use_cases.py tests/runner_profile/test_router.py tests/runner_profile/test_repository.py -q` and verify exact nested `minutes_by_day` values, atomic invalid writes, clean-state read failure, and empty/safe diagnostic metadata. <!-- sdd-owner: implementation -->
+- [ ] REFACTOR: remove dead API constants and helpers made obsolete by the clean-state replacement, run `cd apps/api && uv run ruff check app/modules/runner_profile tests/runner_profile`, and confirm no sanitizer, translator, migration, or compatibility branch was added. <!-- sdd-owner: implementation -->
+
+Deferred lifecycle actions (parent-owned; unchanged): the existing parent-owned rows in `tasks.md` remain deferred.

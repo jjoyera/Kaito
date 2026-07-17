@@ -2,6 +2,7 @@ import {
 	privateFetch,
 	type PrivateFetchDependencies,
 } from "../../../shared/adapters/private-fetch";
+import type { OnboardingSnapshotDraft } from "../_domain/step-validation";
 
 export type OnboardingApiDependencies = PrivateFetchDependencies;
 
@@ -16,8 +17,8 @@ export type OnboardingDiagnostic = {
 export type OnboardingSnapshotPayload = {
 	contract_version: string;
 	state: "incomplete" | "completed";
-	profile: Record<string, unknown>;
-	goal: Record<string, unknown>;
+	profile: OnboardingSnapshotDraft["profile"];
+	goal: OnboardingSnapshotDraft["goal"];
 };
 
 export type OnboardingApiResult = {

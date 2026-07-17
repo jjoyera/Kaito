@@ -23,14 +23,18 @@ describe("stepForField", () => {
 });
 
 describe("mapDiagnosticFieldsToSteps", () => {
-	test("maps a single-step batch of diagnostics", () => {
+	test("maps retained prior-history diagnostics", () => {
 		assert.deepEqual(
 			mapDiagnosticFieldsToSteps([
-				"profile.prior_history.training_years",
-				"profile.prior_history.completed_race_count_range",
+				"profile.prior_history.habitual_terrain",
+				"profile.prior_history.mountain_experience",
 			]),
 			["prior_history"],
 		);
+	});
+
+	test("rejects removed field diagnostics", () => {
+		assert.throws(() => stepForField("profile.prior_history.legacy_metric"));
 	});
 
 	test("de-duplicates and orders steps by the fixed wizard order", () => {

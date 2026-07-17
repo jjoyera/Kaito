@@ -8,7 +8,12 @@ const storedResult = {
 	snapshot: {
 		contract_version: "1",
 		state: "incomplete" as const,
-		profile: { restrictions: { has_restrictions: false } },
+		profile: {
+			availability: {
+				minutes_by_day: { monday: 45, wednesday: 75, saturday: 120 },
+			},
+			restrictions: { has_restrictions: false },
+		},
 		goal: { modality: "trail" },
 	},
 	diagnostics: [],

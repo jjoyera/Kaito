@@ -35,7 +35,7 @@ describe("validateStep(goal)", () => {
 		assert.deepEqual(errors, {});
 	});
 
-	test("requires distance and elevation, but not technicality or altitude", () => {
+	test("requires distance and elevation, but not removed or optional goal fields", () => {
 		const errors = validateStep(
 			"goal",
 			draft({
@@ -44,7 +44,6 @@ describe("validateStep(goal)", () => {
 		);
 		assert.equal(errors["goal.target_distance_km"], "required");
 		assert.equal(errors["goal.positive_elevation_m"], "required");
-		assert.equal(errors["goal.technicality"], undefined);
 		assert.equal(errors["goal.max_altitude_m"], undefined);
 	});
 
