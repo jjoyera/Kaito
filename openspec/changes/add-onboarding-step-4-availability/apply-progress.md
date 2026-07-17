@@ -393,3 +393,109 @@ All Section 6 persistence/RLS, Section 7 final regression, and Section 8 documen
 ### Deferred risks
 
 The existing persistence-hardening rows remain unchecked: mounted Back preservation, pending duplicate-request behavior, failed-save retry retention, and reload of the last successful exact map. No parent-owned rows changed.
+
+## Work unit 5: Step 4 persistence hardening
+
+- **Boundary:** Deferred Section 5 browser persistence-hardening rows only: mounted Back preservation, pending save ordering and duplicate prevention, failed-save retry retention, exact successful payload omission, and reload-last-successful hydration.
+- **Commit target:** `fix(onboarding): harden step 4 persistence`.
+- **Commit status:** Not staged or committed, as required.
+- **Delivery / PR boundary:** Assigned chained persistence-hardening slice. The high-workload delivery decision is resolved by this explicit bounded work unit.
+
+### Structured status consumed
+
+- Change: `add-onboarding-step-4-availability`.
+- Artifact store: `openspec` (authoritative); proposal, all three change specs, design, tasks, existing cumulative progress, and `openspec/config.yaml` were read before edits.
+- Apply state: `ready`; next recommended: `apply`.
+- Action context: `repo-local`; all edited paths are within the authoritative repository edit root.
+- Warning: the task forecast is high risk and recommends chaining. This batch is limited to the parent-assigned deferred Section 5 persistence hardening; Section 6 RLS, Section 7 final regression, and Section 8 documentation remain deferred.
+
+### TDD Cycle Evidence
+
+| Phase | Evidence | Result |
+| --- | --- | --- |
+| RED | Added browser scenarios before production edits for mounted Back with mixed/pending state and no Back PUT; pending one-PUT/save-before-Step-5 behavior with duplicate event dispatch; sanitized failed save with retained values and one retry; and reload of the last successful exact map after a later unsaved edit. | Initial focused run: 10 passed, 2 failed. The failures were test-harness assumptions, not production behavior: an ambiguous generic alert locator and reload landing on the normal onboarding introduction. |
+| GREEN | Corrected the two browser assertions to target the bounded save message and re-enter onboarding after reload. The existing wizard's synchronous in-flight ref, disabled controls, local composite state, save-before-advance order, and sanitized error path satisfied every behavior scenario; no production code change was needed. | PASS: 12 focused browser tests. |
+| TRIANGULATE | Re-ran focused browser coverage, the web onboarding domain/use-case suite, lint, production build, portable-path verification, and whitespace validation. Successful PUT coverage compares the exact sparse map and proves `baseMode` and `pendingDays` are omitted. | PASS: 12 browser tests; 72 web onboarding tests; lint, build, portable paths (25 tests), and `git diff --check`. |
+| REFACTOR | Reused existing onboarding navigation and API-route helpers; retained only focused scenario-local route control. No generic framework, production refactor, or unrelated UI change was introduced. | PASS: focused browser rerun remains green. |
+
+### Completed implementation tasks
+
+The following implementation-owned Section 5 rows are visibly marked `[x]` in `tasks.md` immediately after proof:
+
+- RED: browser scenarios for mounted Back/no PUT, one PUT before Step 5, pending duplicate prevention, failed-save retention/retry, and reload of the last successful exact map.
+- GREEN (deferred persistence hardening): save lifecycle coverage for duplicate requests, failed-save retry retention, and last-successful reload.
+- TRIANGULATE (deferred persistence hardening): request ordering, sanitized retry behavior, and persisted reload outcomes.
+
+### Files changed
+
+- `apps/web/e2e/onboarding.spec.ts` — focused browser scenarios for all assigned persistence-hardening behavior, including exact successful payload shape and UI-only-state omission.
+- `openspec/changes/add-onboarding-step-4-availability/tasks.md` — marked only the three proven, implementation-owned deferred Section 5 rows complete.
+- `openspec/changes/add-onboarding-step-4-availability/apply-progress.md` — cumulative evidence merged here.
+
+No API Python, RLS integration, Supabase migration/schema, dependency, lockfile, production UI, or runtime documentation file changed. `apps/web/next-env.d.ts` remained unchanged after dev/build commands, so no generated-file restoration was necessary.
+
+### Commands and results
+
+- RED: `cd apps/web && pnpm exec playwright test e2e/onboarding.spec.ts` — 10 passed, 2 failed as described in the TDD evidence; no production edit followed those harness corrections.
+- GREEN / TRIANGULATE: `cd apps/web && pnpm exec playwright test e2e/onboarding.spec.ts` — PASS: 12 tests.
+- `pnpm test:web-onboarding` — PASS: 72 tests.
+- `pnpm lint:web` — PASS.
+- `pnpm build:web` — PASS.
+- `pnpm test:portable-paths` — PASS: 25 tests.
+- `git diff --check` — PASS.
+
+### Authored-line ledger
+
+- Work unit 5 E2E coverage: 160 additions / 0 deletions = 160 authored lines.
+- Task checkbox state: 3 additions / 3 deletions = 6 authored lines before this progress update.
+- Cumulative application/test work through Section 5 hardening: 1,386 additions / 374 deletions = 1,760 authored lines before current SDD artifact updates.
+- This remains below the 2,000-line checkpoint. No scope exception, compatibility behavior, migration, or generated artifact was introduced.
+
+### Deviations and safeguards
+
+- No design deviation. Existing production behavior already met the newly added lifecycle scenarios, so strict TDD yielded characterization/coverage GREEN without a production edit.
+- Successful PUT assertions require exactly `profile.availability.minutes_by_day` with `monday`, `wednesday`, and `saturday` values of `60`; `baseMode`, `pendingDays`, categories, and ranges are absent from the tested availability representation.
+- Save failure assertions expose only the bounded Spanish retry message and confirm that a simulated raw backend body is not visible.
+- Reload coverage saves `60/75/60`, makes an unsaved local `90` edit, reloads, then confirms hydration returns `60/75/60` rather than the unsaved value.
+- Documentation-path verification passed; this update uses repository-relative paths only.
+
+### Remaining tasks and next boundary
+
+Exact unchecked implementation-owned rows remain:
+
+- [ ] RED/characterization: extend `apps/web/features/onboarding/_use-cases/{save-onboarding-step,load-onboarding-draft}.test.ts` and `apps/api/tests/runner_profile/{test_use_cases,test_router,test_repository}.py` to compare exact sparse PUT/GET maps, omit base/mixed/pending/removed fields, preserve the previous snapshot after invalid writes, and prove equivalent retry semantics. <!-- sdd-owner: implementation -->
+- [ ] GREEN: make only the minimum adapter/use-case or fixture changes required for the reduced contract; do not modify `apps/api/app/modules/runner_profile/domain.py`, `repository.py`, `schemas.py`, or `supabase/migrations/` unless an approved failing test proves an existing boundary cannot satisfy the specifications. <!-- sdd-owner: implementation -->
+- [ ] TRIANGULATE: run local Supabase with `npx supabase@2.39.2 start` and `npx supabase@2.39.2 db reset --local`, then run `cd apps/api && uv run pytest tests/integration/test_onboarding_rls.py -q` with two authenticated non-privileged identities; prove own-row nested JSONB insert/select/update/delete and foreign-owner select/insert/update/delete denial or zero affected rows. <!-- sdd-owner: implementation -->
+- [ ] TRIANGULATE: verify the RLS assertions use no service-role result, compare exact nested values through bounded messages such as `availability round-trip mismatch`, and ensure tests/logging never print snapshots, schedules, SQL parameters, bearer credentials, or owner identifiers. <!-- sdd-owner: implementation -->
+- [ ] REFACTOR: retain characterization coverage if the existing JSONB/RLS implementation is already correct, document any Docker/Supabase environment block as failed verification rather than a pass, and confirm no schema, policy, column, index, transformation, Alembic, or migration artifact was introduced. <!-- sdd-owner: implementation -->
+- [ ] Run the final focused and repository checks from `openspec/config.yaml` and `design.md`: `pnpm test:web-onboarding`, `pnpm lint:web`, `pnpm build:web`, `pnpm test:web-e2e`, `cd apps/api && uv run ruff check .`, non-integration pytest, and the local Supabase RLS suite; separate environment failures from code failures. <!-- sdd-owner: implementation -->
+- [ ] Verify the clean-state replacement under `apps/web/`, `apps/api/`, `openspec/specs/onboarding-contract/spec.md`, and active fixtures/tests: all five removed identifiers are absent from canonical acceptance/emission/requiredness, stale stored shapes fail safely, and no compatibility behavior was added. <!-- sdd-owner: implementation -->
+- [ ] Reconcile the authored-line ledger at 2,700 lines, complete only the remaining approved scope under the 3,000-line cap, and stop for parent decision if the remaining work forecasts a breach. <!-- sdd-owner: implementation -->
+- [ ] Update only directly affected claims in `docs/00-product-vision.md`, `docs/02-user-journeys.md`, `docs/04-functional-requirements.md`, `docs/05-data-model.md`, `docs/08-architecture.md`, `README.md`, and `apps/web/README.md`; preserve Spanish in Spanish documents and describe implemented Step 4 behavior only after its tests pass. <!-- sdd-owner: implementation -->
+- [ ] Reconcile `openspec/specs/onboarding-contract/spec.md` and the active onboarding UI/persistence OpenSpec material under `openspec/changes/implement-onboarding-ui/` and related active capability paths so exact sparse persistence, linear save-on-Continue navigation, accessibility, RLS authority, clean-state removal, and no-migration behavior match executable evidence; do not rewrite historical archives. <!-- sdd-owner: implementation -->
+- [ ] Validate documentation with targeted searches for clickable progress, autosave, persisted duration categories, obsolete verification counts, Alembic onboarding-schema claims, and all five removed identifiers, then manually compare each affected statement with the delivered UI/API/RLS evidence. <!-- sdd-owner: implementation -->
+- [ ] Run the documentation checks supported by the repository and review changed Markdown for headings, progressive disclosure, concise tables/checklists, stable links, and no runtime-status claim unsupported by the final verification report. <!-- sdd-owner: implementation -->
+
+Parent-owned lifecycle actions remain unchanged. **Next boundary:** Section 6 exact API/JSONB/RLS persistence proof only; parent lifecycle review is required after implementation completion, not from this apply batch.
+
+## Work unit 5 targeted correction: Saturday Back/return preservation
+
+- **Boundary:** Test-only strengthening of the existing Section 5 mounted Back/return browser scenario.
+- **Structured status:** authoritative OpenSpec status was `applyState: ready`, `nextRecommended: apply`; action context was `repo-local` with the repository edit root allowed. The assigned persistence-hardening work unit remains the only scope.
+
+### TDD Cycle Evidence
+
+| Phase | Evidence | Result |
+| --- | --- | --- |
+| RED / characterization | Added assertions after the Step 3 return that `Sábado` remains selected and its exact minute input remains `60`, alongside the existing Monday, Wednesday, pending Sunday, mixed-mode, and no-Back-PUT checks. | Existing production behavior satisfied the new assertion; no production change was warranted. |
+| GREEN | No production edit; retained the focused browser assertion only. | PASS: 12 focused Playwright tests. |
+| TRIANGULATE | Ran the focused onboarding Playwright suite and portable-path checks. | PASS: 12 Playwright tests and 25 portable-path tests. |
+| REFACTOR | No refactor was needed for this two-assertion test-only correction. | Scope remains limited to E2E evidence and cumulative progress. |
+
+### Correction evidence
+
+- `apps/web/e2e/onboarding.spec.ts` now proves Saturday remains checked and restores the exact value `60` after local Back and return to Step 4.
+- `pnpm test:portable-paths` passed; this tracked progress update uses repository-relative paths only.
+- The Playwright dev server changed generated `apps/web/next-env.d.ts` to its development route reference. That command side effect was restored to its pre-batch content before completion; it is not a remaining change.
+- Task checkboxes remain honest and unchanged because the already-completed deferred Section 5 rows need no new task state.
+- Nothing was staged or committed.

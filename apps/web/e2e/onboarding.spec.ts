@@ -414,4 +414,166 @@ test.describe("onboarding availability step", () => {
 		).toBeVisible();
 		await expect(page.getByRole("radio", { name: "45 min" })).not.toBeChecked();
 	});
+
+	test("preserves mounted Step 4 values, pending days, and mixed mode after Back without saving", async ({
+		page,
+	}) => {
+		const savedSnapshots = await startAtAvailabilityStep(page);
+		await page.getByRole("checkbox", { name: "Lunes" }).check();
+		await page.getByRole("checkbox", { name: "Miércoles" }).check();
+		await page.getByRole("checkbox", { name: "Sábado" }).check();
+		await page.getByRole("radio", { name: "1 h–1 h 30" }).check();
+		await page.getByLabel("Minutos disponibles el Miércoles").fill("75");
+		await page.getByRole("checkbox", { name: "Domingo" }).check();
+		const savesBeforeBack = savedSnapshots.length;
+
+		await page.getByRole("button", { name: /Atrás/ }).click();
+		expect(savedSnapshots).toHaveLength(savesBeforeBack);
+		await expect(
+			page.getByRole("heading", { name: "¿Cómo entrenas ahora mismo?" }),
+		).toBeVisible();
+		await page.getByRole("button", { name: "Continuar" }).click();
+		await expect(
+			page.getByRole("heading", { name: "¿Cuándo puedes entrenar?" }),
+		).toBeVisible();
+		await expect(page.getByText("Varía por día")).toBeVisible();
+		await expect(page.getByLabel("Minutos disponibles el Lunes")).toHaveValue("60");
+		await expect(page.getByLabel("Minutos disponibles el Miércoles")).toHaveValue("75");
+		await expect(page.getByRole("checkbox", { name: "Sábado" })).toBeChecked();
+		await expect(page.getByLabel("Minutos disponibles el Sábado")).toHaveValue("60");
+		await expect(page.getByLabel("Minutos disponibles el Domingo")).toHaveValue("");
+	});
+
+	test("saves once before Step 5 and guards duplicate Continue events while pending", async ({
+		page,
+	}) => {
+		await startAtAvailabilityStep(page);
+		await page.unrouteAll();
+		let saveCount = 0;
+		let savedSnapshot: Snapshot | undefined;
+		let resolveSave: (() => void) | undefined;
+		const saveCompleted = new Promise<void>((resolve) => {
+			resolveSave = resolve;
+		});
+		await page.route(`${API_ORIGIN}/**`, async (route: Route) => {
+			if (route.request().method() === "GET") {
+				await route.fulfill({ status: 404, body: "not found" });
+				return;
+			}
+			saveCount += 1;
+			await saveCompleted;
+			const body = JSON.parse(route.request().postData() ?? "{}");
+			savedSnapshot = body.snapshot;
+			await route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: JSON.stringify({ snapshot: body.snapshot, diagnostics: [] }),
+			});
+		});
+		for (const day of ["Lunes", "Miércoles", "Sábado"] as const) {
+			await page.getByRole("checkbox", { name: day }).check();
+		}
+		await page.getByRole("radio", { name: "1 h–1 h 30" }).check();
+		await page.getByRole("button", { name: "Continuar" }).click();
+		await expect.poll(() => saveCount).toBe(1);
+		await expect(page.getByRole("button", { name: /Guardando/ })).toBeDisabled();
+		await expect(page.getByText("Paso 5 de 7")).toHaveCount(0);
+		await page.getByRole("button", { name: /Guardando/ }).dispatchEvent("click");
+		expect(saveCount).toBe(1);
+		resolveSave?.();
+		await expect(page.getByText("Paso 5 de 7")).toBeVisible();
+		expect(saveCount).toBe(1);
+		expect(savedSnapshot?.profile.availability).toEqual({
+			minutes_by_day: { monday: 60, wednesday: 60, saturday: 60 },
+		});
+		expect(savedSnapshot).not.toHaveProperty("baseMode");
+		expect(savedSnapshot).not.toHaveProperty("pendingDays");
+		expect(savedSnapshot?.profile.availability).not.toHaveProperty("baseMode");
+		expect(savedSnapshot?.profile.availability).not.toHaveProperty("pendingDays");
+	});
+
+	test("retains editable values after a sanitized save failure and retries once", async ({
+		page,
+	}) => {
+		await startAtAvailabilityStep(page);
+		await page.unrouteAll();
+		let saveCount = 0;
+		await page.route(`${API_ORIGIN}/**`, async (route: Route) => {
+			if (route.request().method() === "GET") {
+				await route.fulfill({ status: 404, body: "not found" });
+				return;
+			}
+			saveCount += 1;
+			if (saveCount === 1) {
+				await route.fulfill({ status: 500, body: "unexpected storage details" });
+				return;
+			}
+			const body = JSON.parse(route.request().postData() ?? "{}");
+			await route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: JSON.stringify({ snapshot: body.snapshot, diagnostics: [] }),
+			});
+		});
+		for (const day of ["Lunes", "Miércoles", "Sábado"] as const) {
+			await page.getByRole("checkbox", { name: day }).check();
+		}
+		await page.getByRole("radio", { name: "1 h–1 h 30" }).check();
+		await page.getByLabel("Minutos disponibles el Miércoles").fill("75");
+		await page.getByRole("button", { name: "Continuar" }).click();
+		await expect.poll(() => saveCount).toBe(1);
+		await expect(
+			page.getByText("No hemos podido guardar este paso", { exact: false }),
+		).toBeVisible();
+		await expect(page.getByText("unexpected storage details")).toHaveCount(0);
+		await expect(page.getByLabel("Minutos disponibles el Miércoles")).toHaveValue("75");
+		await page.getByRole("button", { name: "Continuar" }).click();
+		await expect(page.getByText("Paso 5 de 7")).toBeVisible();
+		expect(saveCount).toBe(2);
+	});
+
+	test("reloads the last successful exact map instead of later unsaved edits", async ({
+		page,
+	}) => {
+		await startAtAvailabilityStep(page);
+		await page.unrouteAll();
+		let persistedSnapshot: Snapshot | undefined;
+		await page.route(`${API_ORIGIN}/**`, async (route: Route) => {
+			if (route.request().method() === "GET") {
+				if (!persistedSnapshot) {
+					await route.fulfill({ status: 404, body: "not found" });
+					return;
+				}
+				await route.fulfill({
+					status: 200,
+					contentType: "application/json",
+					body: JSON.stringify({ snapshot: persistedSnapshot, diagnostics: [] }),
+				});
+				return;
+			}
+			const body = JSON.parse(route.request().postData() ?? "{}");
+			persistedSnapshot = body.snapshot;
+			await route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: JSON.stringify({ snapshot: persistedSnapshot, diagnostics: [] }),
+			});
+		});
+		for (const day of ["Lunes", "Miércoles", "Sábado"] as const) {
+			await page.getByRole("checkbox", { name: day }).check();
+		}
+		await page.getByRole("radio", { name: "1 h–1 h 30" }).check();
+		await page.getByLabel("Minutos disponibles el Miércoles").fill("75");
+		await page.getByRole("button", { name: "Continuar" }).click();
+		await expect(page.getByText("Paso 5 de 7")).toBeVisible();
+		await page.getByRole("button", { name: /Atrás/ }).click();
+		await page.getByLabel("Minutos disponibles el Miércoles").fill("90");
+		await page.reload();
+		await page.getByRole("button", { name: "Crear mi plan" }).click();
+		await expect(page.getByText("Paso 5 de 7")).toBeVisible();
+		await page.getByRole("button", { name: /Atrás/ }).click();
+		await expect(page.getByLabel("Minutos disponibles el Lunes")).toHaveValue("60");
+		await expect(page.getByLabel("Minutos disponibles el Miércoles")).toHaveValue("75");
+		await expect(page.getByLabel("Minutos disponibles el Sábado")).toHaveValue("60");
+	});
 });
