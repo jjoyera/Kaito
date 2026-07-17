@@ -141,8 +141,9 @@ El sistema debe guiar al usuario mediante un onboarding inicial para recopilar l
   - Backyard Ultra: `targetDate`, `targetLoops` o `targetHours`, `targetLoopDurationMin` (o ritmo equivalente), `expectedRestMarginMin` y notas básicas de estrategia de box/transición. La distancia fija no se usa como objetivo principal.
 - El sistema debe preguntar por la experiencia previa del corredor.
 - El sistema debe recoger, de forma explícita para las cuatro semanas anteriores, las sesiones, la distancia total, el desnivel positivo acumulado, la salida más larga y la constancia reciente (`irregular`, `fairly_consistent` o `very_consistent`). Las horas totales de entrenamiento no forman parte de este paso.
-- Esta revisión sustituye el contrato v1 de forma coordinada y sobre un estado limpio, sin compatibilidad retroactiva para `training_hours`. Los datos JSONB de prueba existentes se descartarán manualmente antes del despliegue; este requisito no acredita que ese borrado operativo ya se haya ejecutado.
-- El sistema debe preguntar por la disponibilidad semanal.
+- El contrato activo usa un estado limpio: no acepta ni conserva `training_years`, `completed_race_count_range`, `practiced_modalities`, `practiced_terrain` ni `goal.technicality`; no incluye migración ni compatibilidad para esas respuestas retiradas.
+- El sistema debe preguntar por la disponibilidad semanal en el Paso 4 de siete: días compactos, atajos de 45/60/120 minutos y ajustes exactos de 15 a 300 minutos por día. Solo se guarda el mapa disperso de minutos; `Varía por día` es una ayuda visual.
+- El sistema debe bloquear Continuar si hay menos de tres días o menos de 150 minutos semanales; Atrás conserva el estado local y Continuar guarda antes de avanzar. Un fallo permite reintentar sin perder las respuestas.
 - El sistema debe permitir indicar restricciones o preferencias básicas.
 - El sistema debe explicar de forma breve por qué solicita esa información.
 - El sistema debe evitar preguntas excesivas que bloqueen el inicio del producto.

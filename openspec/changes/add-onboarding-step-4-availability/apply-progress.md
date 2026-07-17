@@ -604,3 +604,73 @@ Section 6 is complete. Exact unchecked implementation-owned work now begins with
 - **Audit:** Reviewed all changed Section 6 Python test hunks for owner, parameter, snapshot, and schedule comparisons. Bounded failures are limited to fixed messages; no sensitive value is interpolated. The RLS fixture was unchanged, so its prior local-Supabase 24-pass evidence remains applicable.
 - **Verification:** focused API tests passed (58); focused web save/load tests passed (7); focused Ruff and portable-path checks passed (25); `git diff --check` passed. Generated-file, staging, protected production/schema, and repository-relative documentation-path guards passed.
 - **Task state:** Section 6 remains complete; no checkbox changed for this evidence-only correction. Nothing was staged or committed.
+
+## Work unit 7: final regression and documentation reconciliation
+
+- **Boundary:** Sections 7–8 only; final verification followed by directly affected documentation. No production code, test, schema, migration, dependency, or lockfile changed.
+- **Commit target:** `docs(onboarding): document step 4 availability`.
+- **Commit status:** Nothing staged or committed.
+- **Delivery / PR boundary:** Final documentation slice under the approved delivery path; parent-owned pre-release operational and lifecycle tasks remain unchecked.
+
+### Structured status consumed
+
+- Authoritative OpenSpec status: `applyState: ready`, `nextRecommended: apply`.
+- Action context: `repo-local`; every edited path is within the repository-root allowed edit root.
+- Strict TDD is active. This work unit changes documentation only after accumulated executable evidence; no production edit was made without RED evidence.
+
+### Final regression evidence
+
+| Command | Result |
+| --- | --- |
+| `pnpm test:web-onboarding` | PASS: 72 tests |
+| `pnpm lint:web` | PASS |
+| `pnpm build:web` | PASS |
+| `pnpm test:web-e2e` | PASS: 42 development E2E tests and 1 production E2E test |
+| `cd apps/api && uv run ruff check .` | PASS |
+| `cd apps/api && uv run pytest tests/ --ignore=tests/integration -q` | PASS: 199 tests; one existing short-HMAC-key warning |
+| `docker info`; `npx supabase@2.39.2 start`; `npx supabase@2.39.2 db reset --local`; `cd apps/api && uv run pytest tests/integration/test_onboarding_rls.py -q` | PASS: Docker available; reset succeeded; 24 RLS tests passed |
+| `pnpm test:portable-paths` | PASS: 25 tests before and after documentation edits |
+| `git diff --check` | PASS |
+
+### Clean-state and documentation evidence
+
+- Targeted searches confirm the five removed identifiers appear only in explicit API rejection guards, clean-state documentation, or intentional rejection/absence tests; they are absent from active canonical field catalog, web emission, and completion requiredness.
+- Reconciled direct stale claims for linear non-clickable progress, save-on-Continue, no autosave, UI-only base presets/`Varía por día`, sparse exact `minutes_by_day`, protected owner-scoped JSONB/RLS, Supabase CLI schema authority, no migration, and no compatibility parser.
+- Updated only the affected product/technical documents and active onboarding OpenSpec material. Historical archives were not changed.
+- Portable-path scan of changed documentation found no machine-specific or absolute path. `apps/web/next-env.d.ts` and generated reports remain clean; no command-generated restoration was required in this batch.
+
+### Completed implementation tasks
+
+- Section 7: final regression, clean-state verification, and authored-line reconciliation are visibly marked `[x]` in `tasks.md`.
+- Section 8: direct documentation, active OpenSpec reconciliation, targeted documentation review, and supported documentation checks are visibly marked `[x]` in `tasks.md`.
+- Parent-only aggregate pre-release operational check remains `[ ]` and unchanged.
+
+### Files changed
+
+- `README.md`; `apps/web/README.md`
+- `docs/00-product-vision.md`; `docs/02-user-journeys.md`; `docs/04-functional-requirements.md`; `docs/05-data-model.md`; `docs/08-architecture.md`
+- `openspec/specs/onboarding-contract/spec.md`
+- `openspec/changes/implement-onboarding-ui/{design.md,tasks.md,specs/onboarding-ui/spec.md}`
+- `openspec/changes/implement-onboarding-persistence-rls/specs/onboarding-persistence/spec.md`
+- `openspec/changes/add-onboarding-step-4-availability/{tasks.md,apply-progress.md}`
+
+### Authored-line ledger
+
+- Cumulative runtime/application and test delta through Section 6: 2,060 authored lines by the final baseline comparison.
+- This initial reconciliation count is superseded by the final live-diff correction below.
+- This initial cumulative total is superseded by the final live-diff correction below; parent-owned lifecycle activity does not add implementation scope.
+
+### Deviations and remaining work
+
+- No design deviation and no regression failure.
+- Deferred parent-owned action: `- [ ] Perform the pre-release aggregate-only operational check for removed fields without selecting owner identifiers or snapshot bodies; treat any nonzero result as a release blocker requiring explicit correction rather than adding runtime compatibility code. <!-- sdd-owner: parent -->`
+- Next recommended phase: parent lifecycle/review, then independent SDD verification. Do not stage, commit, push, or create/approve a receipt from this apply work unit.
+
+### Documentation correction: navigation and ledger reconciliation
+
+- Independent verification found obsolete direct-navigation claims in active onboarding UI OpenSpec. They now state the verified behavior: non-interactive progress and linear Back/Continue navigation only.
+- The Section 8 checkboxes remain complete: the active contradictions were resolved, and no production/test/schema/dependency file changed.
+- **Live final work-unit diff:** 148 additions + 140 deletions = 288 authored lines.
+- **Live reconciliation diff excluding this change's `tasks.md` and `apply-progress.md`:** 71 additions + 133 deletions = 204 authored lines.
+- **Cumulative methodology:** the recorded Section 6 application/test baseline is 2,060 authored lines; plus the live final work-unit diff (including task/progress evidence) is 2,348, below the 3,000-line cap.
+- No paths were staged or committed.

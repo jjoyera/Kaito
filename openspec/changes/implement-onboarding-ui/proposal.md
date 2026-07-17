@@ -18,10 +18,10 @@ exists.
   starting blank.
 - Validate each step against the same types/ranges/conditional-requiredness
   rules as the backend contract before letting the runner advance: a step's
-  own completion-required fields must be valid to move forward (guided UX),
-  and a persistent step navigator lets the runner jump directly to any
-  previously-reached step to fix something without a forced linear
-  walk-back, and surface the diagnostics the backend returns after a save.
+  own completion-required fields must be valid to move forward (guided UX).
+  The former direct-jump navigator is obsolete and superseded: current progress
+  is non-interactive, while Back and Continue provide linear navigation and
+  surface diagnostics after a save.
 - Save progress by sending the accumulated snapshot (`PUT
   /runner-profile/onboarding`, `state: "incomplete"`) each time the runner
   advances to the next step, since the API always replaces the single

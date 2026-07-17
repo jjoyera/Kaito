@@ -22,40 +22,27 @@ The contract MUST use the following stable identifiers, answer types, requiredne
 
 | Block | Stable field identifier | Answer type / allowed values | Requiredness and canonical unit |
 | --- | --- | --- | --- |
-| profile | `profile.prior_history.training_years` | non-negative number in increments of 0.5 | completion-required; years; accepts zero, whole years, and half-years only |
-| profile | `profile.prior_history.completed_race_count_range` | enum: `none`, `one_to_three`, `four_to_ten`, `eleven_to_twenty_five`, `twenty_six_plus` | completion-required; count range maps exactly to 0, 1–3, 4–10, 11–25, 26+ |
 | profile | `profile.prior_history.longest_completed_distance_km` | non-negative number | completion-required; kilometres |
-| profile | `profile.prior_history.practiced_modalities` | explicitly supplied array of enum values: `trail`, `ultra_trail`, `ocr`, `backyard`; MAY be empty | completion-required; modality identifiers; absence means unanswered |
-| profile | `profile.prior_history.practiced_terrain` | explicitly supplied array of enum values: `road`, `trail`, `mountain`, `mixed`; MAY be empty | completion-required; an empty array means no prior terrain experience; absence means unanswered |
 | profile | `profile.baseline_4_weeks.sessions` | non-negative integer | completion-required; sessions in preceding 4 calendar weeks |
 | profile | `profile.baseline_4_weeks.distance_km` | non-negative number | completion-required; kilometres in preceding 4 calendar weeks |
 | profile | `profile.baseline_4_weeks.positive_elevation_m` | non-negative number | completion-required; metres in preceding 4 calendar weeks |
 | profile | `profile.baseline_4_weeks.longest_outing_km` | non-negative number | completion-required; kilometres in preceding 4 calendar weeks |
 | profile | `profile.baseline_4_weeks.recent_consistency` | enum: `irregular`, `fairly_consistent`, `very_consistent` | completion-required; perceived consistency across the preceding 4 calendar weeks |
-| profile | `profile.availability.minutes_by_day` | sparse object; only `monday`, `tuesday`, `wednesday`, `thursday`, `friday`, `saturday`, and `sunday` keys are allowed; present values are integers 15–300 | completion-required for at least 3 present days; omitted day means unavailable; null values and unknown keys are invalid |
+| profile | `profile.availability.minutes_by_day` | sparse object; only `monday`, `tuesday`, `wednesday`, `thursday`, `friday`, `saturday`, and `sunday` keys are allowed; present values are integers 15–300 | completion-required for at least 3 present days and 150 total weekly minutes; omitted day means unavailable; null values and unknown keys are invalid |
 | profile | `profile.restrictions.has_restrictions` | boolean | completion-required |
 | profile | `profile.restrictions.detail` | trimmed string, length 1–500 | conditional-required when `has_restrictions=true`; otherwise absent and cleared |
 | goal | `goal.modality` | enum: `trail`, `ultra_trail`, `ocr`, `backyard` | completion-required |
 | goal | `goal.target_date` | string `YYYY-MM-DD` | completion-required; local calendar date |
 | goal | `goal.target_distance_km` | positive number | conditional-required for `trail`, `ultra_trail`, `ocr`; kilometres |
 | goal | `goal.positive_elevation_m` | positive number | conditional-required for `trail`, `ultra_trail`; metres |
-| goal | `goal.technicality` | enum `low`, `medium`, `high` | conditional-required for `trail`, `ultra_trail` |
 | goal | `goal.max_altitude_m` | non-negative integer | optional for `trail`, `ultra_trail`; estimated maximum metres above sea level |
 | goal | `goal.obstacle_count` | positive integer, >=1 | conditional-required for `ocr`; obstacles |
 | goal | `goal.obstacle_difficulty` | enum `low`, `medium`, `high` | optional for `ocr` |
 | goal | `goal.target_loops` | positive integer, >=1 | conditional-required for `backyard`; loops |
 
-This change is a coordinated clean-state replacement of the active version 1 contract, with no backward-compatibility promise for the removed `training_hours` field. Existing test JSONB will be discarded manually before deployment; this contract does not claim or verify that operational deletion. API and web MUST be deployed together against the clean state.
+The active version 1 contract is a coordinated clean-state replacement: it MUST NOT define, require, accept as canonical answers, emit, translate, sanitize, migrate, or preserve `profile.prior_history.training_years`, `profile.prior_history.completed_race_count_range`, `profile.prior_history.practiced_modalities`, `profile.prior_history.practiced_terrain`, or `goal.technicality`. API and web MUST deploy together against a state without those keys; a stale stored shape fails safely rather than being rewritten.
 
-The contract MUST NOT include `experience_level`, plan approach, Backyard target hours, cycle duration, rest margin, or box/transition notes. The fixed Backyard cycle is 60 minutes, so downstream derived target hours equal `target_loops` and are not user inputs. Trail and ultra-trail completion requires a technicality answer, while estimated maximum altitude remains optional to avoid blocking runners who do not know it.
-
-Trail and ultra-trail technicality values MUST use observable route characteristics:
-
-- `low`: predominantly stable, runnable surfaces with few obstacles and no sustained need for precise foot placement.
-- `medium`: recurring uneven terrain, rocks, roots, loose surfaces, or steep sections that require active foot placement and may occasionally interrupt running.
-- `high`: sustained technical terrain with frequent obstacles, unstable or very steep surfaces, scrambling, or exposed sections that materially constrain running.
-
-The value describes the target route rather than the runner's perceived skill.
+The contract MUST NOT include `experience_level`, plan approach, Backyard target hours, cycle duration, rest margin, box/transition notes, or a habitual/base availability duration. The fixed Backyard cycle is 60 minutes, so downstream derived target hours equal `target_loops` and are not user inputs. Estimated maximum altitude remains optional to avoid blocking runners who do not know it.
 
 Optional OCR obstacle difficulty MUST describe the predominant obstacle demands:
 
@@ -65,23 +52,12 @@ Optional OCR obstacle difficulty MUST describe the predominant obstacle demands:
 
 The value describes the target event's obstacles rather than the runner's perceived ability.
 
-#### Scenario: Race-count ranges are stable
+#### Scenario: Removed fields are rejected as noncanonical
 
-- GIVEN a runner with 0, 2, 7, 20, or 30 completed races
-- WHEN prior history is validated
-- THEN the accepted values are respectively `none`, `one_to_three`, `four_to_ten`, `eleven_to_twenty_five`, and `twenty_six_plus`.
-
-#### Scenario: New runner can explicitly report no practiced modalities
-
-- GIVEN a new runner submits `completed_race_count_range=none`, `longest_completed_distance_km=0`, and `practiced_modalities=[]`
-- WHEN prior history is validated
-- THEN the values are accepted, the empty array means the runner has no prior experience in the supported modalities, and an absent `practiced_modalities` field remains unanswered.
-
-#### Scenario: Training history uses whole and half-years
-
-- GIVEN a runner submits `training_years=0`, `training_years=1`, or `training_years=1.5`
-- WHEN prior history is validated
-- THEN the value is accepted, while values that are negative or not divisible by 0.5 are rejected.
+- GIVEN a payload includes any removed field
+- WHEN the API validates or reads the snapshot
+- THEN it rejects the noncanonical shape without a compatibility branch
+- AND a prior valid snapshot is not rewritten.
 
 #### Scenario: Baseline requires recent consistency rather than training hours
 
@@ -94,18 +70,6 @@ The value describes the target event's obstacles rather than the runner's percei
 - GIVEN a payload has the four retained baseline metrics and a stray `training_hours` key but omits `recent_consistency`
 - WHEN the baseline is validated
 - THEN completion remains blocked because `recent_consistency` is required and no legacy compatibility shape is recognized.
-
-#### Scenario: No practiced terrain uses an empty array
-
-- GIVEN a runner has no prior terrain experience
-- WHEN prior history is supplied
-- THEN `practiced_terrain=[]` is accepted, no `none` enum value is used, and an absent `practiced_terrain` field remains unanswered.
-
-#### Scenario: Trail technicality is route-based
-
-- GIVEN two runners with different experience levels select the same target route
-- WHEN they describe its technicality
-- THEN they use the same observable route criteria rather than rating their personal ability.
 
 #### Scenario: OCR obstacle difficulty is event-based
 
@@ -189,7 +153,7 @@ The contract MUST validate only boolean presence, conditional detail presence, t
 
 ### Requirement: Dates, modality goals, and outcomes
 
-Target dates MUST be local date-only `YYYY-MM-DD` values. Validation MUST receive an explicit runner-facing local validation date and compare `goal.target_date` with that date as date-only values; it MUST NOT derive today from the server timezone. A target date equal to or before the supplied validation date is a blocking error, while every later date is contract-valid. Trail/ultra-trail require positive distance, positive elevation, and technicality; OCR requires positive distance and obstacle count while obstacle difficulty remains optional; Backyard requires positive loops. Blocking errors MUST be separate from non-blocking planning warnings and keyed by stable identifiers.
+Target dates MUST be local date-only `YYYY-MM-DD` values. Validation MUST receive an explicit runner-facing local validation date and compare `goal.target_date` with that date as date-only values; it MUST NOT derive today from the server timezone. A target date equal to or before the supplied validation date is a blocking error, while every later date is contract-valid. Trail/ultra-trail require positive distance and elevation; OCR requires positive distance and obstacle count while obstacle difficulty remains optional; Backyard requires positive loops. Blocking errors MUST be separate from non-blocking planning warnings and keyed by stable identifiers.
 
 #### Scenario: Date and modality validation is testable
 

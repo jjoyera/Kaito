@@ -86,7 +86,7 @@ moves and continues to pass as the regression safety net.
 apps/web/features/onboarding/
 ├── _components/
 │   ├── onboarding-wizard.tsx       # owns state, composes everything below
-│   ├── step-navigator.tsx         # renders step list + status, handles jump
+│   ├── step-navigator.tsx         # renders non-interactive progress/status; no direct navigation
 │   ├── goal-step.tsx
 │   ├── prior-history-step.tsx
 │   ├── baseline-step.tsx
@@ -128,9 +128,10 @@ rules as `openspec/specs/onboarding-contract` (mirroring, not replacing,
 backend validation — the backend remains authoritative). `steps.ts` is the
 single place that assigns each contract field to a step, and
 `diagnostic-mapping.ts` uses that same assignment to route a backend
-diagnostic's `field` (e.g. `goal.target_date`) to the step that owns it, so
-the step navigator can mark the right step and the runner can jump directly
-to it (per the "demotion" and "direct step navigation" requirements).
+diagnostic's `field` (e.g. `goal.target_date`) to the step that owns it for
+linear correction feedback. The former direct-step-navigation wording is
+obsolete and superseded: progress is non-interactive and navigation uses only
+Back and Continue.
 
 ### 4. Route composition stays a thin server wrapper
 
@@ -193,19 +194,11 @@ import the shared version instead of its local copy; behavior is unchanged
 (same env vars, same loopback check). This same helper is what Phase 6's
 Playwright E2E suite will need for the same reason.
 
-### 10. Multi-select array fields default to `[]`, not `undefined`
+### 10. Superseded multi-select normalization
 
-`practiced_modalities`/`practiced_terrain` are completion-required but the
-contract treats an *explicitly supplied* empty array as a valid "no prior
-experience" answer, distinct from an *absent* (unanswered) field. A checkbox
-group has no natural way to "explicitly submit empty" — if every box starts
-and stays unchecked, no `onChange` ever fires, so the field would remain
-`undefined` (unanswered) forever with no visible way to advance. The wizard
-resolves this by normalizing both fields to `[]` whenever a draft is
-initialized or hydrated (`normalizeDraft`), so reaching the step already
-counts as an implicit-but-correct "none" answer unless the runner checks
-something. This only applies to these two array fields; every other field
-keeps the contract's real absent/present distinction.
+The former multi-select array normalization is superseded by the reduced
+clean-state contract. The current wizard does not initialize or emit removed
+prior-history arrays; stale stored shapes fail safely at the API boundary.
 
 ## Risks / Trade-offs
 

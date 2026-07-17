@@ -20,7 +20,7 @@ Se centra en **cómo se organiza el sistema** (fronteras, responsabilidades, flu
 | Base de datos | PostgreSQL gestionado por Supabase | Robustez relacional para planes/versionado y operación simplificada para TFM. |
 | Auth | Supabase Auth | Registro/login/sesión resueltos con proveedor gestionado y JWT estándar. |
 | Contrato de validación | Zod en frontend + Pydantic en backend | Validación temprana de UX y validación autoritativa en frontera API. |
-| Persistencia backend | SQLAlchemy + Alembic | Modelo ORM explícito y migraciones trazables para evolución del esquema. |
+| Persistencia de onboarding | API protegida + SQLAlchemy runtime + JSONB/RLS de Supabase | El propietario se deriva del JWT; Supabase CLI es la única autoridad de esquema y RLS. |
 | Núcleo IA | FastAPI (`apps/api`) | El backend controla contexto, reglas, validaciones y ownership de casos de uso de Kaito. |
 | Observabilidad IA | Langfuse | Trazabilidad de prompts, respuestas, costes y calidad de ejecución IA. |
 | Error monitoring | Sentry | Detección temprana y diagnóstico en frontend/backend. |
@@ -78,7 +78,7 @@ apps/web/
         └── _use-cases/              # Carga, guardado y finalización
 ```
 
-Auth y onboarding son capacidades reales. En onboarding, los Pasos 1–3 tienen el nuevo diseño visual del recorrido de siete pasos. El Paso 3 captura las cuatro semanas anteriores mediante sesiones, distancia total, desnivel positivo, salida más larga y consistencia reciente; `training_hours` se eliminó. Los pasos internos posteriores siguen operativos, pero aún no tienen el nuevo diseño.
+Auth y onboarding son capacidades reales. En onboarding, los Pasos 1–4 usan el diseño visual del recorrido lineal de siete pasos. El Paso 4 mantiene el estado de interacción local y proyecta solo el mapa disperso de minutos exactos; no hay progreso clicable ni autosave.
 
 ### Forma ilustrativa cuando existan consumidores reales
 
@@ -192,8 +192,8 @@ En módulos simples/CRUD, se permite simplificación sin imponer todas las capas
 ### Acceso y evolución de esquema
 
 - SQLAlchemy como capa ORM/repositorio en backend.
-- Alembic para migraciones versionadas y reproducibles.
-- Los snapshots de onboarding permanecen en JSONB; el Paso 3 no requiere migración SQL.
+- Para onboarding, Supabase CLI es la autoridad de esquema, migraciones y RLS; esta entrega no añade migración ni Alembic.
+- Los snapshots de onboarding permanecen como JSONB por propietario: `profile.availability.minutes_by_day` guarda únicamente minutos exactos dispersos. La API protegida valida al guardar y al leer; la prueba local verifica CRUD propio y denegación entre dos usuarios.
 
 ### Invariantes de persistencia (MVP)
 
@@ -368,7 +368,7 @@ En cada cambio relevante:
 - Docker como estrategia de estandarización de entorno para `web`, `api` y servicios necesarios.
 - Objetivo: paridad razonable local/CI/entornos de despliegue.
 - Los `Dockerfile` locales y `compose.yaml` ya definen los servicios `web` y `api`; no constituyen configuración de despliegue ni CD.
-- La entrega del Paso 3 coordina API y web desde un estado limpio. La eliminación manual de JSONB de prueba sigue pendiente de evidencia.
+- La entrega del Paso 4 coordina API y web sobre un estado limpio: las cinco respuestas retiradas no se traducen ni se conservan. No hay migración ni almacenamiento de duración base.
 
 ---
 

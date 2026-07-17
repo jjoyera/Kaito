@@ -86,32 +86,27 @@ MUST block advancing past it.
 - **THEN** the wizard SHALL show a field-level required error
 - **AND** it SHALL NOT advance to the next step
 
-### Requirement: Direct step navigation without forced linear walk-back
+### Requirement: Linear navigation preserves local answers
 
-The wizard SHALL provide a persistent step navigator that lists every step
-and marks each as complete, incomplete, or not-yet-reached. The runner SHALL
-be able to jump directly to any previously-reached step from the navigator
-without sequentially stepping back through the steps in between, and doing
-so MUST NOT discard answers already entered on other steps.
+The progress indicator SHALL be non-interactive. Back and Continue are the
+only navigation actions. Back SHALL preserve mounted local answers without a
+save; Continue SHALL validate and persist before advancing. A failed save
+keeps answers available for retry.
 
-#### Scenario: Runner jumps back to fix an earlier step from step 5
+#### Scenario: Runner returns locally to Step 4
 
-- **GIVEN** a runner has reached step 5 with steps 1-4 already visited
-- **WHEN** the runner selects step 2 from the step navigator
-- **THEN** the wizard SHALL display step 2 directly
-- **AND** answers already entered on steps 3, 4, and 5 SHALL remain intact
-- **AND** the runner SHALL be able to return to step 5 directly from the
-  navigator afterward
+- **GIVEN** a runner edits availability without saving
+- **WHEN** the runner uses Back and then returns with Continue
+- **THEN** the mounted wizard restores the local values
+- **AND** Back made no persistence request
 
 ### Requirement: Completion triggers full validation and demotion handling
 
 The final step SHALL offer a completion action that submits
 `state: "completed"`. If the backend returns diagnostics because a required
-field is missing or invalid, the wizard MUST mark the affected step(s) as
-incomplete in the step navigator and let the runner jump directly to any of
-them to fix the issue, rather than forcing a sequential walk back through
-every intermediate step. The wizard MUST NOT present the onboarding as
-complete until a subsequent completion attempt succeeds.
+field is missing or invalid, the wizard MUST present the affected validation
+without treating onboarding as complete until a subsequent completion attempt
+succeeds.
 
 #### Scenario: Completion succeeds
 
@@ -126,10 +121,7 @@ complete until a subsequent completion attempt succeeds.
   time the runner submits the final step (for example, a target date that
   is no longer in the future after a long resume gap)
 - **WHEN** the backend returns diagnostics and a demoted `incomplete` state
-- **THEN** the wizard SHALL mark the affected step as incomplete in the step
-  navigator without leaving the final step
-- **AND** the runner SHALL be able to jump directly to the affected step
-  from the navigator and see the diagnostic there
+- **THEN** the wizard SHALL retain the diagnostic without treating onboarding as complete
 - **AND** it SHALL NOT show a completion confirmation
 
 ### Requirement: Deterministic conditional fields mirror the contract
@@ -189,7 +181,7 @@ generic blue SaaS styling, medical styling, and aggressive gym branding.
 
 The change SHALL include automated verification for resume-from-draft
 hydration, save-on-advance persistence, per-step completion enforcement,
-direct step-navigator jumps, conditional field clearing, completion success,
+linear Back/Continue behavior, conditional field clearing, completion success,
 and completion demotion with diagnostics.
 
 #### Scenario: Onboarding UI tests exercise the wizard
@@ -198,5 +190,5 @@ and completion demotion with diagnostics.
   environment
 - **WHEN** mocked or controlled API responses are exercised
 - **THEN** the suite SHALL prove resume hydration, save-on-advance behavior,
-  direct step-navigator jumps without data loss, per-step completion
+  linear navigation without data loss, per-step completion
   enforcement, conditional clearing, and both completion outcomes
