@@ -42,7 +42,7 @@ Independent verification found missing explicit model coverage. Added the minimu
 
 - mapped-day deselection followed by reselection from an active preset;
 - accepted exact boundaries `15` and `300`;
-- rejected `301` value;
+- rejected `301` value; 
 - exactly `150` weekly minutes accepted; and
 - reducer selection behavior for every preset (`45`, `60`, and `120`).
 
@@ -186,3 +186,101 @@ The old remaining-task list above is historical. Section 3 is complete. The next
 - [ ] REFACTOR: remove dead API constants and helpers made obsolete by the clean-state replacement, run `cd apps/api && uv run ruff check app/modules/runner_profile tests/runner_profile`, and confirm no sanitizer, translator, migration, or compatibility branch was added. <!-- sdd-owner: implementation -->
 
 Deferred lifecycle actions (parent-owned; unchanged): the existing parent-owned rows in `tasks.md` remain deferred.
+
+## Work unit 3: API clean-state contract and diagnostics
+
+- **Boundary:** Section 4 only; no web frontend source/tests, Step 4 UI/wizard/styles, E2E, RLS integration, migrations, database schema, or runtime documentation changed.
+- **Commit target:** `refactor(api): remove deprecated onboarding fields`.
+- **Commit status:** Not staged or committed, as required.
+- **Delivery / PR boundary:** Assigned chained API slice. The high-workload delivery decision is resolved by the explicit work-unit boundary.
+
+### Structured status consumed
+
+- Change: `add-onboarding-step-4-availability`
+- Artifact store: `openspec` (authoritative)
+- Apply state: `ready`; next recommended: `apply`
+- Action context: `repo-local`; the repository root is the allowed edit root.
+- Warning: the workload forecast remains high, but this batch is restricted to Section 4.
+
+### TDD Cycle Evidence
+
+| Task | Test files | Layer | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Section 4 | `apps/api/tests/runner_profile/{test_use_cases,test_router,test_repository}.py` | API/use-case and repository | PASS: 36 focused tests | FAIL: 19 assertions showed removed fields accepted, stale shapes readable, legacy technicality required, and unsplit availability diagnostics | PASS: 47 focused tests after minimal validator change | PASS: 49 focused tests with invalid null/unknown weekday HTTP cases, exact JSONB parameters, atomic invalid writes, stale-read failure, and empty metadata assertions | PASS: focused Ruff and tests after removing legacy validation, diagnostic, hidden-clearing, and constants |
+
+### Completed implementation tasks
+
+- Section 4 RED, GREEN, TRIANGULATE, and REFACTOR implementation-owned rows are visibly marked `[x]` in `tasks.md`.
+
+### Files changed
+
+- `apps/api/app/modules/runner_profile/validation.py` — rejects removed keys before structural normalization; removes legacy requiredness, diagnostics, hidden clearing, and constants; emits separate bounded insufficient-days and insufficient-total diagnostics.
+- `apps/api/tests/runner_profile/test_use_cases.py` — reduced fixtures and clean-state, atomicity, stale-read, exact-map, and metadata coverage.
+- `apps/api/tests/runner_profile/test_router.py` — reduced HTTP fixtures plus sanitized removed-key and invalid-availability 422 coverage.
+- `apps/api/tests/runner_profile/test_repository.py` — exact nested availability JSONB bind assertion.
+- `openspec/changes/add-onboarding-step-4-availability/tasks.md` — completed only Section 4 implementation-owned rows.
+- `openspec/changes/add-onboarding-step-4-availability/apply-progress.md` — cumulative progress updated.
+
+### Commands and results
+
+- Safety net: `cd apps/api && uv run pytest tests/runner_profile/test_use_cases.py tests/runner_profile/test_router.py tests/runner_profile/test_repository.py -q` — PASS: 36 tests.
+- RED: same focused command — expected FAIL: 19 failures before production edits.
+- GREEN: same focused command — PASS: 47 tests.
+- TRIANGULATE: same focused command — PASS: 49 tests.
+- REFACTOR: `cd apps/api && uv run ruff check app/modules/runner_profile tests/runner_profile` — PASS.
+- `pnpm test:portable-paths` — PASS: 25 tests.
+- `git diff --check` — PASS.
+
+### Authored-line ledger
+
+- Section 4 API source/tests: 175 additions / 154 deletions = 329 authored lines before SDD artifact updates.
+- Cumulative application work through Sections 1–4: 685 additions / 265 deletions = 950 authored lines before current SDD artifact updates.
+- The section-4 source/test slice remains below the 1,000-line checkpoint; no compatibility parser, sanitizer, translator, migration, schema change, dependency, or API repository/domain/router production change was added.
+
+### Deviations and safeguards
+
+- No design deviation. The existing repository, domain, router, and JSONB storage path already satisfied the reduced clean-state contract; only validator and focused test changes were required.
+- Removed-key rejection uses a bounded `malformed_snapshot` input classification before the transaction factory is entered. HTTP responses remain `Invalid onboarding snapshot`; diagnostic metadata is `{}` and contains no days, totals, snapshots, owners, credentials, or storage details.
+- Stored stale shapes fail through the existing sanitized corrupt-data path and are not rewritten.
+- Documentation path check passed through `pnpm test:portable-paths`; this tracked artifact uses repository-relative paths only.
+
+### Remaining tasks and next boundary
+
+Section 4 is complete. The next implementation-owned work is Section 5; it is intentionally deferred. Exact next unchecked line:
+
+- [ ] RED: add browser scenarios in `apps/web/e2e/onboarding.spec.ts` for progress/copy, accessible keyboard controls, all preset mappings, exact override isolation, mixed and non-preset hydration, sparse deselection, three-45-minute rejection, too-few-days rejection, and no PUT on invalid Continue. <!-- sdd-owner: implementation -->
+
+Deferred lifecycle actions: all parent-owned task rows remain unchanged.
+
+## Work unit 3 targeted correction: API save/read and validation coverage
+
+- **Boundary:** Section 4 correction only; test-only API-local coverage. No production, frontend, UI, E2E, RLS, migration, schema, or runtime-documentation file changed.
+- **Reason:** Independent verification found that the prior tests did not use one stateful save→read lifecycle, and requested additional invalid-value and retained modality-clearing coverage.
+- **Commit status:** Not staged or committed.
+
+### TDD Cycle Evidence
+
+| Task | Test file | Layer | Safety net | RED / characterization | GREEN | TRIANGULATE | REFACTOR |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Stateful exact availability round trip | `apps/api/tests/runner_profile/test_use_cases.py` | use-case | PASS: 49 focused tests | Added a direct same-owner save→read test with one stateful repository; existing production behavior passed on first execution. | PASS: 55 focused tests | Exact `45/75/120` map is asserted after both save and read with one persisted snapshot and one read. | PASS: test-only stateful fixture is minimal. |
+| Invalid availability values | `apps/api/tests/runner_profile/test_use_cases.py` | use-case | PASS: 49 focused tests | Added cases for `14`, `301`, boolean, and non-integer values; existing production behavior passed on first execution. | PASS: 55 focused tests | Each case asserts bounded `malformed_snapshot`, no transaction access, no upsert, and unchanged prior storage. | PASS: table-driven cases avoid duplicate setup. |
+| Retained modality clearing | `apps/api/tests/runner_profile/test_use_cases.py` | use-case | PASS: 49 focused tests | Added trail-goal coverage with OCR/Backyard-only fields; existing production behavior passed on first execution. | PASS: 55 focused tests | Asserts the retained trail fields remain while `obstacle_count`, `obstacle_difficulty`, and `target_loops` are cleared. | PASS: no production change required. |
+
+No production defect was discovered; all correction scenarios were already satisfied by the Section 4 validator and use cases. This correction is characterization coverage, so no production edit followed the test additions.
+
+### Correction verification
+
+- `cd apps/api && uv run pytest tests/runner_profile/test_use_cases.py tests/runner_profile/test_router.py tests/runner_profile/test_repository.py -q` — PASS: 55 tests.
+- `cd apps/api && uv run ruff check app/modules/runner_profile tests/runner_profile` — PASS.
+- `pnpm test:portable-paths` — PASS: 25 tests.
+- `git diff --check` — PASS.
+
+### Authored-line ledger correction
+
+- Section 4 API source/tests after correction: 264 additions / 154 deletions = 418 authored lines before SDD artifact updates.
+- Cumulative application work through Sections 1–4 after correction: 774 additions / 265 deletions = 1,039 authored lines before current SDD artifact updates.
+- The 1,000-line checkpoint is now recorded. No delivery exception, scope broadening, production compatibility behavior, or migration was introduced.
+
+### Task state
+
+Section 4 remains complete; its four implementation-owned checkboxes remain visibly `[x]` in `tasks.md`. The correction did not create a new task row or alter parent-owned rows.

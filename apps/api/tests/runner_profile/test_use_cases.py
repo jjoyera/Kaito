@@ -1,5 +1,6 @@
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
+from copy import deepcopy
 from dataclasses import FrozenInstanceError
 from datetime import date
 
@@ -24,13 +25,7 @@ def _completed_snapshot(*, target_date: str = "2026-08-01") -> dict:
         "contract_version": "1",
         "state": "completed",
         "profile": {
-            "prior_history": {
-                "training_years": 1.5,
-                "completed_race_count_range": "one_to_three",
-                "longest_completed_distance_km": 42.2,
-                "practiced_modalities": ["trail"],
-                "practiced_terrain": ["mountain"],
-            },
+            "prior_history": {"longest_completed_distance_km": 42.2},
             "baseline_4_weeks": {
                 "sessions": 12,
                 "distance_km": 75.0,
@@ -39,7 +34,7 @@ def _completed_snapshot(*, target_date: str = "2026-08-01") -> dict:
                 "recent_consistency": "fairly_consistent",
             },
             "availability": {
-                "minutes_by_day": {"monday": 60, "wednesday": 60, "saturday": 90}
+                "minutes_by_day": {"monday": 45, "wednesday": 75, "saturday": 120}
             },
             "restrictions": {"has_restrictions": True, "detail": "Avoid late sessions"},
         },
@@ -48,7 +43,6 @@ def _completed_snapshot(*, target_date: str = "2026-08-01") -> dict:
             "target_date": target_date,
             "target_distance_km": 50.0,
             "positive_elevation_m": 1800.0,
-            "technicality": "high",
         },
     }
 
@@ -72,6 +66,17 @@ class RecordingRepository:
         self.upserts.append((owner_id, snapshot))
         if self.error:
             raise self.error
+
+
+class StatefulRecordingRepository(RecordingRepository):
+    def upsert(self, owner_id, snapshot):
+        super().upsert(owner_id, snapshot)
+        self.stored = {
+            "contract_version": snapshot.contract_version,
+            "state": snapshot.state.value,
+            "profile": dict(snapshot.profile),
+            "goal": dict(snapshot.goal),
+        }
 
 
 class RecordingTransactions:
@@ -126,25 +131,63 @@ def test_save_rejects_malformed_nested_blocks_before_opening_a_transaction(value
 
 
 @pytest.mark.parametrize(
-    ("field", "value"),
+    ("block", "field", "value"),
     [
-        ("practiced_modalities", "trail"),
-        ("practiced_terrain", [1]),
+        ("prior_history", "training_years", None),
+        ("prior_history", "training_years", 1.5),
+        ("prior_history", "completed_race_count_range", None),
+        ("prior_history", "completed_race_count_range", "one_to_three"),
+        ("prior_history", "practiced_modalities", None),
+        ("prior_history", "practiced_modalities", ["trail"]),
+        ("prior_history", "practiced_terrain", None),
+        ("prior_history", "practiced_terrain", ["mountain"]),
+        ("goal", "technicality", None),
+        ("goal", "technicality", "high"),
     ],
 )
-def test_save_rejects_malformed_canonical_array_answers(field, value):
-    snapshot = _completed_snapshot()
-    snapshot["profile"]["prior_history"][field] = value
-    transactions = RecordingTransactions(RecordingRepository())
-    user = UserContext("runner-1")
-    input_data = SaveOnboardingInput(
-        snapshot=snapshot, validation_date=date(2026, 7, 13)
-    )
+def test_save_rejects_removed_fields_before_transaction_and_preserves_snapshot(
+    block, field, value
+):
+    stored = _completed_snapshot()
+    snapshot = deepcopy(stored)
+    target = snapshot["goal"] if block == "goal" else snapshot["profile"][block]
+    target[field] = value
+    repository = RecordingRepository(stored=stored)
+    transactions = RecordingTransactions(repository)
 
     with pytest.raises(InvalidOnboardingInput, match="^malformed_snapshot$"):
-        save_onboarding(user, input_data, transactions)
+        save_onboarding(
+            UserContext("runner-1"),
+            SaveOnboardingInput(snapshot=snapshot, validation_date=date(2026, 7, 13)),
+            transactions,
+        )
 
     assert transactions.calls == []
+    assert repository.upserts == []
+    assert repository.stored == stored
+
+
+@pytest.mark.parametrize("minutes", [14, 301, True, 45.5])
+def test_save_rejects_invalid_availability_values_without_mutating_stored_snapshot(
+    minutes,
+):
+    stored = _completed_snapshot()
+    snapshot = deepcopy(stored)
+    snapshot["profile"]["availability"]["minutes_by_day"]["monday"] = minutes
+    repository = RecordingRepository(stored=stored)
+    transactions = RecordingTransactions(repository)
+
+    with pytest.raises(InvalidOnboardingInput, match="^malformed_snapshot$") as raised:
+        save_onboarding(
+            UserContext("runner-1"),
+            SaveOnboardingInput(snapshot=snapshot, validation_date=date(2026, 7, 13)),
+            transactions,
+        )
+
+    assert raised.value.code == "malformed_snapshot"
+    assert transactions.calls == []
+    assert repository.upserts == []
+    assert repository.stored == stored
 
 
 def test_save_rejects_unknown_contract_version_without_opening_a_transaction():
@@ -169,7 +212,7 @@ def test_save_preserves_a_sparse_typed_draft_and_returns_immutable_owner_free_re
     snapshot = {
         "contract_version": "1",
         "state": "incomplete",
-        "profile": {"prior_history": {"training_years": 1.5}},
+        "profile": {"prior_history": {"longest_completed_distance_km": 1.5}},
         "goal": {},
     }
     repository = RecordingRepository()
@@ -182,59 +225,13 @@ def test_save_preserves_a_sparse_typed_draft_and_returns_immutable_owner_free_re
     )
 
     assert result.snapshot.state is OnboardingState.INCOMPLETE
-    assert result.snapshot.profile["prior_history"]["training_years"] == pytest.approx(
-        1.5
-    )
+    assert result.snapshot.profile["prior_history"][
+        "longest_completed_distance_km"
+    ] == pytest.approx(1.5)
     assert len(repository.upserts) == 1
     assert all("owner" not in field for field in result.__dataclass_fields__)
     with pytest.raises((FrozenInstanceError, TypeError)):
         result.snapshot.profile["prior_history"] = {}
-
-
-def test_save_demotes_invalid_completed_snapshot_and_persists_correctable_answers():
-    snapshot = _completed_snapshot()
-    snapshot["goal"].pop("technicality")
-    repository = RecordingRepository()
-
-    result = save_onboarding(
-        UserContext("runner-1"),
-        SaveOnboardingInput(snapshot=snapshot, validation_date=date(2026, 7, 13)),
-        RecordingTransactions(repository),
-    )
-
-    assert result.snapshot.state is OnboardingState.INCOMPLETE
-    assert result.snapshot.goal["target_distance_km"] == pytest.approx(50.0)
-    assert any(
-        diagnostic.field == "goal.technicality" and diagnostic.severity == "error"
-        for diagnostic in result.diagnostics
-    )
-    ((_, persisted_snapshot),) = repository.upserts
-    assert persisted_snapshot == result.snapshot
-
-
-@pytest.mark.parametrize(
-    ("field", "value"),
-    [
-        ("completed_race_count_range", "many"),
-        ("practiced_modalities", ["road"]),
-        ("practiced_terrain", ["backyard"]),
-    ],
-)
-def test_save_demotes_noncanonical_completed_history_answers(field, value):
-    snapshot = _completed_snapshot()
-    snapshot["profile"]["prior_history"][field] = value
-    repository = RecordingRepository()
-
-    result = save_onboarding(
-        UserContext("runner-1"),
-        SaveOnboardingInput(snapshot=snapshot, validation_date=date(2026, 7, 13)),
-        RecordingTransactions(repository),
-    )
-
-    assert result.snapshot.state is OnboardingState.INCOMPLETE
-    assert any(diagnostic.field.endswith(field) for diagnostic in result.diagnostics)
-    ((_, persisted_snapshot),) = repository.upserts
-    assert persisted_snapshot == result.snapshot
 
 
 @pytest.mark.parametrize(
@@ -277,6 +274,61 @@ def test_save_accepts_canonical_baseline_with_recent_consistency():
 
     assert result.snapshot.state is OnboardingState.COMPLETED
     assert result.diagnostics == ()
+
+
+def test_save_then_read_round_trips_exact_availability_for_the_same_owner():
+    snapshot = _completed_snapshot()
+    repository = StatefulRecordingRepository()
+    transactions = RecordingTransactions(repository)
+    user = UserContext("runner-1")
+    validation_date = date(2026, 7, 13)
+
+    saved = save_onboarding(
+        user,
+        SaveOnboardingInput(snapshot=snapshot, validation_date=validation_date),
+        transactions,
+    )
+    loaded = read_onboarding(
+        user,
+        ReadOnboardingInput(validation_date=validation_date),
+        transactions,
+    )
+
+    expected_minutes_by_day = {"monday": 45, "wednesday": 75, "saturday": 120}
+    assert (
+        saved.snapshot.profile["availability"]["minutes_by_day"]
+        == expected_minutes_by_day
+    )
+    assert (
+        loaded.snapshot.profile["availability"]["minutes_by_day"]
+        == expected_minutes_by_day
+    )
+    assert len(repository.upserts) == 1
+    assert len(repository.read_calls) == 1
+
+
+def test_save_retains_modality_specific_clearing_after_contract_reduction():
+    snapshot = _completed_snapshot()
+    snapshot["goal"].update(
+        {
+            "obstacle_count": 10,
+            "obstacle_difficulty": "high",
+            "target_loops": 4,
+        }
+    )
+
+    result = save_onboarding(
+        UserContext("runner-1"),
+        SaveOnboardingInput(snapshot=snapshot, validation_date=date(2026, 7, 13)),
+        RecordingTransactions(RecordingRepository()),
+    )
+
+    assert result.snapshot.goal == {
+        "modality": "trail",
+        "target_date": "2026-08-01",
+        "target_distance_km": 50.0,
+        "positive_elevation_m": 1800.0,
+    }
 
 
 def test_save_removes_stray_training_hours_from_complete_canonical_baseline():
@@ -368,8 +420,10 @@ def test_save_clears_hidden_restriction_detail_before_persisting_normalization()
     )
 
 
-def test_read_rejects_corrupt_stored_snapshot_without_upserting_a_replacement():
-    repository = RecordingRepository(stored={"contract_version": "2"})
+def test_read_rejects_stale_removed_field_without_upserting_a_replacement():
+    stored = _completed_snapshot()
+    stored["goal"]["technicality"] = "high"
+    repository = RecordingRepository(stored=stored)
     user = UserContext("runner-1")
     input_data = ReadOnboardingInput(validation_date=date(2026, 7, 13))
     transactions = RecordingTransactions(repository)
@@ -408,6 +462,36 @@ def test_save_maps_transaction_failure_to_a_sanitized_persistence_error():
     assert str(raised.value) == "service_unavailable"
     assert "RAW_PAYLOAD_MARKER" not in str(raised.value)
     assert "runner-1" not in str(raised.value)
+
+
+@pytest.mark.parametrize(
+    ("availability", "expected_code"),
+    [
+        ({"monday": 75, "wednesday": 75}, "availability_insufficient_days"),
+        (
+            {"monday": 45, "wednesday": 45, "saturday": 45},
+            "availability_insufficient_total",
+        ),
+    ],
+)
+def test_save_reports_bounded_availability_threshold_diagnostics(
+    availability, expected_code
+):
+    snapshot = _completed_snapshot()
+    snapshot["profile"]["availability"]["minutes_by_day"] = availability
+
+    result = save_onboarding(
+        UserContext("runner-1"),
+        SaveOnboardingInput(snapshot=snapshot, validation_date=date(2026, 7, 13)),
+        RecordingTransactions(RecordingRepository()),
+    )
+
+    assert result.snapshot.state is OnboardingState.INCOMPLETE
+    assert [
+        (item.code, item.metadata)
+        for item in result.diagnostics
+        if item.code.startswith("availability_")
+    ] == [(expected_code, {})]
 
 
 def test_save_uses_the_explicit_validation_date_for_date_demotion():

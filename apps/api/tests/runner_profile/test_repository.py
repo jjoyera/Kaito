@@ -32,7 +32,11 @@ class RecordingConnection:
 def _snapshot():
     return OnboardingSnapshot(
         state=OnboardingState.INCOMPLETE,
-        profile={"prior_history": {"training_years": 1.5}},
+        profile={
+            "availability": {
+                "minutes_by_day": {"monday": 45, "wednesday": 75, "saturday": 120}
+            }
+        },
         goal={},
     )
 
@@ -55,6 +59,11 @@ def test_upsert_is_atomic_owner_scoped_and_does_not_control_transactions():
     )
     assert parameters["owner_id"] == "owner-1"
     assert parameters["snapshot"]["contract_version"] == "1"
+    assert parameters["snapshot"]["profile"]["availability"]["minutes_by_day"] == {
+        "monday": 45,
+        "wednesday": 75,
+        "saturday": 120,
+    }
     assert connection.commits == connection.rollbacks == 0
 
 

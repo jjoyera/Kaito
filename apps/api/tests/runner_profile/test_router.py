@@ -49,13 +49,7 @@ def _snapshot() -> dict:
         "contract_version": "1",
         "state": "completed",
         "profile": {
-            "prior_history": {
-                "training_years": 1.5,
-                "completed_race_count_range": "one_to_three",
-                "longest_completed_distance_km": 42.2,
-                "practiced_modalities": ["trail"],
-                "practiced_terrain": ["mountain"],
-            },
+            "prior_history": {"longest_completed_distance_km": 42.2},
             "baseline_4_weeks": {
                 "sessions": 12,
                 "distance_km": 75.0,
@@ -64,7 +58,7 @@ def _snapshot() -> dict:
                 "recent_consistency": "fairly_consistent",
             },
             "availability": {
-                "minutes_by_day": {"monday": 60, "wednesday": 60, "saturday": 90}
+                "minutes_by_day": {"monday": 45, "wednesday": 75, "saturday": 120}
             },
             "restrictions": {"has_restrictions": False},
         },
@@ -73,7 +67,6 @@ def _snapshot() -> dict:
             "target_date": "2026-08-01",
             "target_distance_km": 50.0,
             "positive_elevation_m": 1800.0,
-            "technicality": "high",
         },
     }
 
@@ -174,6 +167,61 @@ def test_put_maps_malformed_nested_block_to_422_before_persistence(
 
     assert response.status_code == 422
     assert response.json() == {"detail": "Invalid onboarding snapshot"}
+    assert transactions.calls == 0
+
+
+@pytest.mark.parametrize(
+    ("block", "field", "value"),
+    [
+        ("prior_history", "training_years", None),
+        ("prior_history", "completed_race_count_range", "one_to_three"),
+        ("prior_history", "practiced_modalities", ["trail"]),
+        ("prior_history", "practiced_terrain", ["mountain"]),
+        ("goal", "technicality", "high"),
+    ],
+)
+def test_put_rejects_removed_field_with_bounded_response_before_persistence(
+    client: TestClient, block: str, field: str, value: object
+) -> None:
+    snapshot = _snapshot()
+    target = snapshot["goal"] if block == "goal" else snapshot["profile"][block]
+    target[field] = value
+    transactions = client.app.state.onboarding_transactions
+
+    response = client.put(
+        "/runner-profile/onboarding",
+        headers=_auth_headers(),
+        json={"snapshot": snapshot, "validation_date": _VALIDATION_DATE},
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "Invalid onboarding snapshot"}
+    assert field not in response.text
+    assert _OWNER_ID not in response.text
+    assert transactions.calls == 0
+
+
+@pytest.mark.parametrize(
+    "minutes_by_day",
+    [{"monday": None}, {"holiday": 60}],
+)
+def test_put_rejects_invalid_availability_with_bounded_422(
+    client: TestClient, minutes_by_day: dict[str, int | None]
+) -> None:
+    snapshot = _snapshot()
+    snapshot["profile"]["availability"]["minutes_by_day"] = minutes_by_day
+    transactions = client.app.state.onboarding_transactions
+
+    response = client.put(
+        "/runner-profile/onboarding",
+        headers=_auth_headers(),
+        json={"snapshot": snapshot, "validation_date": _VALIDATION_DATE},
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "Invalid onboarding snapshot"}
+    assert "holiday" not in response.text
+    assert _OWNER_ID not in response.text
     assert transactions.calls == 0
 
 
