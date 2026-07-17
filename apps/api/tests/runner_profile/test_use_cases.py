@@ -290,7 +290,7 @@ def test_save_removes_stray_training_hours_from_complete_canonical_baseline():
         RecordingTransactions(repository),
     )
 
-    persisted = repository.upserts[0][1]
+    [(_, persisted)] = repository.upserts
     assert result.snapshot.state is OnboardingState.COMPLETED
     assert result.diagnostics == ()
     assert "training_hours" not in result.snapshot.profile["baseline_4_weeks"]
@@ -315,14 +315,13 @@ def test_save_demotes_or_rejects_invalid_recent_consistency(value):
             for diagnostic in result.diagnostics
         )
     else:
+        user = UserContext("runner-1")
+        command = SaveOnboardingInput(
+            snapshot=snapshot, validation_date=date(2026, 7, 13)
+        )
+
         with pytest.raises(InvalidOnboardingInput, match="^malformed_snapshot$"):
-            save_onboarding(
-                UserContext("runner-1"),
-                SaveOnboardingInput(
-                    snapshot=snapshot, validation_date=date(2026, 7, 13)
-                ),
-                transactions,
-            )
+            save_onboarding(user, command, transactions)
 
 
 def test_stray_training_hours_does_not_replace_required_recent_consistency():
