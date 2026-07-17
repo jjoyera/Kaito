@@ -849,33 +849,56 @@ p {
 	font-weight: 500;
 }
 
-.onboarding-availability-day {
-	display: flex;
-	align-items: center;
+.onboarding-availability {
+	display: grid;
+	gap: 1.5rem;
+}
+
+.onboarding-availability-days .onboarding-choice-pill span {
+	justify-content: center;
+	min-width: 2.5rem;
+	padding-inline: 0.75rem;
+}
+
+.onboarding-availability-status {
+	margin: 0.25rem 0 0;
+	color: var(--color-text-secondary);
+	font-size: 0.9375rem;
+}
+
+.onboarding-availability-exact {
+	display: grid;
 	gap: 0.75rem;
 }
 
-.onboarding-availability-day label {
+.onboarding-availability-exact h2 {
+	margin: 0;
+	font-size: 0.9375rem;
+}
+
+.onboarding-availability-exact-row {
 	display: flex;
 	align-items: center;
-	gap: 0.5rem;
-	min-width: 8rem;
+	justify-content: space-between;
+	gap: 1rem;
 	font-size: 0.9375rem;
-	font-weight: 600;
+	font-weight: 650;
 }
 
-.onboarding-availability-day input[type="checkbox"] {
-	accent-color: var(--color-primary);
-	cursor: pointer;
-}
-
-.onboarding-availability-day input[type="number"] {
+.onboarding-availability-exact-row input {
 	width: 6rem;
 	min-height: 2.5rem;
 	border: 1.5px solid rgb(23 33 27 / 16%);
 	border-radius: 0.65rem;
-	padding: 0.5rem 0.65rem;
+	background: var(--color-surface);
 	font: inherit;
+	padding: 0.5rem 0.65rem;
+}
+
+.onboarding-availability-exact-row input:focus-visible {
+	border-color: var(--color-primary);
+	outline: 3px solid rgb(47 93 80 / 20%);
+	outline-offset: 1px;
 }
 
 .onboarding-step-actions {
@@ -982,8 +1005,9 @@ p {
 		grid-template-columns: 1fr;
 	}
 
-	.onboarding-availability-day {
-		flex-wrap: wrap;
+	.onboarding-availability-exact-row {
+		align-items: flex-start;
+		flex-direction: column;
 	}
 }
 

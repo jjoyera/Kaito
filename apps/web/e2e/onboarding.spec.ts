@@ -159,7 +159,9 @@ test.describe("onboarding intro and step 1", () => {
 			.fill("18");
 		await page.getByLabel("Bastante constante").check();
 		await expect(page.getByLabel(/Horas totales/)).toHaveCount(0);
+		const savesBeforeBaseline = savedSnapshots.length;
 		await page.getByRole("button", { name: "Continuar" }).click();
+		await expect.poll(() => savedSnapshots.length).toBe(savesBeforeBaseline + 1);
 		expect(savedSnapshots.at(-1)?.profile).toMatchObject({
 			baseline_4_weeks: {
 				sessions: 8,
@@ -202,5 +204,214 @@ test.describe("onboarding intro and step 1", () => {
 			page.getByText("Este campo es obligatorio: Tipo de carrera."),
 		).toBeVisible();
 		await expect(page.locator("#goal-target-date-error")).toBeVisible();
+	});
+});
+
+async function startWithHydratedAvailability(
+	page: Page,
+	minutesByDay: Record<string, number>,
+) {
+	await authenticate(page);
+	const snapshot: Snapshot = {
+		contract_version: "1",
+		state: "incomplete",
+		profile: {
+			prior_history: {
+				longest_completed_distance_km: 45,
+				habitual_terrain: "mountain",
+				mountain_experience: "medium",
+				prior_modality_race_frequency: "once",
+			},
+			baseline_4_weeks: {
+				sessions: 8,
+				distance_km: 50,
+				positive_elevation_m: 1200,
+				longest_outing_km: 18,
+				recent_consistency: "fairly_consistent",
+			},
+			availability: { minutes_by_day: minutesByDay },
+		},
+		goal: {
+			modality: "trail",
+			target_date: "2026-10-03",
+			target_distance_km: 45,
+			positive_elevation_m: 1800,
+		},
+	};
+	await page.route(`${API_ORIGIN}/**`, async (route: Route) => {
+		if (route.request().method() === "GET") {
+			await route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: JSON.stringify({
+					snapshot,
+					diagnostics: [
+						{
+							code: "availability_insufficient_total",
+							field: "profile.availability.minutes_by_day",
+							message_key: "availability_insufficient_total",
+							severity: "error",
+							metadata: {},
+						},
+					],
+				}),
+			});
+			return;
+		}
+		await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ snapshot, diagnostics: [] }) });
+	});
+	await page.goto("/onboarding");
+	await page.getByRole("button", { name: "Crear mi plan" }).click();
+	await expect(
+		page.getByRole("heading", { name: "¿Cuándo puedes entrenar?" }),
+	).toBeVisible();
+}
+
+async function startAtAvailabilityStep(page: Page) {
+	const savedSnapshots = await startAtStepTwo(page, "trail");
+	await page.getByLabel("Distancia más larga completada").fill("45");
+	await page.getByLabel("Terreno habitual").selectOption("mountain");
+	await page.getByLabel("Media").check();
+	await page.getByLabel("Sí, una vez").check();
+	await page.getByRole("button", { name: "Continuar" }).click();
+	await page.getByLabel("Sesiones en las últimas 4 semanas").fill("8");
+	await page
+		.getByLabel("Distancia total en las últimas 4 semanas")
+		.fill("50");
+	await page
+		.getByLabel("Desnivel positivo en las últimas 4 semanas")
+		.fill("1200");
+	await page
+		.getByLabel("Salida más larga de las últimas 4 semanas")
+		.fill("18");
+	await page.getByLabel("Bastante constante").check();
+	await page.getByRole("button", { name: "Continuar" }).click();
+	await expect(
+		page.getByRole("heading", { name: "¿Cuándo puedes entrenar?" }),
+	).toBeVisible();
+	return savedSnapshots;
+}
+
+test.describe("onboarding availability step", () => {
+	test("presents the approved accessible controls and preserves exact overrides", async ({
+		page,
+	}) => {
+		await startAtAvailabilityStep(page);
+
+		await expect(page.getByText("Paso 4 de 7")).toBeVisible();
+		await expect(page.getByText("57%", { exact: true })).toBeVisible();
+		await expect(
+			page.getByText("Diseñaré el plan alrededor de tu vida, no al revés."),
+		).toBeVisible();
+		const weekdays = page.locator(
+			".onboarding-availability-days .onboarding-choice-pill span",
+		);
+		await expect(weekdays).toHaveText(["L", "M", "X", "J", "V", "S", "D"]);
+		await expect(page.getByRole("checkbox", { name: "Lunes" })).toBeVisible();
+		await expect(page.getByRole("checkbox", { name: "Miércoles" })).toBeVisible();
+		await expect(
+			page.getByRole("radiogroup", { name: "Duración habitual" }),
+		).toBeVisible();
+
+		await page.getByRole("checkbox", { name: "Lunes" }).focus();
+		await expect(page.getByRole("checkbox", { name: "Lunes" })).toBeFocused();
+		await page.keyboard.press("Space");
+		await expect(page.getByRole("checkbox", { name: "Lunes" })).toBeChecked();
+		await page.getByRole("checkbox", { name: "Miércoles" }).check();
+		await page.getByRole("checkbox", { name: "Sábado" }).check();
+		await page.getByRole("radio", { name: "45 min" }).check();
+		await page.getByRole("radio", { name: "45 min" }).focus();
+		await page.keyboard.press("ArrowRight");
+		await expect(page.getByRole("radio", { name: "1 h–1 h 30" })).toBeChecked();
+		const wednesdayMinutes = page.getByLabel("Minutos disponibles el Miércoles");
+		await wednesdayMinutes.focus();
+		await wednesdayMinutes.press("ArrowUp");
+		await expect(wednesdayMinutes).toHaveValue("61");
+		await expect(page.getByLabel("Minutos disponibles el Lunes")).toHaveValue("60");
+		await expect(page.getByLabel("Minutos disponibles el Miércoles")).toHaveValue("61");
+		await expect(page.getByLabel("Minutos disponibles el Sábado")).toHaveValue("60");
+		await expect(page.getByText("Varía por día")).toBeVisible();
+	});
+
+	test("maps all presets, keeps deselection sparse, and blocks invalid Continue without a PUT", async ({
+		page,
+	}) => {
+		const savedSnapshots = await startAtAvailabilityStep(page);
+		for (const day of ["Lunes", "Miércoles", "Sábado", "Domingo"] as const) {
+			await page.getByRole("checkbox", { name: day }).check();
+		}
+
+		for (const [label, minutes] of [
+			["45 min", "45"],
+			["1 h–1 h 30", "60"],
+			["2 h+", "120"],
+		] as const) {
+			await page.getByRole("radio", { name: label }).check();
+			await expect(page.getByLabel("Minutos disponibles el Lunes")).toHaveValue(
+				minutes,
+			);
+		}
+
+		await page.getByRole("checkbox", { name: "Miércoles" }).uncheck();
+		await page.getByRole("radio", { name: "45 min" }).check();
+		const savesBeforeInvalidContinue = savedSnapshots.length;
+		await page.getByRole("button", { name: "Continuar" }).click();
+		expect(savedSnapshots).toHaveLength(savesBeforeInvalidContinue);
+		await expect(
+			page.getByRole("region", { name: "Configura tu plan" }).getByRole("alert"),
+		).toContainText("150 minutos");
+		await expect(
+			page.getByRole("heading", { name: "¿Cuándo puedes entrenar?" }),
+		).toBeVisible();
+
+		await page.getByRole("radio", { name: "1 h–1 h 30" }).check();
+		const saturdayMinutes = page.getByLabel("Minutos disponibles el Sábado");
+		await saturdayMinutes.fill("90");
+		await expect(saturdayMinutes).toHaveValue("90");
+		await page.getByRole("button", { name: "Continuar" }).click();
+		await expect.poll(() => savedSnapshots.length).toBe(savesBeforeInvalidContinue + 1);
+		expect(savedSnapshots.at(-1)?.profile).toMatchObject({
+			availability: {
+				minutes_by_day: { monday: 60, saturday: 90, sunday: 60 },
+			},
+		});
+		await expect(page.getByText("Paso 5 de 7")).toBeVisible();
+	});
+
+	test("reports too few days without saving", async ({ page }) => {
+		const savedSnapshots = await startAtAvailabilityStep(page);
+		await page.getByRole("checkbox", { name: "Lunes" }).check();
+		await page.getByRole("checkbox", { name: "Miércoles" }).check();
+		await page.getByRole("radio", { name: "2 h+" }).check();
+		const savesBeforeInvalidContinue = savedSnapshots.length;
+		await page.getByRole("button", { name: "Continuar" }).click();
+		expect(savedSnapshots).toHaveLength(savesBeforeInvalidContinue);
+		await expect(
+			page.getByRole("region", { name: "Configura tu plan" }).getByRole("alert"),
+		).toContainText("3 días");
+	});
+
+	test("hydrates mixed and uniform custom exact values without coercion", async ({
+		page,
+	}) => {
+		await startWithHydratedAvailability(page, {
+			monday: 45,
+			wednesday: 75,
+			saturday: 120,
+		});
+		await expect(page.getByText("Varía por día")).toBeVisible();
+		await expect(page.getByLabel("Minutos disponibles el Miércoles")).toHaveValue(
+			"75",
+		);
+
+		await startWithHydratedAvailability(page, {
+			monday: 75,
+			wednesday: 75,
+			saturday: 75,
+		});
+		await expect(
+			page.getByText("Duración uniforme personalizada: 75 min"),
+		).toBeVisible();
+		await expect(page.getByRole("radio", { name: "45 min" })).not.toBeChecked();
 	});
 });

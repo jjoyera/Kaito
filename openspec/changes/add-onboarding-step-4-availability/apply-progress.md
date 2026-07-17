@@ -284,3 +284,112 @@ No production defect was discovered; all correction scenarios were already satis
 ### Task state
 
 Section 4 remains complete; its four implementation-owned checkboxes remain visibly `[x]` in `tasks.md`. The correction did not create a new task row or alter parent-owned rows.
+
+
+
+## Work unit 4: main accessible Step 4 UI
+
+- **Boundary:** Main Step 4 presentation, wizard integration, focused styles, and browser coverage only. Persistence-hardening scenarios are explicitly deferred to `fix(onboarding): harden step 4 persistence`.
+- **Commit target:** `feat(onboarding): redesign availability step`.
+- **Commit status:** Not staged or committed, as required.
+- **Delivery / PR boundary:** Assigned chained UI/E2E slice; the high-workload delivery decision is resolved by the explicit work-unit boundary.
+
+### Structured status consumed
+
+- Change: `add-onboarding-step-4-availability`
+- Artifact store: `openspec` (authoritative); OpenSpec planning artifacts were read before implementation.
+- Apply state: `ready`; next recommended: `apply`.
+- Action context: `repo-local`; all changed paths are within the repository-root allowed edit root.
+- Warning: the forecast is high risk and recommends chained delivery. This batch is the assigned UI slice; no Section 6 persistence/RLS, final regression, or documentation work was started.
+
+### TDD Cycle Evidence
+
+| Task | Test file | Layer | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Main accessible Step 4 UI | `apps/web/e2e/onboarding.spec.ts` | Playwright E2E | PASS: existing 4 onboarding browser scenarios | Added Step 4 scenarios first; focused browser command failed as expected because the approved heading and controls did not exist (3 new scenarios failed). | Replaced the legacy day form, added heading/copy, composite wizard interaction state, sparse projection, validation feedback, and focused styling. PASS: 7 browser scenarios. | Added mixed and uniform-custom hydration plus successful sparse-map save coverage. PASS: 8 browser scenarios; domain/use-case suite (72 tests), lint, and production build also pass. | Reused focused E2E start/hydration helpers and removed unused legacy availability selectors; behavior assertions remained role/name/value based. PASS: focused browser suite after refactor. |
+
+### Completed implementation tasks
+
+- Section 5 main browser RED row is visibly marked `[x]` in `tasks.md`.
+- Section 5 accessible component GREEN row is visibly marked `[x]` in `tasks.md`.
+- Section 5 main wizard/copy/style GREEN row is visibly marked `[x]` in `tasks.md`.
+- Section 5 main TRIANGULATE and REFACTOR rows are visibly marked `[x]` in `tasks.md`.
+- Persistence-hardening rows remain visibly unchecked and are not represented as complete.
+
+### Files changed
+
+- `apps/web/e2e/onboarding.spec.ts` — added focused browser scenarios for copy/progress, keyboard-operable native controls, all presets, isolated overrides, mixed/custom hydration, sparse save projection, and invalid no-PUT paths.
+- `apps/web/features/onboarding/_components/availability-step.tsx` — controlled accessible Step 4 controls and associated validation feedback.
+- `apps/web/features/onboarding/_components/onboarding-step-content.tsx` — approved Spanish Step 4 heading and support copy.
+- `apps/web/features/onboarding/_components/onboarding-wizard.tsx` — wizard-local `AvailabilityInteractionState`, exact draft projection, rich Step 4 validation, save-before-advance, and in-flight guard.
+- `apps/web/app/styles.css` — focused availability layout/focus styling and removal of obsolete legacy availability selectors.
+- `openspec/changes/add-onboarding-step-4-availability/tasks.md` — only implementation-owned Section 5 rows updated/split to distinguish this completed UI slice from deferred persistence hardening.
+- `openspec/changes/add-onboarding-step-4-availability/apply-progress.md` — this cumulative record.
+
+### Commands and results
+
+- RED: `cd apps/web && pnpm exec playwright test e2e/onboarding.spec.ts` — expected FAIL: 3 new Step 4 scenarios could not find `¿Cuándo puedes entrenar?` before production edits; pre-existing 4 scenarios passed.
+- GREEN / focused E2E: `cd apps/web && pnpm exec playwright test e2e/onboarding.spec.ts` — PASS: 7 tests.
+- TRIANGULATE / focused E2E: `cd apps/web && pnpm exec playwright test e2e/onboarding.spec.ts` — PASS: 8 tests.
+- `pnpm test:web-onboarding` — PASS: 72 tests.
+- `pnpm lint:web` — PASS.
+- `pnpm build:web` — PASS.
+- `pnpm test:portable-paths` — PASS: 25 tests.
+- `git diff --check` — PASS.
+
+### Authored-line ledger
+
+- Work unit 4 application/test delta before SDD artifact updates: 452 additions / 109 deletions = 561 authored lines.
+- Cumulative application/test work through Sections 1–5 main UI: 1,226 additions / 374 deletions = 1,600 authored lines before current SDD artifact updates.
+- The 1,000-line checkpoint is recorded. This slice did not modify API Python, RLS integration, Supabase migrations/schema, dependencies/lockfiles, or runtime documentation.
+
+### Deviations and safeguards
+
+- No design deviation. The existing pure interaction model supplied preset, mixed/custom, pending, validation, and sparse-projection rules; the wizard owns only UI-local interaction state and persists its exact `minutes_by_day` projection.
+- `baseMode` and `pendingDays` are not in adapter payload types. The focused success assertion verifies a sparse exact map after deselection.
+- The in-flight ref and disabled controls keep the current save flow safe. Exhaustive duplicate-request, failed-save retry-retention, Back/save-pending, and reload-last-successful E2E hardening is intentionally deferred.
+- Engram briefly failed during initial discovery, then recovered. The significant implementation discovery was saved to Engram for project `kaito`; authoritative OpenSpec artifacts were also updated successfully.
+- Documentation-path verification passed. This appended tracked artifact uses repository-relative paths only.
+
+### Remaining tasks and next boundary
+
+Deferred in Section 5, with exact persisted unchecked rows:
+
+- [ ] RED: add browser scenarios in `apps/web/e2e/onboarding.spec.ts` for mounted-state Back preservation without PUT, one PUT before Step 5 after successful Continue, disabled controls and duplicate-request prevention while pending, failed-save retry retention, and reload hydration of only the last successful exact map. <!-- sdd-owner: implementation -->
+- [ ] GREEN (deferred persistence hardening): extend Step 4 save lifecycle coverage for duplicate requests while pending, failed-save retry retention, and reload of only the last successful exact map. <!-- sdd-owner: implementation -->
+- [ ] TRIANGULATE (deferred persistence hardening): assert request ordering, sanitized retry behavior, and persisted reload outcomes. <!-- sdd-owner: implementation -->
+
+All Section 6 persistence/RLS, Section 7 final regression, and Section 8 documentation rows remain unchecked. Parent-owned lifecycle rows remain byte-for-byte unchanged.
+
+**Next boundary:** `fix(onboarding): harden step 4 persistence` — only the deferred save lifecycle/retry/reload persistence scenarios and their focused hardening. Do not start RLS/schema/API/documentation work from that boundary without a new assigned slice.
+
+## Work unit 4 targeted correction: compact weekday pills and keyboard evidence
+
+- **Boundary:** Main Step 4 visual/accessibility correction only. No API, persistence-hardening, RLS, migration, dependency, or runtime-documentation work was changed.
+- **Commit status:** Not staged or committed.
+
+### TDD Cycle Evidence
+
+| Task | Test file | Layer | RED | GREEN | TRIANGULATE | REFACTOR |
+| --- | --- | --- | --- | --- | --- | --- |
+| Compact pills and keyboard-native controls | `apps/web/e2e/onboarding.spec.ts` | Playwright E2E | Added compact-initial, full-accessible-name, checkbox focus/Space, radio ArrowRight, and number-input keyboard assertions first. FAIL as expected: rendered labels were full weekday names rather than `L, M, X, J, V, S, D`. | Added compact visual initials with full Spanish `aria-label` names on native checkboxes and narrowed the pill layout. PASS: 8 scenarios. | Extended the existing successful sparse-save scenario with an exact Saturday override; its captured PUT map is exactly Monday 60, Saturday 90, Sunday 60. PASS: 8 scenarios, web onboarding suite, lint, and build. | Kept the existing native checkbox/radio/input controls and focused selector scope; no abstraction or behavior change. PASS after focused rerun. |
+
+### Correction verification
+
+- `cd apps/web && pnpm exec playwright test e2e/onboarding.spec.ts` — PASS: 8 tests.
+- `pnpm test:web-onboarding` — PASS: 72 tests.
+- `pnpm lint:web` — PASS.
+- `pnpm build:web` — PASS.
+- `pnpm test:portable-paths` — PASS: 25 tests.
+- `git diff --check` — PASS.
+
+### Correction files changed
+
+- `apps/web/features/onboarding/_components/availability-step.tsx` — compact visible weekday initials while preserving full Spanish checkbox names.
+- `apps/web/app/styles.css` — compact weekday-pill sizing.
+- `apps/web/e2e/onboarding.spec.ts` — focused native keyboard and exact-override PUT assertions.
+- `openspec/changes/add-onboarding-step-4-availability/apply-progress.md` — this merged correction evidence.
+
+### Deferred risks
+
+The existing persistence-hardening rows remain unchecked: mounted Back preservation, pending duplicate-request behavior, failed-save retry retention, and reload of the last successful exact map. No parent-owned rows changed.
