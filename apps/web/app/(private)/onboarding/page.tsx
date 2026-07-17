@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { OnboardingExperience } from "../../../features/onboarding/_components/onboarding-wizard";
+import { OnboardingExperience } from "../../../features/onboarding/_components/onboarding-experience";
 import { getServerSessionResult } from "../../../features/auth/_infrastructure/supabase/server";
 
 export default async function OnboardingPage() {
