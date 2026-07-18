@@ -523,7 +523,7 @@ test.describe("onboarding Step 6 physical status", () => {
 		await page.getByRole("radio", { name: /Modo Z/ }).check();
 		await generate.click();
 		await expect(page).toHaveURL(/\/plan\/generating\?plan_id=9dd180d0-058d-4ee5-b8cf-3e93867a4041$/);
-		await expect(page.getByRole("heading", { name: "Tu enfoque se ha guardado" })).toBeVisible();
+		await expect(page.getByRole("heading", { name: "Kaito está trazando tu ruta" })).toBeVisible();
 	});
 
 	test("omits blank optional detail instead of storing the placeholder", async ({ page }) => {
@@ -861,7 +861,7 @@ test.describe("completed onboarding approach choice", () => {
 	test("protects the saved-plan placeholder from anonymous access", async ({ page }) => {
 		await page.goto("/plan/generating?plan_id=9dd180d0-058d-4ee5-b8cf-3e93867a4041");
 		await expect(page).toHaveURL(/\/login\?returnTo=%2Fplan%2Fgenerating/);
-		await expect(page.getByText("Tu enfoque se ha guardado")).toHaveCount(0);
+		await expect(page.getByText("Kaito está trazando tu ruta")).toHaveCount(0);
 	});
 
 	const completed = { contract_version: "1", state: "completed", profile: {}, goal: {} };
