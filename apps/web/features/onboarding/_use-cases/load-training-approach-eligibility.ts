@@ -31,7 +31,7 @@ export async function loadTrainingApproachEligibility(
 		if (error instanceof PlanningResourceError) {
 			if (error.kind === "onboarding_missing") return { status: "error", reason: "onboarding_missing" };
 			if (error.kind === "onboarding_incomplete_or_conflict") return { status: "error", reason: "onboarding_incomplete" };
-			return { status: "error", reason: "unsupported" };
+			return { status: "error", reason: error.kind === "unsupported" ? "unsupported" : "unavailable" };
 		}
 		if (error instanceof PrivateApiError) {
 			if (["auth_required", "auth_rejected"].includes(error.kind)) return { status: "error", reason: "auth" };

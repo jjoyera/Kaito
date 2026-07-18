@@ -7,7 +7,8 @@ import type {
 export type PlanningResourceErrorKind =
 	| "onboarding_missing"
 	| "onboarding_incomplete_or_conflict"
-	| "unsupported_or_stale";
+	| "unsupported"
+	| "stale";
 
 export class PlanningResourceError extends Error {
 	constructor(readonly kind: PlanningResourceErrorKind) {
@@ -37,7 +38,7 @@ export async function fetchTrainingApproachEligibility(
 	);
 	if (response.status === 404) throw new PlanningResourceError("onboarding_missing");
 	if (response.status === 409) throw new PlanningResourceError("onboarding_incomplete_or_conflict");
-	if (response.status === 422) throw new PlanningResourceError("unsupported_or_stale");
+	if (response.status === 422) throw new PlanningResourceError(await classifyUnprocessable(response));
 	return parseEligibilityResponse(await response.json());
 }
 
@@ -57,8 +58,17 @@ export async function saveTrainingPlanDraft(
 	);
 	if (response.status === 404) throw new PlanningResourceError("onboarding_missing");
 	if (response.status === 409) throw new PlanningResourceError("onboarding_incomplete_or_conflict");
-	if (response.status === 422) throw new PlanningResourceError("unsupported_or_stale");
+	if (response.status === 422) throw new PlanningResourceError(await classifyUnprocessable(response));
 	return parseDraftResponse(await response.json());
+}
+
+async function classifyUnprocessable(response: Response): Promise<"unsupported" | "stale"> {
+	try {
+		const body = await response.json() as { detail?: unknown };
+		return body.detail === "unsupported_modality" ? "unsupported" : "stale";
+	} catch {
+		return "stale";
+	}
 }
 
 function parseEligibilityResponse(value: unknown): TrainingApproachAssessment {

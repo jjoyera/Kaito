@@ -28,7 +28,8 @@ export async function saveTrainingPlanDraft(
 	} catch (error) {
 		if (error instanceof PlanningResourceError) {
 			if (error.kind === "onboarding_missing") return { status: "error", reason: "onboarding_missing" };
-			if (error.kind === "unsupported_or_stale") return { status: "error", reason: "unsupported" };
+			if (error.kind === "unsupported") return { status: "error", reason: "unsupported" };
+			if (error.kind === "stale") return { status: "error", reason: "unavailable" };
 			return { status: "error", reason: "conflict" };
 		}
 		if (error instanceof PrivateApiError) {

@@ -55,7 +55,9 @@ class SaveTrainingPlanDraftInput:
 
 
 class TrainingPlanRepository(Protocol):
-    def read_onboarding(self, owner_id: UserId) -> Mapping[str, Any] | None: ...
+    def read_onboarding(
+        self, owner_id: UserId, *, lock_for_draft: bool = False
+    ) -> Mapping[str, Any] | None: ...
 
     def save_draft(
         self, owner_id: UserId, approach: Approach
@@ -100,7 +102,7 @@ def save_training_plan_draft(
     saved: Mapping[str, Any] | None = None
     try:
         with transactions(user) as repository:
-            stored = repository.read_onboarding(owner_id)
+            stored = repository.read_onboarding(owner_id, lock_for_draft=True)
             if stored is None:
                 expected_error = OnboardingNotFound("onboarding_snapshot_not_found")
             elif (

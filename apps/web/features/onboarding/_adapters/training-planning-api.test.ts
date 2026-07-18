@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import type { PrivateFetchDependencies } from "../../../shared/adapters/private-fetch";
 import {
 	fetchTrainingApproachEligibility,
+	PlanningResourceError,
 	saveTrainingPlanDraft,
 } from "./training-planning-api";
 
@@ -39,6 +40,15 @@ describe("training planning API", () => {
 				return new Response(JSON.stringify(eligibility), { status: 200 });
 			}),
 		);
+	});
+
+	it("distinguishes unsupported modality from a stale assessment date", async () => {
+		for (const [detail, kind] of [["unsupported_modality", "unsupported"], ["assessment_date_out_of_range", "stale"]] as const) {
+			await assert.rejects(
+				fetchTrainingApproachEligibility("2026-07-01", dependencies(async () => new Response(JSON.stringify({ detail }), { status: 422 }))),
+				(error) => error instanceof PlanningResourceError && error.kind === kind,
+			);
+		}
 	});
 
 	it("persists only the canonical selected approach", async () => {

@@ -18,8 +18,8 @@ class Repository:
         self.error = error
         self.saved = None
 
-    def read_onboarding(self, owner_id):
-        assert owner_id.value == "verified-runner"
+    def read_onboarding(self, owner_id, *, lock_for_draft=False):
+        assert owner_id.value == "verified-runner" and lock_for_draft
         if self.error:
             raise self.error
         return self.snapshot
@@ -125,8 +125,8 @@ def test_expected_outcomes_exit_wrapping_owner_transaction_before_http_mapping(
             snapshot["profile"]["physical_status"]["status"] = "recovering"
 
     class OutcomeRepository(Repository):
-        def read_onboarding(self, owner_id):
-            assert owner_id.value == "verified-runner"
+        def read_onboarding(self, owner_id, *, lock_for_draft=False):
+            assert owner_id.value == "verified-runner" and lock_for_draft
             return None if snapshot is False else snapshot
 
     repository = OutcomeRepository(snapshot=snapshot, error=repository_error)

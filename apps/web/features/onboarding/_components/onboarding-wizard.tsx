@@ -47,7 +47,7 @@ import { OnboardingStepContent } from "./onboarding-step-content";
 import { StepNavigator } from "./step-navigator";
 import { TrainingApproachChoice } from "./training-approach-choice";
 
-type Phase = "loading" | "ready" | "load_error" | "eligibility_loading" | "eligibility_error" | "choice";
+type Phase = "loading" | "ready" | "load_error" | "eligibility_loading" | "eligibility_error" | "eligibility_unsupported" | "choice";
 type SaveStatus = "idle" | "saving" | "save_error";
 type WizardState = {
 	draft: OnboardingSnapshotDraft;
@@ -122,7 +122,7 @@ export function OnboardingWizard() {
 			const eligibility = await loadCurrentTrainingApproachEligibility(dependencies);
 			if (cancelled) return;
 			if (eligibility.status === "error") {
-				setPhase("eligibility_error");
+				setPhase(eligibility.reason === "unsupported" ? "eligibility_unsupported" : "eligibility_error");
 				return;
 			}
 			setAssessment(eligibility.assessment);
@@ -164,7 +164,7 @@ export function OnboardingWizard() {
 		setPhase("eligibility_loading");
 		const eligibility = await loadCurrentTrainingApproachEligibility(dependencies);
 		if (eligibility.status === "error") {
-			setPhase("eligibility_error");
+			setPhase(eligibility.reason === "unsupported" ? "eligibility_unsupported" : "eligibility_error");
 			return;
 		}
 		setAssessment(eligibility.assessment);
@@ -346,6 +346,20 @@ export function OnboardingWizard() {
 				title="Comprobando tus opciones"
 				description="Estamos revisando qué enfoques están disponibles con tu situación actual."
 			/>
+		);
+	}
+
+	if (phase === "eligibility_unsupported") {
+		return (
+			<section className="onboarding-status-surface onboarding-status-surface-error" role="alert">
+				<div className="onboarding-status-copy">
+					<h1>Necesitamos revisar tu objetivo</h1>
+					<p>Este tipo de prueba todavía no admite la selección de enfoque. Puedes actualizar tu objetivo para continuar.</p>
+				</div>
+				<button className="onboarding-status-action" type="button" onClick={() => { setStepIndex(0); setPhase("ready"); }}>
+					Revisar mi objetivo
+				</button>
+			</section>
 		);
 	}
 

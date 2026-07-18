@@ -1,6 +1,6 @@
 # ruff: noqa: E501, F401, F811, I001
 import json
-import os
+from pathlib import Path
 from contextlib import contextmanager
 from datetime import date
 from uuid import UUID
@@ -13,6 +13,7 @@ from sqlalchemy import create_engine
 
 from app.modules.auth.context import UserContext
 from app.modules.planning.domain import ApproachEligibilityPolicy
+from app.modules.planning import repository as planning_repository
 from app.modules.planning.repository import SqlAlchemyTrainingPlanTransactionFactory
 from app.modules.planning.use_cases import (
     BlockedTrainingApproach,
@@ -39,7 +40,8 @@ class Repository:
         self.owner_reads: list[str] = []
         self.save_calls = 0
 
-    def read_onboarding(self, owner_id):
+    def read_onboarding(self, owner_id, *, lock_for_draft=False):
+        assert lock_for_draft
         self.owner_reads.append(owner_id.value)
         return self.snapshot
 
@@ -76,6 +78,24 @@ def save(repository, approach="mode_z"):
         date(2026, 7, 1),
         ApproachEligibilityPolicy(),
     )
+
+
+def test_sql_and_migration_lock_backend_only_owner_contracts():
+    locked_read = str(planning_repository._READ_ONBOARDING_FOR_DRAFT)
+    assert "owner_id = :owner_id" in locked_read and "FOR UPDATE" in locked_read
+    assert "pg_advisory_xact_lock" in str(planning_repository._LOCK_OWNER)
+    assert "FOR UPDATE" in str(planning_repository._READ_PLAN)
+    for statement in (planning_repository._READ_ONBOARDING_FOR_DRAFT, planning_repository._READ_PLAN, planning_repository._INSERT_DRAFT):
+        assert ":owner_id" in str(statement)
+    migration = (Path(__file__).parents[4] / "supabase/migrations/20260716120000_training_plan_drafts.sql").read_text()
+    for contract in (
+        "REVOKE INSERT, UPDATE, DELETE ON public.training_plans FROM authenticated",
+        "GRANT SELECT, INSERT, UPDATE, DELETE ON public.training_plans TO kaito_api_login",
+        "FOR ALL TO kaito_api_login",
+        "WHERE status = 'draft'",
+        "WHERE status = 'active'",
+    ):
+        assert contract in migration
 
 
 def test_creates_reuses_and_updates_one_owner_bound_draft():
@@ -118,9 +138,6 @@ def test_non_draft_plan_conflicts_without_mutation():
     assert repository.draft["plan_approach"] == "kaio_path"
 
 
-@pytest.mark.skipif(
-    os.getenv("KAITO_LOCAL_RLS_TEST") != "1", reason="requires reset local Supabase"
-)
 def test_real_backend_only_writes_and_repository_contract(
     identities: RlsFixture,
 ) -> None:

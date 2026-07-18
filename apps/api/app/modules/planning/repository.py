@@ -14,6 +14,9 @@ from app.modules.shared.domain.value_objects import UserId
 _READ_ONBOARDING = text(
     "SELECT snapshot FROM onboarding_snapshots WHERE owner_id = :owner_id"
 )
+_READ_ONBOARDING_FOR_DRAFT = text(
+    "SELECT snapshot FROM onboarding_snapshots WHERE owner_id = :owner_id FOR UPDATE"
+)
 _BACKEND_ROLE = text("RESET ROLE")
 _LOCK_OWNER = text("SELECT pg_advisory_xact_lock(hashtextextended(:owner_id, 0))")
 _READ_PLAN = text("""
@@ -40,9 +43,15 @@ class SqlAlchemyTrainingPlanRepository:
     def __init__(self, connection: Connection) -> None:
         self._connection = connection
 
-    def read_onboarding(self, owner_id: UserId) -> Mapping[str, Any] | None:
+    def read_onboarding(
+        self, owner_id: UserId, *, lock_for_draft: bool = False
+    ) -> Mapping[str, Any] | None:
+        values = {"owner_id": owner_id.value}
+        if lock_for_draft:
+            self._connection.execute(_LOCK_OWNER, values)
         return self._connection.execute(
-            _READ_ONBOARDING, {"owner_id": owner_id.value}
+            _READ_ONBOARDING_FOR_DRAFT if lock_for_draft else _READ_ONBOARDING,
+            values,
         ).scalar_one_or_none()
 
     def save_draft(self, owner_id: UserId, approach: Approach) -> Mapping[str, Any]:

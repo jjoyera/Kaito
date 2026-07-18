@@ -12,6 +12,7 @@ async function approachLayout(page: Page) {
 		const action = box(".onboarding-approach-actions");
 		return {
 			cardTops: cards.map((item) => item.top),
+			cardBottoms: cards.map((item) => item.bottom),
 			cardsBottom: Math.max(...cards.map((item) => item.bottom)),
 			landscapeBottom: landscape.bottom,
 			guidanceTop: guidance.top,
@@ -316,7 +317,7 @@ async function startAtAvailabilityStep(page: Page) {
 async function startAtPreferencesStep(
 	page: Page,
 	trainingPreferences?: Record<string, string>,
-	physicalStatus?: Record<string, string>,
+	physicalStatus?: Record<string, string | boolean>,
 ) {
 	await authenticate(page);
 	let saveCount = 0;
@@ -857,6 +858,12 @@ test.describe("onboarding availability step", () => {
 });
 
 test.describe("completed onboarding approach choice", () => {
+	test("protects the saved-plan placeholder from anonymous access", async ({ page }) => {
+		await page.goto("/plan/generating?plan_id=9dd180d0-058d-4ee5-b8cf-3e93867a4041");
+		await expect(page).toHaveURL(/\/login\?returnTo=%2Fplan%2Fgenerating/);
+		await expect(page.getByText("Tu enfoque se ha guardado")).toHaveCount(0);
+	});
+
 	const completed = { contract_version: "1", state: "completed", profile: {}, goal: {} };
 	const eligibility = {
 		recommended_approach: "mode_z",
@@ -867,6 +874,22 @@ test.describe("completed onboarding approach choice", () => {
 		],
 		safety_restriction_codes: ["no_load_increase"],
 	};
+
+	test("offers objective editing for a completed unsupported modality", async ({ page }) => {
+		await authenticate(page);
+		await page.route(`${API_ORIGIN}/**`, async (route: Route) => {
+			const onboarding = new URL(route.request().url()).pathname === "/runner-profile/onboarding";
+			await route.fulfill(onboarding
+				? { status: 200, contentType: "application/json", body: JSON.stringify({ snapshot: completed, diagnostics: [] }) }
+				: { status: 422, contentType: "application/json", body: JSON.stringify({ detail: "unsupported_modality" }) });
+		});
+		await page.goto("/onboarding");
+		await page.getByRole("button", { name: "Crear mi plan" }).click();
+		await expect(page.getByRole("heading", { name: "Necesitamos revisar tu objetivo" })).toBeVisible();
+		await expect(page.getByRole("button", { name: "Reintentar" })).toHaveCount(0);
+		await page.getByRole("button", { name: "Revisar mi objetivo" }).click();
+		await expect(page.getByRole("heading", { name: "Empecemos por tu objetivo" })).toBeVisible();
+	});
 
 	test("refetches eligibility on reload and retries an in-place load failure", async ({ page }) => {
 		await authenticate(page);
@@ -950,9 +973,22 @@ test.describe("completed onboarding approach choice", () => {
 		await expect(kaio).toBeChecked();
 		await page.getByRole("button", { name: "¿Por qué no está disponible Modo Z?" }).click();
 		await expect(page.getByText("Modo Z · aún no disponible")).toBeVisible();
+		const mobileBlocked = await approachLayout(page);
+		expect(mobileBlocked.cardTops[0]).toBeLessThan(mobileBlocked.cardTops[1]);
+		expect(mobileBlocked.cardBottoms[0]).toBeLessThanOrEqual(mobileBlocked.cardTops[1]);
+		expect(mobileBlocked.cardBottoms[1]).toBeLessThanOrEqual(mobileBlocked.cardTops[2]);
+		expect(mobileBlocked.panelTop).toBeGreaterThanOrEqual(mobileBlocked.cardsBottom);
+		expect(mobileBlocked.guidanceTop).toBeGreaterThanOrEqual(mobileBlocked.panelBottom!);
+		expect(mobileBlocked.landscapeBottom).toBeGreaterThanOrEqual(mobileBlocked.guidanceBottom);
+		expect(mobileBlocked.actionTop).toBeGreaterThanOrEqual(mobileBlocked.landscapeBottom);
 		await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 		await page.getByRole("button", { name: "Cerrar detalle de Modo Z" }).click();
 		await expect(page.getByText("Has elegido · Camino Kaio")).toBeVisible();
+		const mobileSelected = await approachLayout(page);
+		expect(mobileSelected.panelTop).toBeGreaterThanOrEqual(mobileSelected.cardsBottom);
+		expect(mobileSelected.guidanceTop).toBeGreaterThanOrEqual(mobileSelected.panelBottom!);
+		expect(mobileSelected.landscapeBottom).toBeGreaterThanOrEqual(mobileSelected.guidanceBottom);
+		expect(mobileSelected.actionTop).toBeGreaterThanOrEqual(mobileSelected.landscapeBottom);
 		if (originalViewport) await page.setViewportSize(originalViewport);
 		const generate = page.getByRole("button", { name: /Generar mi plan/ });
 		await generate.dblclick();
