@@ -31,9 +31,17 @@ export function PhysicalStatusStep({
 		errors["profile.physical_status.status"],
 		"Estado físico actual",
 	);
+	const painError = fieldErrorMessage(
+		errors["profile.physical_status.has_pain_or_limitation"],
+		"Dolor o limitación actual",
+	);
+	const impactError = fieldErrorMessage(
+		errors["profile.physical_status.pain_or_limitation_affects_running"],
+		"Impacto al correr",
+	);
 	const detailError = fieldErrorMessage(
 		errors["profile.physical_status.pain_or_limitation_detail"],
-		"Dolor o limitación actual",
+		"Detalle del dolor o limitación",
 	);
 
 	return (
@@ -70,32 +78,44 @@ export function PhysicalStatusStep({
 				) : null}
 			</div>
 
-			<div className="onboarding-field">
-				<label htmlFor="pain-or-limitation-detail">
-					¿Dolor o limitación actual? <span className="onboarding-optional-indicator">(opcional)</span>
-				</label>
-				<textarea
-					id="pain-or-limitation-detail"
-					name="pain-or-limitation-detail"
-					maxLength={500}
-					placeholder="Ninguna relevante ahora mismo."
-					value={value.pain_or_limitation_detail ?? ""}
-					aria-describedby={detailError ? "pain-or-limitation-detail-error" : undefined}
-					aria-invalid={Boolean(detailError)}
-					onChange={(event) =>
-						onChange({ pain_or_limitation_detail: event.target.value })
-					}
-				/>
-				{detailError ? (
-					<p
-						className="onboarding-field-error"
-						id="pain-or-limitation-detail-error"
-						role="alert"
-					>
-						{detailError}
-					</p>
-				) : null}
-			</div>
+			<fieldset className="onboarding-field onboarding-pill-field">
+				<legend>¿Tienes dolor o alguna limitación actual?</legend>
+				<div className="onboarding-pill-options">
+					<label className="onboarding-choice-pill">
+						<input type="radio" name="has-pain" checked={value.has_pain_or_limitation === true} onChange={() => onChange({ has_pain_or_limitation: true })} />
+						<span>Sí</span>
+					</label>
+					<label className="onboarding-choice-pill">
+						<input type="radio" name="has-pain" checked={value.has_pain_or_limitation === false} onChange={() => onChange({ has_pain_or_limitation: false, pain_or_limitation_affects_running: undefined, pain_or_limitation_detail: undefined })} />
+						<span>No</span>
+					</label>
+				</div>
+				{painError ? <p className="onboarding-field-error" role="alert">{painError}</p> : null}
+			</fieldset>
+
+			{value.has_pain_or_limitation ? (
+				<>
+					<fieldset className="onboarding-field onboarding-pill-field">
+						<legend>¿Afecta a tu forma de correr?</legend>
+						<div className="onboarding-pill-options">
+							<label className="onboarding-choice-pill">
+								<input type="radio" name="pain-affects-running" checked={value.pain_or_limitation_affects_running === true} onChange={() => onChange({ pain_or_limitation_affects_running: true })} />
+								<span>Sí</span>
+							</label>
+							<label className="onboarding-choice-pill">
+								<input type="radio" name="pain-affects-running" checked={value.pain_or_limitation_affects_running === false} onChange={() => onChange({ pain_or_limitation_affects_running: false })} />
+								<span>No</span>
+							</label>
+						</div>
+						{impactError ? <p className="onboarding-field-error" role="alert">{impactError}</p> : null}
+					</fieldset>
+					<div className="onboarding-field">
+						<label htmlFor="pain-or-limitation-detail">Describe brevemente la molestia <span className="onboarding-optional-indicator">(opcional)</span></label>
+						<textarea id="pain-or-limitation-detail" name="pain-or-limitation-detail" maxLength={500} value={value.pain_or_limitation_detail ?? ""} aria-describedby={detailError ? "pain-or-limitation-detail-error" : undefined} aria-invalid={Boolean(detailError)} onChange={(event) => onChange({ pain_or_limitation_detail: event.target.value })} />
+						{detailError ? <p className="onboarding-field-error" id="pain-or-limitation-detail-error" role="alert">{detailError}</p> : null}
+					</div>
+				</>
+			) : null}
 		</fieldset>
 	);
 }

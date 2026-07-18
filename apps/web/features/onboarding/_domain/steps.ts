@@ -60,6 +60,8 @@ export const ONBOARDING_STEPS: readonly StepDefinition[] = [
 		id: "physical_status",
 		fields: [
 			"profile.physical_status.status",
+			"profile.physical_status.has_pain_or_limitation",
+			"profile.physical_status.pain_or_limitation_affects_running",
 			"profile.physical_status.pain_or_limitation_detail",
 		],
 	},

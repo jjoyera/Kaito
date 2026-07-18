@@ -41,10 +41,23 @@ El plan debe respetar el enfoque seleccionado por el usuario en `TrainingPlan.pl
 | Opción visible | Valor técnico | Intento deportivo | Comportamiento esperado | Límite de seguridad |
 | --- | --- | --- | --- | --- |
 | Camino Kaio | `kaio_path` | Conservador | Priorización de continuidad, carga progresiva y menor exposición a sesiones límite | No escalar carga agresivamente; priorizar recuperación ante señales negativas |
-| Modo Z | `z_mode` | Equilibrado | Mix normal de sesiones base + algunas sesiones exigentes para mejorar rendimiento | Puede acercarse al límite de forma puntual, sin romper reglas de reajuste prudente |
+| Modo Z | `mode_z` | Equilibrado | Mix normal de sesiones base + algunas sesiones exigentes para mejorar rendimiento | Puede acercarse al límite de forma puntual, sin romper reglas de reajuste prudente |
 | Kaioken | `kaioken` | Exigente | Mayor densidad de estímulos demandantes y cercanía más frecuente a límites de esfuerzo | **Nunca** puede anular reglas de seguridad, molestias/dolor o necesidad de recuperación |
 
 Regla clave: `kaioken` aumenta exigencia planificada, pero no autoriza comportamiento temerario. Si aparecen dolor, malas sensaciones persistentes, sobrecarga o triggers de política, la IA debe aplicar ajuste conservador.
+
+### Elegibilidad antes de la IA
+
+La IA **no decide** qué enfoque está permitido ni cuál se recomienda. Antes de generar un plan, la política determinista del módulo `planning` evalúa el onboarding completado y una fecha local explícita. Devuelve los tres enfoques en orden de intensidad, sus códigos estables de bloqueo, la recomendación (`mode_z` si está disponible; en caso contrario `kaio_path`) y las restricciones de seguridad aplicables.
+
+La generación debe tratar esos resultados como límites autoritativos:
+
+- nunca seleccionar ni ofrecer un enfoque bloqueado;
+- nunca recomendar `kaioken` por defecto, aunque esté disponible;
+- aplicar los códigos de restricción a la carga y a las sesiones;
+- no reinterpretar mediante el prompt el dolor, la recuperación o la fatiga.
+
+El contrato completo y sus umbrales se definen en [`openspec/specs/training-approach-eligibility/spec.md`](../openspec/specs/training-approach-eligibility/spec.md).
 
 ## 5) Outputs esperados
 

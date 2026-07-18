@@ -54,7 +54,12 @@ def _snapshot() -> dict:
         "contract_version": "1",
         "state": "completed",
         "profile": {
-            "prior_history": {"longest_completed_distance_km": 42.2},
+            "prior_history": {
+                "longest_completed_distance_km": 42.2,
+                "habitual_terrain": "mixed",
+                "mountain_experience": "medium",
+                "prior_modality_race_frequency": "once",
+            },
             "baseline_4_weeks": {
                 "sessions": 12,
                 "distance_km": 75.0,
@@ -72,6 +77,7 @@ def _snapshot() -> dict:
             },
             "physical_status": {
                 "status": "feeling_good",
+                "has_pain_or_limitation": False,
             },
         },
         "goal": {
@@ -279,6 +285,8 @@ def test_put_normalizes_and_returns_physical_status_detail(client: TestClient) -
     snapshot = _snapshot()
     snapshot["profile"]["physical_status"] = {
         "status": "recovering",
+        "has_pain_or_limitation": True,
+        "pain_or_limitation_affects_running": True,
         "pain_or_limitation_detail": "  Tobillo izquierdo\n  al bajar  ",
     }
 
@@ -291,6 +299,8 @@ def test_put_normalizes_and_returns_physical_status_detail(client: TestClient) -
     assert response.status_code == 200
     assert response.json()["snapshot"]["profile"]["physical_status"] == {
         "status": "recovering",
+        "has_pain_or_limitation": True,
+        "pain_or_limitation_affects_running": True,
         "pain_or_limitation_detail": "Tobillo izquierdo\n  al bajar",
     }
 

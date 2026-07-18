@@ -428,18 +428,25 @@ test.describe("onboarding Step 6 physical status", () => {
 		await expect(page.getByRole("radio", { name: "Me siento bien" })).toBeVisible();
 		await expect(page.getByRole("radio", { name: "Algo cargada" })).toBeVisible();
 		await expect(page.getByRole("radio", { name: "Recuperándome" })).toBeVisible();
-		const detail = page.getByLabel(/¿Dolor o limitación actual\?/);
-		await expect(detail).toHaveAttribute("placeholder", "Ninguna relevante ahora mismo.");
-		await expect(detail).toHaveValue("");
+		const painGroup = page.getByRole("group", { name: "¿Tienes dolor o alguna limitación actual?" });
+		await expect(painGroup.getByRole("radio", { name: "Sí" })).toBeVisible();
+		await expect(painGroup.getByRole("radio", { name: "No" })).toBeVisible();
+		await expect(page.getByLabel("Describe brevemente la molestia")).toHaveCount(0);
 
 		const savesBeforeValidation = state.getSaveCount();
 		await page.getByRole("button", { name: "Continuar" }).click();
 		expect(state.getSaveCount()).toBe(savesBeforeValidation);
 		await expect(
-			page.locator(".onboarding-physical-status").getByRole("alert"),
-		).toContainText("Estado físico actual");
+			page.getByText("Este campo es obligatorio: Estado físico actual."),
+		).toBeVisible();
+		await expect(
+			page.getByText("Este campo es obligatorio: Dolor o limitación actual."),
+		).toBeVisible();
 
 		await page.getByRole("radio", { name: "Algo cargada" }).check();
+		await painGroup.getByRole("radio", { name: "Sí" }).check();
+		await page.getByRole("group", { name: "¿Afecta a tu forma de correr?" }).getByRole("radio", { name: "No" }).check();
+		const detail = page.getByLabel("Describe brevemente la molestia");
 		await detail.fill("  Gemelo derecho\n  tras correr  ");
 		await page.getByRole("button", { name: /Atrás/ }).click();
 		await page.getByRole("button", { name: "Continuar" }).click();
@@ -452,6 +459,8 @@ test.describe("onboarding Step 6 physical status", () => {
 		expect(state.getSavedSnapshot()?.state).toBe("completed");
 		expect(state.getSavedSnapshot()?.profile.physical_status).toEqual({
 			status: "carrying_fatigue",
+			has_pain_or_limitation: true,
+			pain_or_limitation_affects_running: false,
 			pain_or_limitation_detail: "Gemelo derecho\n  tras correr",
 		});
 		expect(state.getSavedSnapshot()?.profile).not.toHaveProperty("restrictions");
@@ -465,11 +474,18 @@ test.describe("onboarding Step 6 physical status", () => {
 		await page.getByRole("radio", { name: "Rutina fija" }).check();
 		await page.getByRole("button", { name: "Continuar" }).click();
 		await page.getByRole("radio", { name: "Me siento bien" }).check();
+		const painGroup = page.getByRole("group", { name: "¿Tienes dolor o alguna limitación actual?" });
+		await painGroup.getByRole("radio", { name: "Sí" }).check();
+		await page.getByRole("group", { name: "¿Afecta a tu forma de correr?" }).getByRole("radio", { name: "Sí" }).check();
+		await page.getByLabel("Describe brevemente la molestia").fill("Respuesta temporal");
+		await painGroup.getByRole("radio", { name: "No" }).check();
+		await expect(page.getByLabel("Describe brevemente la molestia")).toHaveCount(0);
 		await page.getByRole("button", { name: "Continuar" }).click();
 
 		await expect.poll(state.getSaveCount).toBe(2);
 		expect(state.getSavedSnapshot()?.profile.physical_status).toEqual({
 			status: "feeling_good",
+			has_pain_or_limitation: false,
 		});
 	});
 
@@ -483,12 +499,14 @@ test.describe("onboarding Step 6 physical status", () => {
 			},
 			{
 				status: "recovering",
+				has_pain_or_limitation: true,
+				pain_or_limitation_affects_running: true,
 				pain_or_limitation_detail: "Tobillo izquierdo\n  al bajar",
 			},
 		);
 
 		await expect(page.getByRole("radio", { name: "Recuperándome" })).toBeChecked();
-		await expect(page.getByLabel(/¿Dolor o limitación actual\?/)).toHaveValue(
+		await expect(page.getByLabel("Describe brevemente la molestia")).toHaveValue(
 			"Tobillo izquierdo\n  al bajar",
 		);
 	});

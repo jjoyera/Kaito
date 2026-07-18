@@ -28,7 +28,8 @@ export function applyConditionalClearing(
 	draft: OnboardingSnapshotDraft,
 ): OnboardingSnapshotDraft {
 	const physicalStatus = draft.profile.physical_status;
-	const detail = physicalStatus?.pain_or_limitation_detail?.trim();
+	const hasPain = physicalStatus?.has_pain_or_limitation;
+	const detail = hasPain ? physicalStatus?.pain_or_limitation_detail?.trim() : undefined;
 	return {
 		profile: {
 			...draft.profile,
@@ -36,7 +37,16 @@ export function applyConditionalClearing(
 				? {
 						physical_status: {
 							status: physicalStatus.status,
-							...(detail ? { pain_or_limitation_detail: detail } : {}),
+							...(hasPain !== undefined
+								? { has_pain_or_limitation: hasPain }
+								: {}),
+							...(hasPain
+								? {
+										pain_or_limitation_affects_running:
+											physicalStatus.pain_or_limitation_affects_running,
+										...(detail ? { pain_or_limitation_detail: detail } : {}),
+									}
+								: {}),
 						},
 					}
 				: {}),

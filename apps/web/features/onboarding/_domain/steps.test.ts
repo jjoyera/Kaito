@@ -72,12 +72,14 @@ describe("ONBOARDING_STEPS", () => {
 		]);
 	});
 
-	test("physical-status step owns its required status and optional detail", () => {
+	test("physical-status step owns structured pain and status fields", () => {
 		const physicalStatusStep = ONBOARDING_STEPS.find(
 			(step) => step.id === "physical_status",
 		);
 		assert.deepEqual(physicalStatusStep?.fields, [
 			"profile.physical_status.status",
+			"profile.physical_status.has_pain_or_limitation",
+			"profile.physical_status.pain_or_limitation_affects_running",
 			"profile.physical_status.pain_or_limitation_detail",
 		]);
 	});

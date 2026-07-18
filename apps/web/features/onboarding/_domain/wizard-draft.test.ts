@@ -35,6 +35,7 @@ const completeDraft: OnboardingSnapshotDraft = {
 		},
 		physical_status: {
 			status: "feeling_good",
+			has_pain_or_limitation: false,
 		},
 	},
 	goal: {
@@ -70,6 +71,8 @@ describe("wizard draft preparation", () => {
 			profile: {
 				physical_status: {
 					status: "carrying_fatigue",
+					has_pain_or_limitation: true,
+					pain_or_limitation_affects_running: false,
 					pain_or_limitation_detail: "  Gemelo derecho\n  tras correr  ",
 				},
 			},
@@ -77,6 +80,8 @@ describe("wizard draft preparation", () => {
 		});
 		assert.deepEqual(withDetail.profile.physical_status, {
 			status: "carrying_fatigue",
+			has_pain_or_limitation: true,
+			pain_or_limitation_affects_running: false,
 			pain_or_limitation_detail: "Gemelo derecho\n  tras correr",
 		});
 
@@ -84,6 +89,8 @@ describe("wizard draft preparation", () => {
 			profile: {
 				physical_status: {
 					status: "feeling_good",
+					has_pain_or_limitation: false,
+					pain_or_limitation_affects_running: true,
 					pain_or_limitation_detail: " \n ",
 				},
 			},
@@ -91,6 +98,7 @@ describe("wizard draft preparation", () => {
 		});
 		assert.deepEqual(blankDetail.profile.physical_status, {
 			status: "feeling_good",
+			has_pain_or_limitation: false,
 		});
 	});
 

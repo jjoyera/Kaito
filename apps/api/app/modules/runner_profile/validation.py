@@ -25,6 +25,9 @@ _REMOVED_PRIOR_HISTORY_FIELDS = frozenset(
     }
 )
 _RECENT_CONSISTENCIES = frozenset({"irregular", "fairly_consistent", "very_consistent"})
+_HABITUAL_TERRAINS = frozenset({"mountain", "trail", "road", "mixed"})
+_MOUNTAIN_EXPERIENCES = frozenset({"low", "medium", "high"})
+_PRIOR_MODALITY_RACE_FREQUENCIES = frozenset({"never", "once", "multiple"})
 _PHYSICAL_STATUS_VALUES = frozenset(
     {"feeling_good", "carrying_fatigue", "recovering"}
 )
@@ -102,6 +105,7 @@ def _validate_structural(profile: dict[str, Any], goal: dict[str, Any]) -> None:
     _validate_availability(profile)
     _validate_baseline(profile)
     _validate_profile_numbers(profile)
+    _validate_prior_history(profile)
     _validate_training_preferences(profile)
     _validate_physical_status(profile)
     _validate_goal(goal)
@@ -159,6 +163,17 @@ def _validate_profile_numbers(profile: dict[str, Any]) -> None:
         raise ValueError("malformed_snapshot")
 
 
+def _validate_prior_history(profile: dict[str, Any]) -> None:
+    prior = _mapping(profile.get("prior_history", {})) or {}
+    for field in (
+        "habitual_terrain",
+        "mountain_experience",
+        "prior_modality_race_frequency",
+    ):
+        if field in prior and not isinstance(prior[field], str):
+            raise ValueError("malformed_snapshot")
+
+
 def _validate_training_preferences(profile: dict[str, Any]) -> None:
     preferences = _mapping(profile.get("training_preferences", {})) or {}
     if any(
@@ -174,6 +189,12 @@ def _validate_physical_status(profile: dict[str, Any]) -> None:
     detail = physical_status.get("pain_or_limitation_detail")
     if status is not None and not isinstance(status, str):
         raise ValueError("malformed_snapshot")
+    for field in (
+        "has_pain_or_limitation",
+        "pain_or_limitation_affects_running",
+    ):
+        if field in physical_status and not isinstance(physical_status[field], bool):
+            raise ValueError("malformed_snapshot")
     if detail is not None and (
         not isinstance(detail, str) or len(detail.strip()) > 500
     ):
@@ -217,13 +238,17 @@ def _clear_hidden(profile: dict[str, Any], goal: dict[str, Any]) -> None:
     profile.pop("restrictions", None)
     physical_status = _mapping(profile.get("physical_status"))
     if physical_status is not None:
-        detail = physical_status.get("pain_or_limitation_detail")
-        if isinstance(detail, str):
-            normalized_detail = detail.strip()
-            if normalized_detail:
-                physical_status["pain_or_limitation_detail"] = normalized_detail
-            else:
-                physical_status.pop("pain_or_limitation_detail", None)
+        if physical_status.get("has_pain_or_limitation") is False:
+            physical_status.pop("pain_or_limitation_affects_running", None)
+            physical_status.pop("pain_or_limitation_detail", None)
+        else:
+            detail = physical_status.get("pain_or_limitation_detail")
+            if isinstance(detail, str):
+                normalized_detail = detail.strip()
+                if normalized_detail:
+                    physical_status["pain_or_limitation_detail"] = normalized_detail
+                else:
+                    physical_status.pop("pain_or_limitation_detail", None)
         profile["physical_status"] = physical_status
     baseline = _mapping(profile.get("baseline_4_weeks"))
     if baseline is not None:
@@ -258,6 +283,7 @@ def _completion_diagnostics(
     _add_availability_diagnostics(profile, diagnostics)
     _add_training_preference_diagnostics(profile, diagnostics)
     _add_physical_status_diagnostics(profile, diagnostics)
+    _add_prior_history_diagnostics(profile, diagnostics)
     _add_baseline_diagnostics(profile, diagnostics)
     _add_goal_diagnostics(goal, validation_date, diagnostics)
     return diagnostics
@@ -269,7 +295,12 @@ def _add_required_diagnostics(
     required = (
         (
             profile.get("prior_history", {}),
-            ("longest_completed_distance_km",),
+            (
+                "longest_completed_distance_km",
+                "habitual_terrain",
+                "mountain_experience",
+                "prior_modality_race_frequency",
+            ),
             "profile.prior_history",
         ),
         (
@@ -345,6 +376,35 @@ def _add_physical_status_diagnostics(
         diagnostics.append(
             _diagnostic("out_of_range", "profile.physical_status.status")
         )
+    has_pain = physical_status.get("has_pain_or_limitation")
+    if has_pain is None:
+        diagnostics.append(
+            _diagnostic("required", "profile.physical_status.has_pain_or_limitation")
+        )
+    elif has_pain and physical_status.get("pain_or_limitation_affects_running") is None:
+        diagnostics.append(
+            _diagnostic(
+                "required",
+                "profile.physical_status.pain_or_limitation_affects_running",
+            )
+        )
+
+
+def _add_prior_history_diagnostics(
+    profile: JsonObject, diagnostics: list[Diagnostic]
+) -> None:
+    prior = profile.get("prior_history", {})
+    allowed = {
+        "habitual_terrain": _HABITUAL_TERRAINS,
+        "mountain_experience": _MOUNTAIN_EXPERIENCES,
+        "prior_modality_race_frequency": _PRIOR_MODALITY_RACE_FREQUENCIES,
+    }
+    for field, values in allowed.items():
+        value = prior.get(field)
+        if value is not None and value not in values:
+            diagnostics.append(
+                _diagnostic("out_of_range", f"profile.prior_history.{field}")
+            )
 
 
 def _add_baseline_diagnostics(

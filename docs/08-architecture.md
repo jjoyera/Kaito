@@ -21,6 +21,7 @@ Se centra en **cómo se organiza el sistema** (fronteras, responsabilidades, flu
 | Auth | Supabase Auth | Registro/login/sesión resueltos con proveedor gestionado y JWT estándar. |
 | Contrato de validación | Zod en frontend + Pydantic en backend | Validación temprana de UX y validación autoritativa en frontera API. |
 | Persistencia de onboarding | API protegida + SQLAlchemy runtime + JSONB/RLS de Supabase | El propietario se deriva del JWT; Supabase CLI es la única autoridad de esquema y RLS. |
+| Elegibilidad de enfoque | Política pura determinista en `planning` | Mantiene umbrales, precedencia de seguridad y códigos estables fuera del endpoint, la UI, persistencia y prompts. |
 | Núcleo IA | FastAPI (`apps/api`) | El backend controla contexto, reglas, validaciones y ownership de casos de uso de Kaito. |
 | Observabilidad IA | Langfuse | Trazabilidad de prompts, respuestas, costes y calidad de ejecución IA. |
 | Error monitoring | Sentry | Detección temprana y diagnóstico en frontend/backend. |
@@ -193,7 +194,7 @@ En módulos simples/CRUD, se permite simplificación sin imponer todas las capas
 
 - SQLAlchemy como capa ORM/repositorio en backend.
 - Para onboarding, Supabase CLI es la autoridad de esquema, migraciones y RLS; esta entrega no añade migración ni Alembic.
-- Los snapshots de onboarding permanecen como JSONB por propietario: `profile.availability.minutes_by_day` guarda únicamente minutos exactos dispersos y `profile.physical_status` guarda el enum requerido más un detalle opcional normalizado de hasta 500 caracteres. La API protegida valida al guardar y al leer; no existe migración SQL y la prueba local verifica CRUD propio y denegación entre dos usuarios.
+- Los snapshots de onboarding permanecen como JSONB por propietario: `profile.availability.minutes_by_day` guarda únicamente minutos exactos dispersos; `profile.prior_history` conserva sus tres enums canónicos; y `profile.physical_status` guarda el estado, presencia de dolor/limitación, impacto condicional al correr y detalle opcional normalizado. La API protegida valida al guardar y al leer; no existe migración SQL y la prueba local verifica CRUD propio y denegación entre dos usuarios.
 
 ### Invariantes de persistencia (MVP)
 
@@ -280,10 +281,20 @@ La IA solo usa contexto trazable del dominio MVP y reglas de:
 
 ### 10.2 Onboarding + elegibilidad de enfoque
 
-1. `web` recoge onboarding y valida formato con Zod.
-2. `api` revalida contrato e invariantes con Pydantic.
-3. Caso de uso de `planning` (subflujo `plan-eligibility`) calcula `PlanApproachEligibility`.
-4. `api` devuelve opciones elegibles/bloqueadas + motivo.
+1. `web` recoge onboarding y valida formato para una UX inmediata.
+2. `api` vuelve a validar tipos, enums, requeridos y limpieza condicional antes de persistir; la validación web no es autoridad.
+3. El recurso protegido `GET /planning/training-approach-eligibility` recibe `assessment_date` como fecha local explícita y carga el onboarding completado del propietario derivado del JWT.
+4. El caso de uso orquesta la lectura y delega todos los umbrales y precedencias a `ApproachEligibilityPolicy`, una política pura del dominio `planning`.
+5. El endpoint solo serializa los tres enfoques, códigos estables de bloqueo, recomendación y restricciones de seguridad. La IA consume después ese límite y no puede ampliarlo.
+
+```text
+planning/
+├── domain.py       # Política pura, resultados y códigos estables
+├── use_cases.py    # Lectura del onboarding del propietario + orquestación
+└── router.py       # Auth, outcomes HTTP y serialización
+```
+
+OCR y Backyard continúan admitidos por onboarding, pero la frontera de elegibilidad los rechaza explícitamente hasta que existan reglas propias.
 
 ### 10.3 Generación de plan
 
