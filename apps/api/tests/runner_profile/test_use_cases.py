@@ -25,7 +25,12 @@ def _completed_snapshot(*, target_date: str = "2026-08-01") -> dict:
         "contract_version": "1",
         "state": "completed",
         "profile": {
-            "prior_history": {"longest_completed_distance_km": 42.2},
+            "prior_history": {
+                "longest_completed_distance_km": 42.2,
+                "habitual_terrain": "mixed",
+                "mountain_experience": "medium",
+                "prior_modality_race_frequency": "once",
+            },
             "baseline_4_weeks": {
                 "sessions": 12,
                 "distance_km": 75.0,
@@ -43,6 +48,7 @@ def _completed_snapshot(*, target_date: str = "2026-08-01") -> dict:
             },
             "physical_status": {
                 "status": "feeling_good",
+                "has_pain_or_limitation": False,
             },
         },
         "goal": {
@@ -459,6 +465,8 @@ def test_save_normalizes_optional_physical_detail_and_round_trips_it():
     snapshot = _completed_snapshot()
     snapshot["profile"]["physical_status"] = {
         "status": "carrying_fatigue",
+        "has_pain_or_limitation": True,
+        "pain_or_limitation_affects_running": False,
         "pain_or_limitation_detail": "  Gemelo derecho\n  tras correr  ",
     }
     repository = StatefulRecordingRepository()
@@ -477,6 +485,8 @@ def test_save_normalizes_optional_physical_detail_and_round_trips_it():
 
     expected = {
         "status": "carrying_fatigue",
+        "has_pain_or_limitation": True,
+        "pain_or_limitation_affects_running": False,
         "pain_or_limitation_detail": "Gemelo derecho\n  tras correr",
     }
     assert saved.snapshot.profile["physical_status"] == expected
@@ -493,7 +503,10 @@ def test_save_omits_blank_optional_physical_detail():
         RecordingTransactions(RecordingRepository()),
     )
 
-    assert result.snapshot.profile["physical_status"] == {"status": "feeling_good"}
+    assert result.snapshot.profile["physical_status"] == {
+        "status": "feeling_good",
+        "has_pain_or_limitation": False,
+    }
 
 
 def test_save_demotes_completed_snapshot_when_physical_status_is_missing_or_invalid():
@@ -674,3 +687,80 @@ def test_save_uses_the_explicit_validation_date_for_date_demotion():
     )
     ((_, persisted_snapshot),) = repository.upserts
     assert persisted_snapshot == result.snapshot
+
+
+def test_completed_onboarding_requires_canonical_prior_history_and_pain_fields():
+    snapshot = _completed_snapshot()
+    snapshot["profile"]["prior_history"].pop("habitual_terrain")
+    snapshot["profile"]["prior_history"].pop("mountain_experience")
+    snapshot["profile"]["prior_history"].pop("prior_modality_race_frequency")
+    snapshot["profile"]["physical_status"].pop("has_pain_or_limitation")
+    result = save_onboarding(
+        UserContext("runner-1"),
+        SaveOnboardingInput(snapshot=snapshot, validation_date=date(2026, 7, 13)),
+        RecordingTransactions(RecordingRepository()),
+    )
+
+    fields = {diagnostic.field for diagnostic in result.diagnostics}
+    assert {
+        "profile.prior_history.habitual_terrain",
+        "profile.prior_history.mountain_experience",
+        "profile.prior_history.prior_modality_race_frequency",
+        "profile.physical_status.has_pain_or_limitation",
+    } <= fields
+    assert result.snapshot.state is OnboardingState.INCOMPLETE
+
+
+def test_backend_rejects_malformed_new_history_enums_and_pain_types():
+    for path, value in [
+        (("prior_history", "habitual_terrain"), 7),
+        (("prior_history", "mountain_experience"), False),
+        (("prior_history", "prior_modality_race_frequency"), []),
+        (("physical_status", "has_pain_or_limitation"), "no"),
+        (("physical_status", "pain_or_limitation_affects_running"), 1),
+    ]:
+        snapshot = _completed_snapshot()
+        snapshot["profile"][path[0]][path[1]] = value
+        transactions = RecordingTransactions(RecordingRepository())
+        with pytest.raises(InvalidOnboardingInput, match="^malformed_snapshot$"):
+            save_onboarding(
+                UserContext("runner-1"),
+                SaveOnboardingInput(
+                    snapshot=snapshot, validation_date=date(2026, 7, 13)
+                ),
+                transactions,
+            )
+        assert transactions.calls == []
+
+
+def test_pain_impact_is_conditional_and_false_clears_impact_and_detail():
+    snapshot = _completed_snapshot()
+    snapshot["profile"]["physical_status"].update(
+        {
+            "has_pain_or_limitation": False,
+            "pain_or_limitation_affects_running": True,
+            "pain_or_limitation_detail": "stale",
+        }
+    )
+    result = save_onboarding(
+        UserContext("runner-1"),
+        SaveOnboardingInput(snapshot=snapshot, validation_date=date(2026, 7, 13)),
+        RecordingTransactions(RecordingRepository()),
+    )
+    assert result.snapshot.profile["physical_status"] == {
+        "status": "feeling_good",
+        "has_pain_or_limitation": False,
+    }
+
+    snapshot = _completed_snapshot()
+    snapshot["profile"]["physical_status"]["has_pain_or_limitation"] = True
+    result = save_onboarding(
+        UserContext("runner-1"),
+        SaveOnboardingInput(snapshot=snapshot, validation_date=date(2026, 7, 13)),
+        RecordingTransactions(RecordingRepository()),
+    )
+    assert any(
+        item.field == "profile.physical_status.pain_or_limitation_affects_running"
+        and item.code == "required"
+        for item in result.diagnostics
+    )

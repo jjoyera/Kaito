@@ -68,6 +68,8 @@ export type TrainingPreferencesDraft = {
 
 export type PhysicalStatusDraft = {
 	status?: PhysicalStatus;
+	has_pain_or_limitation?: boolean;
+	pain_or_limitation_affects_running?: boolean;
 	pain_or_limitation_detail?: string;
 };
 
@@ -350,6 +352,24 @@ export function validatePhysicalStatusStep(
 		errors["profile.physical_status.status"] = "required";
 	} else if (!PHYSICAL_STATUSES.has(physicalStatus.status)) {
 		errors["profile.physical_status.status"] = "invalid_type";
+	}
+
+	if (physicalStatus.has_pain_or_limitation === undefined) {
+		errors["profile.physical_status.has_pain_or_limitation"] = "required";
+	} else if (typeof physicalStatus.has_pain_or_limitation !== "boolean") {
+		errors["profile.physical_status.has_pain_or_limitation"] = "invalid_type";
+	} else if (
+		physicalStatus.has_pain_or_limitation &&
+		physicalStatus.pain_or_limitation_affects_running === undefined
+	) {
+		errors["profile.physical_status.pain_or_limitation_affects_running"] =
+			"required";
+	} else if (
+		physicalStatus.pain_or_limitation_affects_running !== undefined &&
+		typeof physicalStatus.pain_or_limitation_affects_running !== "boolean"
+	) {
+		errors["profile.physical_status.pain_or_limitation_affects_running"] =
+			"invalid_type";
 	}
 
 	const detail = physicalStatus.pain_or_limitation_detail;

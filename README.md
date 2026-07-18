@@ -16,7 +16,7 @@ El estado implementado entrega autenticación y los seis primeros pasos del nuev
 | Área | Estado |
 | --- | --- |
 | Web | Next.js App Router con signup/login/sesión y onboarding privado en `/onboarding`. |
-| API | FastAPI con health check, verificación JWT Supabase vía JWKS y persistencia de onboarding. |
+| API | FastAPI con health check, verificación JWT Supabase vía JWKS, persistencia de onboarding y elegibilidad determinista de enfoque. |
 | Auth | Signup/login con Supabase, handoff de confirmación a login, backend protegido con `GET /auth/me` y `/onboarding` privado. |
 | Marca | Paleta y assets iniciales bajo `docs/` y `apps/web/public/`. |
 | SDD | Cambios guiados por OpenSpec en `openspec/changes/`. |
@@ -175,7 +175,7 @@ por paso, limpieza condicional de campos, mapeo de diagnósticos del backend a
 pasos, y los casos de uso de carga/guardado/completado. Tampoco requiere
 cuentas reales de Supabase ni el API corriendo.
 
-La verificación final superó `pnpm test:web-onboarding`, lint, build y E2E web; Ruff y 199 pruebas API no integradas; y la prueba local de RLS con dos usuarios (24 pruebas).
+La verificación final superó `pnpm test:web-onboarding`, lint, build y E2E web; Ruff y 233 pruebas API no integradas; y la prueba local de RLS con dos usuarios (24 pruebas).
 
 ## Arquitectura frontend
 
@@ -217,15 +217,16 @@ openspec/              Artefactos SDD/OpenSpec.
   objetivo; no muestra tecnicidad, altitud máxima ni botón de retroceso.
 - Los Pasos 1–6 usan el diseño visual lineal de siete pasos. El Paso 4 recoge disponibilidad con días compactos, atajos 45/60/120 y ajustes exactos de 15–300 minutos; requiere tres días y 150 minutos semanales. `Varía por día` es solo estado de UI.
 - Continuar guarda el mapa disperso `profile.availability.minutes_by_day` antes de avanzar; Atrás conserva el estado local, y los fallos permiten reintentar sin perder respuestas. No hay autosave ni duración base persistida.
-- El Paso 5 recoge las tres preferencias obligatorias y el Paso 6 exige un estado físico, admite un detalle opcional de hasta 500 caracteres y completa el onboarding con una CTA `Continuar`. El detalle se recorta en sus extremos y se omite si queda vacío.
-- Persistencia de onboarding por usuario mediante API protegida, JSONB con ownership y RLS de Supabase; no se añadió migración, compatibilidad para los cinco campos retirados ni almacenamiento de duración base. `profile.restrictions` continúa eliminándose y no se reutiliza. Consulta los detalles en los documentos de `docs/` y `apps/web/README.md`.
+- El Paso 5 recoge las tres preferencias obligatorias y el Paso 6 exige estado físico y presencia de dolor o limitación. Si existe, pregunta de forma accesible si afecta al correr y admite un detalle opcional de hasta 500 caracteres; al responder que no existe dolor, impacto y detalle se eliminan de forma determinista.
+- Persistencia de onboarding por usuario mediante API protegida, JSONB con ownership y RLS de Supabase; el backend valida los enums del historial previo y el estado físico estructurado sin confiar en la web.
+- Elegibilidad protegida en `GET /planning/training-approach-eligibility`: una política pura devuelve Camino Kaio, Modo Z y Kaioken con disponibilidad, códigos estables de bloqueo, recomendación y restricciones de seguridad para Trail y Ultra Trail. OCR y Backyard permanecen disponibles en onboarding, pero todavía no son modalidades elegibles.
 - La validación incluye lint, build, unitarios y E2E web, Ruff y pruebas API, además de prueba RLS local de dos usuarios.
 - Paquete `@kaito/api-client` reservado para un futuro cliente generado; hoy no
   exporta código ni contratos de producto.
 
-Todavía no hay password reset, magic links, social auth, demo access, selección de
-enfoque de plan, dashboard, Strava, IA/RAG, planes de entrenamiento reales ni
-despliegue/CD.
+Todavía no hay password reset, magic links, social auth, demo access, pantalla de
+selección de enfoque, dashboard, Strava, IA/RAG, planes de entrenamiento reales ni
+despliegue/CD. El backend ya calcula qué enfoques puede ofrecer esa futura pantalla.
 
 ## Flujo SDD/OpenSpec
 

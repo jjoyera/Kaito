@@ -23,6 +23,9 @@ The contract MUST use the following stable identifiers, answer types, requiredne
 | Block | Stable field identifier | Answer type / allowed values | Requiredness and canonical unit |
 | --- | --- | --- | --- |
 | profile | `profile.prior_history.longest_completed_distance_km` | non-negative number | completion-required; kilometres |
+| profile | `profile.prior_history.habitual_terrain` | enum: `mountain`, `trail`, `road`, `mixed` | completion-required; personalization context only |
+| profile | `profile.prior_history.mountain_experience` | enum: `low`, `medium`, `high` | completion-required |
+| profile | `profile.prior_history.prior_modality_race_frequency` | enum: `never`, `once`, `multiple` | completion-required |
 | profile | `profile.baseline_4_weeks.sessions` | non-negative integer | completion-required; sessions in preceding 4 calendar weeks |
 | profile | `profile.baseline_4_weeks.distance_km` | non-negative number | completion-required; kilometres in preceding 4 calendar weeks |
 | profile | `profile.baseline_4_weeks.positive_elevation_m` | non-negative number | completion-required; metres in preceding 4 calendar weeks |
@@ -33,7 +36,9 @@ The contract MUST use the following stable identifiers, answer types, requiredne
 | profile | `profile.training_preferences.gym_access` | enum: `yes`, `home_only` | completion-required |
 | profile | `profile.training_preferences.planning_preference` | enum: `fixed_routine`, `flexible_weekly` | completion-required |
 | profile | `profile.physical_status.status` | enum: `feeling_good`, `carrying_fatigue`, `recovering` | completion-required |
-| profile | `profile.physical_status.pain_or_limitation_detail` | string, maximum 500 characters after trimming surrounding whitespace | optional; blank values are omitted and internal whitespace/newlines are preserved |
+| profile | `profile.physical_status.has_pain_or_limitation` | boolean | completion-required |
+| profile | `profile.physical_status.pain_or_limitation_affects_running` | boolean | conditional-required when `has_pain_or_limitation=true` |
+| profile | `profile.physical_status.pain_or_limitation_detail` | string, maximum 500 characters after trimming surrounding whitespace | optional descriptive text when `has_pain_or_limitation=true`; blank values are omitted and internal whitespace/newlines are preserved |
 | goal | `goal.modality` | enum: `trail`, `ultra_trail`, `ocr`, `backyard` | completion-required |
 | goal | `goal.target_date` | string `YYYY-MM-DD` | completion-required; local calendar date |
 | goal | `goal.target_distance_km` | positive number | conditional-required for `trail`, `ultra_trail`, `ocr`; kilometres |
@@ -128,6 +133,13 @@ Prior history MUST remain observable and separate from the previous four calenda
 - WHEN the payload is consumed
 - THEN each is independently addressable and no approach is selected by the contract.
 
+#### Scenario: Backend validates prior-history enums
+
+- GIVEN a completed payload with a missing, wrongly typed, or unrecognized `habitual_terrain`, `mountain_experience`, or `prior_modality_race_frequency`
+- WHEN the backend validates the snapshot
+- THEN malformed types are rejected and missing or unrecognized enum values prevent completion with stable field diagnostics
+- AND browser validation alone is never trusted.
+
 ### Requirement: Availability threshold
 
 `profile.availability.minutes_by_day` MUST be a sparse object whose only allowed keys are `monday`, `tuesday`, `wednesday`, `thursday`, `friday`, `saturday`, and `sunday`. A present key means that day is available and its value MUST be an integer from 15 through 300 inclusive. An unavailable day MUST be omitted. Null values and unknown keys are invalid. Completion MUST require at least 3 present available days and at least 150 total minutes per week.
@@ -156,7 +168,19 @@ The contract MUST require mountain/trail access, gym access, and planning prefer
 
 ### Requirement: Physical status is explicit and safely normalized
 
-The contract MUST require `profile.physical_status.status` with one documented enum value. `profile.physical_status.pain_or_limitation_detail` MUST remain optional, MUST be trimmed only at its surrounding boundary, MUST preserve internal whitespace and newlines, and MUST be omitted when blank. Its normalized value MUST NOT exceed 500 characters. Legacy `profile.restrictions` MUST continue to be removed rather than translated or reused.
+The contract MUST require `profile.physical_status.status` and the boolean `profile.physical_status.has_pain_or_limitation`. When pain or a limitation is present, `profile.physical_status.pain_or_limitation_affects_running` MUST also be present. `profile.physical_status.pain_or_limitation_detail` remains optional descriptive text, MUST be trimmed only at its surrounding boundary, MUST preserve internal whitespace and newlines, and MUST be omitted when blank. Its normalized value MUST NOT exceed 500 characters. When `has_pain_or_limitation=false`, both impact and detail MUST be cleared deterministically. Legacy `profile.restrictions` MUST continue to be removed rather than translated or reused.
+
+#### Scenario: Absence of pain clears dependent answers
+
+- GIVEN `has_pain_or_limitation=false` with stale impact or detail answers
+- WHEN the snapshot is normalized
+- THEN impact and detail are omitted deterministically.
+
+#### Scenario: Pain impact is completion-required conditionally
+
+- GIVEN `has_pain_or_limitation=true` without `pain_or_limitation_affects_running`
+- WHEN completion is requested
+- THEN completion is blocked with a stable diagnostic for the impact field.
 
 #### Scenario: Optional physical detail is normalized
 

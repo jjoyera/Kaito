@@ -239,11 +239,19 @@ describe("validateStep(physical_status)", () => {
 	test("requires a physical status but accepts an omitted detail", () => {
 		assert.deepEqual(validateStep("physical_status", draft()), {
 			"profile.physical_status.status": "required",
+			"profile.physical_status.has_pain_or_limitation": "required",
 		});
 		assert.deepEqual(
 			validateStep(
 				"physical_status",
-				draft({ profile: { physical_status: { status: "feeling_good" } } }),
+				draft({
+					profile: {
+						physical_status: {
+							status: "feeling_good",
+							has_pain_or_limitation: false,
+						},
+					},
+				}),
 			),
 			{},
 		);
@@ -256,6 +264,7 @@ describe("validateStep(physical_status)", () => {
 				profile: {
 					physical_status: {
 						status: "fine",
+						has_pain_or_limitation: false,
 						pain_or_limitation_detail: "x".repeat(501),
 					} as unknown as OnboardingSnapshotDraft["profile"]["physical_status"],
 				},
@@ -275,6 +284,8 @@ describe("validateStep(physical_status)", () => {
 					profile: {
 						physical_status: {
 							status: "recovering",
+							has_pain_or_limitation: true,
+							pain_or_limitation_affects_running: true,
 							pain_or_limitation_detail: "Rodilla derecha\n  al bajar",
 						},
 					},
@@ -283,6 +294,32 @@ describe("validateStep(physical_status)", () => {
 			{},
 		);
 	});
+});
+
+test("requires structured pain answers and conditionally requires running impact", () => {
+	assert.deepEqual(
+		validateStep(
+			"physical_status",
+			draft({ profile: { physical_status: { status: "feeling_good" } } }),
+		),
+		{ "profile.physical_status.has_pain_or_limitation": "required" },
+	);
+	assert.deepEqual(
+		validateStep(
+			"physical_status",
+			draft({
+				profile: {
+					physical_status: {
+						status: "feeling_good",
+						has_pain_or_limitation: true,
+					},
+				},
+			}),
+		),
+		{
+			"profile.physical_status.pain_or_limitation_affects_running": "required",
+		},
+	);
 });
 
 describe("validateStep(preferences)", () => {

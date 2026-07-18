@@ -15,6 +15,7 @@ from app.core.database import (
     guard_connection,
 )
 from app.modules.auth.router import router as auth_router
+from app.modules.planning.router import router as planning_router
 from app.modules.runner_profile.repository import SqlAlchemyOwnerTransactionFactory
 from app.modules.runner_profile.router import router as runner_profile_router
 from app.observability.sentry import init_sentry
@@ -84,6 +85,7 @@ if web_settings.allowed_origins:
 
 app.include_router(auth_router)
 app.include_router(runner_profile_router)
+app.include_router(planning_router)
 
 
 @app.exception_handler(AuthConfigError)
