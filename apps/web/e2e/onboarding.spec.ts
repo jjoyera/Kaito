@@ -292,6 +292,118 @@ async function startAtAvailabilityStep(page: Page) {
 	return savedSnapshots;
 }
 
+async function startAtPreferencesStep(
+	page: Page,
+	trainingPreferences?: Record<string, string>,
+) {
+	await authenticate(page);
+	let saveCount = 0;
+	let savedSnapshot: Snapshot | undefined;
+	const snapshot: Snapshot = {
+		contract_version: "1",
+		state: "incomplete",
+		profile: {
+			prior_history: {
+				longest_completed_distance_km: 45,
+				habitual_terrain: "mountain",
+				mountain_experience: "medium",
+				prior_modality_race_frequency: "once",
+			},
+			baseline_4_weeks: {
+				sessions: 8,
+				distance_km: 50,
+				positive_elevation_m: 1200,
+				longest_outing_km: 18,
+				recent_consistency: "fairly_consistent",
+			},
+			availability: {
+				minutes_by_day: { monday: 60, wednesday: 60, saturday: 90 },
+			},
+			...(trainingPreferences
+				? { training_preferences: trainingPreferences }
+				: {}),
+		},
+		goal: {
+			modality: "trail",
+			target_date: "2026-10-03",
+			target_distance_km: 45,
+			positive_elevation_m: 1800,
+		},
+	};
+	await page.route(`${API_ORIGIN}/**`, async (route: Route) => {
+		if (route.request().method() === "GET") {
+			await route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: JSON.stringify({ snapshot, diagnostics: [] }),
+			});
+			return;
+		}
+		saveCount += 1;
+		const body = JSON.parse(route.request().postData() ?? "{}");
+		savedSnapshot = body.snapshot;
+		await route.fulfill({
+			status: 200,
+			contentType: "application/json",
+			body: JSON.stringify({ snapshot: body.snapshot, diagnostics: [] }),
+		});
+	});
+	await page.goto("/onboarding");
+	await page.getByRole("button", { name: "Crear mi plan" }).click();
+	return {
+		getSaveCount: () => saveCount,
+		getSavedSnapshot: () => savedSnapshot,
+	};
+}
+
+test.describe("onboarding Step 5 preferences", () => {
+	test("shows accessible preference groups, blocks missing choices, and saves exactly once", async ({ page }) => {
+		const state = await startAtPreferencesStep(page);
+
+		await expect(page.getByText("Paso 5 de 7")).toBeVisible();
+		await expect(page.getByText("71%", { exact: true })).toBeVisible();
+		await expect(page.getByRole("heading", { name: "Tus preferencias y recursos" })).toBeVisible();
+		await expect(page.getByText("Cada plan se adapta a lo que tienes disponible de verdad.")).toBeVisible();
+		await expect(page.getByRole("radiogroup", { name: "Acceso a montaña / desnivel" })).toBeVisible();
+		await expect(page.getByRole("radiogroup", { name: "Acceso a gimnasio" })).toBeVisible();
+		await expect(page.getByRole("radiogroup", { name: "Preferencia de planificación" })).toBeVisible();
+
+		await page.getByRole("button", { name: "Completar" }).click();
+		expect(state.getSaveCount()).toBe(0);
+		await expect(page.locator(".onboarding-field-error[role='alert']")).toHaveCount(3);
+
+		await page.getByRole("radio", { name: "Solo fines de semana" }).check();
+		await page.getByRole("radio", { name: "Solo en casa" }).check();
+		await page.getByRole("radio", { name: "Flexible por semana" }).check();
+		await page.getByRole("button", { name: "Completar" }).click();
+		await expect.poll(state.getSaveCount).toBe(1);
+		expect(state.getSavedSnapshot()?.profile.training_preferences).toEqual({
+			mountain_trail_access: "weekends_only",
+			gym_access: "home_only",
+			planning_preference: "flexible_weekly",
+		});
+		expect(state.getSavedSnapshot()?.profile).not.toHaveProperty("restrictions");
+	});
+
+	test("preserves loaded preferences and mounted choices after Back and return", async ({ page }) => {
+		const state = await startAtPreferencesStep(page, {
+			mountain_trail_access: "easy_access",
+			gym_access: "yes",
+			planning_preference: "fixed_routine",
+		});
+
+		await expect(page.getByRole("radio", { name: "Sí, fácil acceso" })).toBeChecked();
+		await expect(page.getByRole("radio", { name: "Sí", exact: true })).toBeChecked();
+		await expect(page.getByRole("radio", { name: "Rutina fija" })).toBeChecked();
+		await page.getByRole("radio", { name: "Muy limitado" }).check();
+		await page.getByRole("button", { name: /Atrás/ }).click();
+		expect(state.getSaveCount()).toBe(0);
+		await page.getByRole("button", { name: "Continuar" }).click();
+		await expect(page.getByRole("radio", { name: "Muy limitado" })).toBeChecked();
+		await expect(page.getByRole("radio", { name: "Sí", exact: true })).toBeChecked();
+	});
+});
+
 test.describe("onboarding availability step", () => {
 	test("presents the approved accessible controls and preserves exact overrides", async ({
 		page,

@@ -28,7 +28,7 @@ import {
 	type GoalDraft,
 	type OnboardingSnapshotDraft,
 	type PriorHistoryDraft,
-	type RestrictionsDraft,
+	type TrainingPreferencesDraft,
 } from "../_domain/step-validation";
 import { ONBOARDING_STEPS } from "../_domain/steps";
 import { completeOnboarding } from "../_use-cases/complete-onboarding";
@@ -174,12 +174,15 @@ export function OnboardingWizard() {
 		setAvailabilityIssues([]);
 	}
 
-	function updateRestrictions(patch: Partial<RestrictionsDraft>) {
+	function updatePreferences(patch: Partial<TrainingPreferencesDraft>) {
 		updateDraft((current) => ({
 			...current,
 			profile: {
 				...current.profile,
-				restrictions: { ...current.profile.restrictions, ...patch },
+				training_preferences: {
+					...current.profile.training_preferences,
+					...patch,
+				},
 			},
 		}));
 	}
@@ -282,7 +285,7 @@ export function OnboardingWizard() {
 				availability={wizard.availability}
 				availabilityIssues={availabilityIssues}
 				onAvailabilityAction={updateAvailability}
-				onRestrictionsChange={updateRestrictions}
+				onPreferencesChange={updatePreferences}
 			>
 				{saveStatus === "save_error" ? (
 					<p className="onboarding-form-error" role="alert">

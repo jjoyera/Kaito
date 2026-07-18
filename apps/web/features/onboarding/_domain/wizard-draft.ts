@@ -1,8 +1,5 @@
 import type { OnboardingDiagnostic } from "../_adapters/onboarding-api";
-import {
-	clearHiddenGoalFields,
-	clearRestrictionDetail,
-} from "./conditional-clearing";
+import { clearHiddenGoalFields } from "./conditional-clearing";
 import {
 	validateStep,
 	type OnboardingSnapshotDraft,
@@ -31,12 +28,7 @@ export function applyConditionalClearing(
 	draft: OnboardingSnapshotDraft,
 ): OnboardingSnapshotDraft {
 	return {
-		profile: {
-			...draft.profile,
-			restrictions: draft.profile.restrictions
-				? clearRestrictionDetail(draft.profile.restrictions)
-				: draft.profile.restrictions,
-		},
+		profile: { ...draft.profile },
 		goal: clearHiddenGoalFields(draft.goal),
 	};
 }

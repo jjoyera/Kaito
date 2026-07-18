@@ -40,12 +40,12 @@ describe("mapDiagnosticFieldsToSteps", () => {
 	test("de-duplicates and orders steps by the fixed wizard order", () => {
 		assert.deepEqual(
 			mapDiagnosticFieldsToSteps([
-				"profile.restrictions.detail",
+				"profile.training_preferences.gym_access",
 				"goal.target_date",
 				"goal.modality",
 				"profile.availability.minutes_by_day",
 			]),
-			["goal", "availability", "restrictions"],
+			["goal", "availability", "preferences"],
 		);
 	});
 

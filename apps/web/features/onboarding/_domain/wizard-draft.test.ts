@@ -28,7 +28,11 @@ const completeDraft: OnboardingSnapshotDraft = {
 		availability: {
 			minutes_by_day: { monday: 60, wednesday: 60, saturday: 90 },
 		},
-		restrictions: { has_restrictions: false },
+		training_preferences: {
+			mountain_trail_access: "easy_access",
+			gym_access: "yes",
+			planning_preference: "fixed_routine",
+		},
 	},
 	goal: {
 		modality: "trail" as const,
@@ -58,12 +62,13 @@ describe("wizard draft normalization", () => {
 });
 
 describe("wizard draft preparation", () => {
-	test("clears hidden goal and restriction values without mutating the draft", () => {
+	test("clears hidden goal values without mutating preferences or the draft", () => {
 		const draft = {
 			profile: {
-				restrictions: {
-					has_restrictions: false as const,
-					detail: "Do not persist",
+				training_preferences: {
+					mountain_trail_access: "very_limited" as const,
+					gym_access: "home_only" as const,
+					planning_preference: "flexible_weekly" as const,
 				},
 			},
 			goal: {
@@ -76,9 +81,8 @@ describe("wizard draft preparation", () => {
 
 		const cleared = applyConditionalClearing(draft);
 
-		assert.equal(cleared.profile.restrictions?.detail, undefined);
+		assert.deepEqual(cleared.profile.training_preferences, draft.profile.training_preferences);
 		assert.equal(cleared.goal.obstacle_count, undefined);
-		assert.equal(draft.profile.restrictions.detail, "Do not persist");
 		assert.equal(draft.goal.obstacle_count, 10);
 	});
 });

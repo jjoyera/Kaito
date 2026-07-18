@@ -710,8 +710,15 @@ p {
 	gap: 1.35rem;
 }
 
-.onboarding-prior-history {
+.onboarding-prior-history,
+.onboarding-preferences {
 	gap: 1.35rem;
+}
+
+.onboarding-preference-label {
+	margin: 0;
+	font-size: 0.875rem;
+	font-weight: 700;
 }
 
 .onboarding-number-with-suffix {

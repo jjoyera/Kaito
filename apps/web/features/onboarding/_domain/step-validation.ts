@@ -49,9 +49,17 @@ export type AvailabilityDraft = {
 	minutes_by_day?: Partial<Record<WeekDay, number>>;
 };
 
-export type RestrictionsDraft = {
-	has_restrictions?: boolean;
-	detail?: string;
+export type MountainTrailAccess =
+	| "easy_access"
+	| "weekends_only"
+	| "very_limited";
+export type GymAccess = "yes" | "home_only";
+export type PlanningPreference = "fixed_routine" | "flexible_weekly";
+
+export type TrainingPreferencesDraft = {
+	mountain_trail_access?: MountainTrailAccess;
+	gym_access?: GymAccess;
+	planning_preference?: PlanningPreference;
 };
 
 export type OnboardingSnapshotDraft = {
@@ -59,7 +67,7 @@ export type OnboardingSnapshotDraft = {
 		prior_history?: PriorHistoryDraft;
 		baseline_4_weeks?: BaselineDraft;
 		availability?: AvailabilityDraft;
-		restrictions?: RestrictionsDraft;
+		training_preferences?: TrainingPreferencesDraft;
 	};
 	goal: GoalDraft;
 };
@@ -93,6 +101,16 @@ const RECENT_CONSISTENCIES = new Set<RecentConsistency>([
 	"irregular",
 	"fairly_consistent",
 	"very_consistent",
+]);
+const MOUNTAIN_TRAIL_ACCESS = new Set<MountainTrailAccess>([
+	"easy_access",
+	"weekends_only",
+	"very_limited",
+]);
+const GYM_ACCESS = new Set<GymAccess>(["yes", "home_only"]);
+const PLANNING_PREFERENCES = new Set<PlanningPreference>([
+	"fixed_routine",
+	"flexible_weekly",
 ]);
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -278,31 +296,34 @@ export function validateAvailabilityStep(
 	};
 }
 
-export function validateRestrictionsStep(
-	restrictions: RestrictionsDraft,
+export function validatePreferencesStep(
+	preferences: TrainingPreferencesDraft,
 ): FieldErrors {
 	const errors: FieldErrors = {};
+	const fields = [
+		[
+			"profile.training_preferences.mountain_trail_access",
+			preferences.mountain_trail_access,
+			MOUNTAIN_TRAIL_ACCESS,
+		],
+		[
+			"profile.training_preferences.gym_access",
+			preferences.gym_access,
+			GYM_ACCESS,
+		],
+		[
+			"profile.training_preferences.planning_preference",
+			preferences.planning_preference,
+			PLANNING_PREFERENCES,
+		],
+	] as const;
 
-	if (restrictions.has_restrictions === undefined) {
-		errors["profile.restrictions.has_restrictions"] = "required";
-		return errors;
+	for (const [field, value, allowed] of fields) {
+		if (value === undefined) errors[field] = "required";
+		else if (!(allowed as ReadonlySet<string>).has(value)) {
+			errors[field] = "invalid_type";
+		}
 	}
-	if (typeof restrictions.has_restrictions !== "boolean") {
-		errors["profile.restrictions.has_restrictions"] = "invalid_type";
-		return errors;
-	}
-
-	if (!restrictions.has_restrictions) {
-		return errors;
-	}
-
-	const detail = restrictions.detail?.trim() ?? "";
-	if (detail.length === 0) {
-		errors["profile.restrictions.detail"] = "required";
-	} else if (detail.length > 500) {
-		errors["profile.restrictions.detail"] = "invalid_length";
-	}
-
 	return errors;
 }
 
@@ -319,7 +340,7 @@ export function validateStep(
 			return validateBaselineStep(snapshot.profile.baseline_4_weeks ?? {});
 		case "availability":
 			return validateAvailabilityStep(snapshot.profile.availability ?? {});
-		case "restrictions":
-			return validateRestrictionsStep(snapshot.profile.restrictions ?? {});
+		case "preferences":
+			return validatePreferencesStep(snapshot.profile.training_preferences ?? {});
 	}
 }
