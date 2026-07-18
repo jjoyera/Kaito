@@ -36,6 +36,7 @@ import { completeOnboarding } from "../_use-cases/complete-onboarding";
 import { loadOnboardingDraft } from "../_use-cases/load-onboarding-draft";
 import { saveOnboardingStep } from "../_use-cases/save-onboarding-step";
 import { CompletionView } from "./completion-view";
+import { OnboardingStatusSurface } from "./onboarding-status-surface";
 import { OnboardingStepContent } from "./onboarding-step-content";
 import { StepNavigator } from "./step-navigator";
 
@@ -267,14 +268,23 @@ export function OnboardingWizard() {
 	}
 
 	if (phase === "loading") {
-		return <p aria-live="polite" role="status">Cargando tu onboarding…</p>;
+		return (
+			<OnboardingStatusSurface
+				variant="loading"
+				title="Preparando tu plan"
+				description="Estamos recuperando tus respuestas para que puedas continuar donde lo dejaste."
+			/>
+		);
 	}
 
 	if (phase === "load_error") {
 		return (
-			<p className="onboarding-form-error" role="alert">
-				No hemos podido cargar tu onboarding ahora mismo. Inténtalo de nuevo en unos minutos.
-			</p>
+			<OnboardingStatusSurface
+				variant="error"
+				title="No hemos podido cargar tus respuestas"
+				description="Puede ser un problema de conexión. Tus datos siguen a salvo y puedes intentarlo de nuevo sin salir de esta página."
+				action={{ label: "Reintentar", href: "/onboarding" }}
+			/>
 		);
 	}
 

@@ -1,7 +1,11 @@
+import { OnboardingStatusSurface } from "../../../features/onboarding/_components/onboarding-status-surface";
+
 export default function OnboardingLoading() {
 	return (
-		<p aria-live="polite" role="status">
-			Loading your onboarding area…
-		</p>
+		<OnboardingStatusSurface
+			variant="loading"
+			title="Preparando tu plan"
+			description="Estamos preparando tu espacio de onboarding para que puedas continuar con tu plan."
+		/>
 	);
 }
