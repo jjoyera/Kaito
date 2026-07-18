@@ -7,6 +7,13 @@ from typing import Any, Literal
 Approach = Literal["kaio_path", "mode_z", "kaioken"]
 
 
+@dataclass(frozen=True, slots=True)
+class TrainingPlanDraft:
+    plan_id: str
+    status: Literal["draft"]
+    plan_approach: Approach
+
+
 class UnsupportedEligibilityModality(ValueError):
     def __init__(self) -> None:
         super().__init__("unsupported_modality")

@@ -15,6 +15,7 @@ from app.core.database import (
     guard_connection,
 )
 from app.modules.auth.router import router as auth_router
+from app.modules.planning.repository import SqlAlchemyTrainingPlanTransactionFactory
 from app.modules.planning.router import router as planning_router
 from app.modules.runner_profile.repository import SqlAlchemyOwnerTransactionFactory
 from app.modules.runner_profile.router import router as runner_profile_router
@@ -48,6 +49,9 @@ async def lifespan(app: FastAPI):
         app.state.onboarding_transactions = SqlAlchemyOwnerTransactionFactory(
             engine, database_settings.expected_role
         )
+        app.state.training_plan_transactions = SqlAlchemyTrainingPlanTransactionFactory(
+            engine, database_settings.expected_role
+        )
     except DatabaseConfigurationError as error:
         failed = True
         reported_failure = error
@@ -67,6 +71,8 @@ async def lifespan(app: FastAPI):
     finally:
         if hasattr(app.state, "onboarding_transactions"):
             del app.state.onboarding_transactions
+        if hasattr(app.state, "training_plan_transactions"):
+            del app.state.training_plan_transactions
         if engine:
             _dispose_safely(engine)
         engine = database_settings = None

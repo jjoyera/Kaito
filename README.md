@@ -11,12 +11,12 @@ forma incremental.
 
 ## Estado actual
 
-El estado implementado entrega autenticación y los seis primeros pasos del nuevo onboarding.
+El estado implementado entrega autenticación, onboarding completo, selección explícita de enfoque y persistencia del borrador inicial de plan.
 
 | Área | Estado |
 | --- | --- |
-| Web | Next.js App Router con signup/login/sesión y onboarding privado en `/onboarding`. |
-| API | FastAPI con health check, verificación JWT Supabase vía JWKS, persistencia de onboarding y elegibilidad determinista de enfoque. |
+| Web | Next.js App Router con signup/login/sesión, onboarding privado, elección accesible de enfoque y destino estático `/plan/generating`. |
+| API | FastAPI con verificación JWT, onboarding, elegibilidad determinista y borrador owner-bound de `TrainingPlan`. |
 | Auth | Signup/login con Supabase, handoff de confirmación a login, backend protegido con `GET /auth/me` y `/onboarding` privado. |
 | Marca | Paleta y assets iniciales bajo `docs/` y `apps/web/public/`. |
 | SDD | Cambios guiados por OpenSpec en `openspec/changes/`. |
@@ -170,12 +170,11 @@ uv run pytest
 normalización de resultados de auth, cooldown, bridge de confirmación y handoff
 autenticado. No requiere cuentas reales de Supabase.
 
-`pnpm test:web-onboarding` cubre el wizard de onboarding: pasos y validación
-por paso, limpieza condicional de campos, mapeo de diagnósticos del backend a
-pasos, y los casos de uso de carga/guardado/completado. Tampoco requiere
-cuentas reales de Supabase ni el API corriendo.
+`pnpm test:web-onboarding` cubre el wizard, sus validaciones, la carga y guardado,
+y el contrato puro de elección de enfoque y borrador. No requiere cuentas reales
+de Supabase ni el API corriendo.
 
-La verificación final superó `pnpm test:web-onboarding`, lint, build y E2E web; Ruff y 233 pruebas API no integradas; y la prueba local de RLS con dos usuarios (24 pruebas).
+La verificación de esta capacidad cubre `pnpm test:web-onboarding`, lint, build y el E2E enfocado de onboarding; Ruff y 241 pruebas API no integradas. La migración incluye RLS owner-bound y se valida con Supabase local cuando ese entorno está disponible.
 
 ## Arquitectura frontend
 
@@ -220,13 +219,15 @@ openspec/              Artefactos SDD/OpenSpec.
 - El Paso 5 recoge las tres preferencias obligatorias y el Paso 6 exige estado físico y presencia de dolor o limitación. Si existe, pregunta de forma accesible si afecta al correr y admite un detalle opcional de hasta 500 caracteres; al responder que no existe dolor, impacto y detalle se eliminan de forma determinista.
 - Persistencia de onboarding por usuario mediante API protegida, JSONB con ownership y RLS de Supabase; el backend valida los enums del historial previo y el estado físico estructurado sin confiar en la web.
 - Elegibilidad protegida en `GET /planning/training-approach-eligibility`: una política pura devuelve Camino Kaio, Modo Z y Kaioken con disponibilidad, códigos estables de bloqueo, recomendación y restricciones de seguridad para Trail y Ultra Trail. OCR y Backyard permanecen disponibles en onboarding, pero todavía no son modalidades elegibles.
+- El Paso 7 presenta los enfoques elegibles, conserva la selección al reintentar fallos de conexión y guarda un único borrador owner-bound antes de navegar a `/plan/generating`; los bloqueos o datos desactualizados vuelven a comprobar la elegibilidad y los estados incompletos regresan al onboarding.
 - La validación incluye lint, build, unitarios y E2E web, Ruff y pruebas API, además de prueba RLS local de dos usuarios.
 - Paquete `@kaito/api-client` reservado para un futuro cliente generado; hoy no
   exporta código ni contratos de producto.
 
-Todavía no hay password reset, magic links, social auth, demo access, pantalla de
-selección de enfoque, dashboard, Strava, IA/RAG, planes de entrenamiento reales ni
-despliegue/CD. El backend ya calcula qué enfoques puede ofrecer esa futura pantalla.
+Todavía no hay password reset, magic links, social auth, demo access, dashboard,
+Strava, IA/RAG, generación de planes de entrenamiento reales ni despliegue/CD. Tras
+el Paso 7, la selección crea o actualiza el borrador y `/plan/generating` muestra por
+ahora el destino estático de generación.
 
 ## Flujo SDD/OpenSpec
 

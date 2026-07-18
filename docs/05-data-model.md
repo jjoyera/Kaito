@@ -70,13 +70,13 @@ Su objetivo es alinear producto, journeys y requisitos funcionales sobre **qué 
 ### `TrainingPlan`
 
 - **Propósito**: encapsular una versión de planificación (inicial o reajustada) del usuario.
-- **Campos clave**: `id`, `userId`, `status` (`draft|active|archived`), `startDate`, `endDate`, `version`, `previousPlanId?`, `planApproach` (`kaio_path|z_mode|kaioken`), `generatedAt`, `activatedAt`.
+- **Campos clave**: el borrador runtime mínimo persiste `id`, `userId`, `status` (`draft|active|archived`), `planApproach` (`kaio_path|mode_z|kaioken`), `createdAt` y `updatedAt`. `startDate`, `endDate`, `version`, `previousPlanId?`, `generatedAt` y `activatedAt` se incorporarán cuando exista generación/activación real.
 - **Relaciones**:
   - pertenece a `User`.
   - 1:N con `TrainingSession`.
   - 1:N con `PlanAdjustment`.
   - 1:1 lógico con `TrainingGoal` principal (MVP).
-- **Notas**: solo un plan `active` por usuario. Cuando Kaito reajusta, crea una nueva versión de `TrainingPlan` basada en el plan anterior. El plan previo queda archivado como histórico para poder comparar qué cambió. El campo `planApproach` guarda el enfoque elegido para la generación del plan: Camino Kaio (conservador), Modo Z (equilibrado) o Kaioken (exigente).
+- **Notas**: la base de datos impide más de un plan `draft` y más de un plan `active` por usuario. Mientras siga en `draft`, guardar otra opción actualiza el mismo registro de forma idempotente; un plan activo impide mutar ese borrador. Cuando Kaito reajuste, creará una nueva versión y archivará la anterior. `planApproach` guarda Camino Kaio, Modo Z o Kaioken.
 
 ### `TrainingSession`
 
@@ -102,7 +102,7 @@ Su objetivo es alinear producto, journeys y requisitos funcionales sobre **qué 
 ### `PlanApproachEligibility`
 
 - **Propósito**: registrar qué enfoques de plan puede elegir el usuario en un momento concreto y por qué algunos pueden estar bloqueados.
-- **Campos clave**: `id`, `userId`, `evaluatedAt`, `recommendedApproach` (`kaio_path|z_mode|kaioken`), `availableApproaches`, `blockedApproaches`, `blockingReasons`, `inputSummary`.
+- **Campos clave**: `id`, `userId`, `evaluatedAt`, `recommendedApproach` (`kaio_path|mode_z`), `availableApproaches`, `blockedApproaches`, `blockingReasons`, `inputSummary`.
 - **Relaciones**: pertenece a `User`; puede referenciar el `RunnerProfile`, `TrainingGoal`, `TrainingPlan` o métricas recientes usadas para la evaluación.
 - **Notas**: las opciones bloqueadas deben poder mostrarse al usuario con explicación. El bloqueo no es permanente: puede cambiar si el usuario mejora su base, cumple el plan y demuestra preparación suficiente.
 
@@ -127,7 +127,7 @@ Su objetivo es alinear producto, journeys y requisitos funcionales sobre **qué 
 
 ## 6) Reglas de datos / invariantes
 
-1. **Un solo plan activo por usuario**.
+1. **Un solo plan activo y un solo borrador por usuario**.
 2. **Un objetivo principal por plan activo**.
 3. **Cada sesión pertenece a un único plan**.
 4. **Cada log pertenece a un usuario y a una sesión existente de su plan activo o histórico**.

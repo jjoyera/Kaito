@@ -100,11 +100,11 @@ jobs:
         working-directory: apps/api
         run: uv run pytest tests/ --ignore=tests/integration
 
-      - name: Prove onboarding RLS with local Supabase
+      - name: Prove integration RLS contracts with local Supabase
         run: >-
           npx supabase@2.39.2 start >/dev/null &&
           npx supabase@2.39.2 db reset --local >/dev/null &&
-          (cd apps/api && uv run pytest tests/integration/test_onboarding_rls.py -q)
+          (cd apps/api && uv run pytest tests/integration -q)
 
       - name: Stop local Supabase
         if: always()

@@ -2,6 +2,28 @@ import { expect, test, type Page, type Route } from "@playwright/test";
 
 const API_ORIGIN = "http://127.0.0.1:9999";
 
+async function approachLayout(page: Page) {
+	return page.evaluate(() => {
+		const box = (selector: string) => document.querySelector(selector)!.getBoundingClientRect();
+		const cards = [0, 1, 2].map((level) => box(`[data-level="${level}"]`));
+		const landscape = box(".onboarding-approach-landscape");
+		const guidance = box(".onboarding-approach-guidance");
+		const panel = document.querySelector(".onboarding-approach-panel")?.getBoundingClientRect();
+		const action = box(".onboarding-approach-actions");
+		return {
+			cardTops: cards.map((item) => item.top),
+			cardBottoms: cards.map((item) => item.bottom),
+			cardsBottom: Math.max(...cards.map((item) => item.bottom)),
+			landscapeBottom: landscape.bottom,
+			guidanceTop: guidance.top,
+			guidanceBottom: guidance.bottom,
+			panelTop: panel?.top,
+			panelBottom: panel?.bottom,
+			actionTop: action.top,
+		};
+	});
+}
+
 type Snapshot = {
 	contract_version: string;
 	state: "incomplete" | "completed";
@@ -295,7 +317,7 @@ async function startAtAvailabilityStep(page: Page) {
 async function startAtPreferencesStep(
 	page: Page,
 	trainingPreferences?: Record<string, string>,
-	physicalStatus?: Record<string, string>,
+	physicalStatus?: Record<string, string | boolean>,
 ) {
 	await authenticate(page);
 	let saveCount = 0;
@@ -333,6 +355,32 @@ async function startAtPreferencesStep(
 		},
 	};
 	await page.route(`${API_ORIGIN}/**`, async (route: Route) => {
+		const pathname = new URL(route.request().url()).pathname;
+		if (pathname === "/planning/training-approach-eligibility") {
+			await route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: JSON.stringify({
+					recommended_approach: "mode_z",
+					approaches: [
+						{ approach: "kaio_path", available: true, blocking_reason_codes: [] },
+						{ approach: "mode_z", available: true, blocking_reason_codes: [] },
+						{ approach: "kaioken", available: false, blocking_reason_codes: ["insufficient_volume_ratio"] },
+					],
+					safety_restriction_codes: [],
+				}),
+			});
+			return;
+		}
+		if (pathname === "/planning/training-plan-draft") {
+			const body = JSON.parse(route.request().postData() ?? "{}");
+			await route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: JSON.stringify({ plan_id: "9dd180d0-058d-4ee5-b8cf-3e93867a4041", status: "draft", plan_approach: body.plan_approach }),
+			});
+			return;
+		}
 		if (route.request().method() === "GET") {
 			await route.fulfill({
 				status: 200,
@@ -464,7 +512,18 @@ test.describe("onboarding Step 6 physical status", () => {
 			pain_or_limitation_detail: "Gemelo derecho\n  tras correr",
 		});
 		expect(state.getSavedSnapshot()?.profile).not.toHaveProperty("restrictions");
-		await expect(page.getByRole("heading", { name: "¡Onboarding completado!" })).toBeVisible();
+		await expect(page.getByText("Paso 7 de 7")).toBeVisible();
+		await expect(page.getByRole("radiogroup", { name: "Enfoque de entrenamiento" })).toBeVisible();
+		await expect(page.getByRole("radio", { name: /Camino Kaio/ })).not.toBeChecked();
+		await expect(page.getByRole("radio", { name: /Modo Z/ })).not.toBeChecked();
+		await expect(page.getByRole("radio", { name: /Kaioken/ })).toBeDisabled();
+		await expect(page.getByText("Recomendado", { exact: false })).toHaveCount(0);
+		const generate = page.getByRole("button", { name: /Generar mi plan/ });
+		await expect(generate).toBeDisabled();
+		await page.getByRole("radio", { name: /Modo Z/ }).check();
+		await generate.click();
+		await expect(page).toHaveURL(/\/plan\/generating\?plan_id=9dd180d0-058d-4ee5-b8cf-3e93867a4041$/);
+		await expect(page.getByRole("heading", { name: "Tu enfoque se ha guardado" })).toBeVisible();
 	});
 
 	test("omits blank optional detail instead of storing the placeholder", async ({ page }) => {
@@ -795,5 +854,282 @@ test.describe("onboarding availability step", () => {
 		await expect(page.getByLabel("Minutos disponibles el Lunes")).toHaveValue("60");
 		await expect(page.getByLabel("Minutos disponibles el Miércoles")).toHaveValue("75");
 		await expect(page.getByLabel("Minutos disponibles el Sábado")).toHaveValue("60");
+	});
+});
+
+test.describe("completed onboarding approach choice", () => {
+	test("protects the saved-plan placeholder from anonymous access", async ({ page }) => {
+		await page.goto("/plan/generating?plan_id=9dd180d0-058d-4ee5-b8cf-3e93867a4041");
+		await expect(page).toHaveURL(/\/login\?returnTo=%2Fplan%2Fgenerating/);
+		await expect(page.getByText("Tu enfoque se ha guardado")).toHaveCount(0);
+	});
+
+	const completed = { contract_version: "1", state: "completed", profile: {}, goal: {} };
+	const eligibility = {
+		recommended_approach: "mode_z",
+		approaches: [
+			{ approach: "kaio_path", available: true, blocking_reason_codes: [] },
+			{ approach: "mode_z", available: false, blocking_reason_codes: ["recovering", "unknown_code", "insufficient_weekly_sessions", "insufficient_recent_consistency", "insufficient_time_to_goal"] },
+			{ approach: "kaioken", available: false, blocking_reason_codes: ["insufficient_volume_ratio"] },
+		],
+		safety_restriction_codes: ["no_load_increase"],
+	};
+
+	test("offers objective editing for a completed unsupported modality", async ({ page }) => {
+		await authenticate(page);
+		await page.route(`${API_ORIGIN}/**`, async (route: Route) => {
+			const onboarding = new URL(route.request().url()).pathname === "/runner-profile/onboarding";
+			await route.fulfill(onboarding
+				? { status: 200, contentType: "application/json", body: JSON.stringify({ snapshot: completed, diagnostics: [] }) }
+				: { status: 422, contentType: "application/json", body: JSON.stringify({ detail: "unsupported_modality" }) });
+		});
+		await page.goto("/onboarding");
+		await page.getByRole("button", { name: "Crear mi plan" }).click();
+		await expect(page.getByRole("heading", { name: "Necesitamos revisar tu objetivo" })).toBeVisible();
+		await expect(page.getByRole("button", { name: "Reintentar" })).toHaveCount(0);
+		await page.getByRole("button", { name: "Revisar mi objetivo" }).click();
+		await expect(page.getByRole("heading", { name: "Empecemos por tu objetivo" })).toBeVisible();
+	});
+
+	test("refetches eligibility on reload and retries an in-place load failure", async ({ page }) => {
+		await authenticate(page);
+		let eligibilityCalls = 0;
+		await page.route(`${API_ORIGIN}/**`, async (route: Route) => {
+			const pathname = new URL(route.request().url()).pathname;
+			if (pathname === "/runner-profile/onboarding") {
+				await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ snapshot: completed, diagnostics: [] }) });
+				return;
+			}
+			eligibilityCalls += 1;
+			await route.fulfill(eligibilityCalls === 1
+				? { status: 500, body: "private detail" }
+				: { status: 200, contentType: "application/json", body: JSON.stringify(eligibility) });
+		});
+		await page.goto("/onboarding");
+		await page.getByRole("button", { name: "Crear mi plan" }).click();
+		await expect(page.getByRole("heading", { name: "No hemos podido comprobar tus opciones" })).toBeVisible();
+		await expect(page.getByText("private detail")).toHaveCount(0);
+		await page.getByRole("button", { name: "Reintentar" }).click();
+		await expect(page.getByText("Paso 7 de 7")).toBeVisible();
+		await expect(page.getByText("No aumentaremos la carga de entrenamiento.")).toBeVisible();
+		await expect(page.getByText("Recomendado", { exact: false })).toHaveCount(0);
+		const emptyLayout = await approachLayout(page);
+		expect(emptyLayout.cardTops[0]).toBeGreaterThan(emptyLayout.cardTops[1]);
+		expect(emptyLayout.cardTops[1]).toBeGreaterThan(emptyLayout.cardTops[2]);
+		expect(emptyLayout.guidanceTop).toBeGreaterThanOrEqual(emptyLayout.cardsBottom);
+		expect(emptyLayout.landscapeBottom - emptyLayout.guidanceBottom).toBeLessThan(60);
+		expect(emptyLayout.actionTop).toBeGreaterThanOrEqual(emptyLayout.landscapeBottom);
+		const group = page.getByRole("radiogroup", { name: "Enfoque de entrenamiento" });
+		await expect(group).toHaveAttribute("aria-describedby", "onboarding-safety-restrictions");
+		const why = page.getByRole("button", { name: "¿Por qué no está disponible Modo Z?" });
+		await expect(page.getByRole("button", { name: "¿Por qué no está disponible Kaioken?" })).toBeVisible();
+		await why.click();
+		await expect(why).toHaveAttribute("aria-expanded", "true");
+		await expect(page.getByRole("heading", { name: "Modo Z · aún no disponible" })).toBeVisible();
+		const blockedLayout = await approachLayout(page);
+		expect(blockedLayout.panelTop).toBeGreaterThanOrEqual(blockedLayout.cardsBottom);
+		expect(blockedLayout.guidanceTop).toBeGreaterThanOrEqual(blockedLayout.panelBottom!);
+		expect(blockedLayout.landscapeBottom).toBeGreaterThanOrEqual(blockedLayout.guidanceBottom);
+		await expect(page.locator(".onboarding-reason-chips span")).toHaveCount(3);
+		await page.getByRole("button", { name: "+2 más" }).click();
+		await expect(page.locator(".onboarding-reason-chips span")).toHaveCount(5);
+		await page.getByRole("button", { name: "Mostrar menos" }).click();
+		await expect(page.locator(".onboarding-reason-chips span")).toHaveCount(3);
+		await page.getByRole("button", { name: "Cerrar detalle de Modo Z" }).click();
+		await expect(page.getByRole("heading", { name: "Modo Z · aún no disponible" })).toHaveCount(0);
+		expect(eligibilityCalls).toBe(2);
+	});
+
+	test("preserves selection after save failure and prevents duplicate submission", async ({ page }) => {
+		await authenticate(page);
+		let draftCalls = 0;
+		await page.route(`${API_ORIGIN}/**`, async (route: Route) => {
+			const pathname = new URL(route.request().url()).pathname;
+			if (pathname === "/runner-profile/onboarding") {
+				await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ snapshot: completed, diagnostics: [] }) });
+				return;
+			}
+			if (pathname === "/planning/training-approach-eligibility") {
+				await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(eligibility) });
+				return;
+			}
+			draftCalls += 1;
+			await route.fulfill(draftCalls === 1
+				? { status: 500, body: "private detail" }
+				: { status: 200, contentType: "application/json", body: JSON.stringify({ plan_id: "9dd180d0-058d-4ee5-b8cf-3e93867a4041", status: "draft", plan_approach: "kaio_path" }) });
+		});
+		await page.goto("/onboarding");
+		await page.getByRole("button", { name: "Crear mi plan" }).click();
+		const kaio = page.getByRole("radio", { name: /Camino Kaio/ });
+		await kaio.check();
+		await expect(page.getByText("Has elegido · Camino Kaio")).toBeVisible();
+		await expect(page.getByText("Disponible para ti")).toBeVisible();
+		const selectedLayout = await approachLayout(page);
+		expect(selectedLayout.panelTop).toBeGreaterThanOrEqual(selectedLayout.cardsBottom);
+		expect(selectedLayout.guidanceTop).toBeGreaterThanOrEqual(selectedLayout.panelBottom!);
+		expect(selectedLayout.landscapeBottom).toBeGreaterThanOrEqual(selectedLayout.guidanceBottom);
+		const originalViewport = page.viewportSize();
+		await page.setViewportSize({ width: 375, height: 800 });
+		await expect(kaio).toBeChecked();
+		await page.getByRole("button", { name: "¿Por qué no está disponible Modo Z?" }).click();
+		await expect(page.getByText("Modo Z · aún no disponible")).toBeVisible();
+		const mobileBlocked = await approachLayout(page);
+		expect(mobileBlocked.cardTops[0]).toBeLessThan(mobileBlocked.cardTops[1]);
+		expect(mobileBlocked.cardBottoms[0]).toBeLessThanOrEqual(mobileBlocked.cardTops[1]);
+		expect(mobileBlocked.cardBottoms[1]).toBeLessThanOrEqual(mobileBlocked.cardTops[2]);
+		expect(mobileBlocked.panelTop).toBeGreaterThanOrEqual(mobileBlocked.cardsBottom);
+		expect(mobileBlocked.guidanceTop).toBeGreaterThanOrEqual(mobileBlocked.panelBottom!);
+		expect(mobileBlocked.landscapeBottom).toBeGreaterThanOrEqual(mobileBlocked.guidanceBottom);
+		expect(mobileBlocked.actionTop).toBeGreaterThanOrEqual(mobileBlocked.landscapeBottom);
+		await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+		await page.getByRole("button", { name: "Cerrar detalle de Modo Z" }).click();
+		await expect(page.getByText("Has elegido · Camino Kaio")).toBeVisible();
+		const mobileSelected = await approachLayout(page);
+		expect(mobileSelected.panelTop).toBeGreaterThanOrEqual(mobileSelected.cardsBottom);
+		expect(mobileSelected.guidanceTop).toBeGreaterThanOrEqual(mobileSelected.panelBottom!);
+		expect(mobileSelected.landscapeBottom).toBeGreaterThanOrEqual(mobileSelected.guidanceBottom);
+		expect(mobileSelected.actionTop).toBeGreaterThanOrEqual(mobileSelected.landscapeBottom);
+		if (originalViewport) await page.setViewportSize(originalViewport);
+		const generate = page.getByRole("button", { name: /Generar mi plan/ });
+		await generate.dblclick();
+		await expect(kaio).toBeChecked();
+		await expect(page.getByText("No hemos podido guardar tu elección", { exact: false })).toBeVisible();
+		expect(draftCalls).toBe(1);
+		await generate.click();
+		await expect(page).toHaveURL(/plan_id=9dd180d0-058d-4ee5-b8cf-3e93867a4041$/);
+		expect(draftCalls).toBe(2);
+	});
+
+	for (const [name, status, detail] of [
+		["blocked selection", 409, "blocked_approach"],
+		["stale selection", 422, "assessment_date_out_of_range"],
+	] as const) {
+		test(`refreshes eligibility after a ${name} draft outcome`, async ({ page }) => {
+			await authenticate(page);
+			let eligibilityCalls = 0;
+			await page.route(`${API_ORIGIN}/**`, async (route: Route) => {
+				const pathname = new URL(route.request().url()).pathname;
+				if (pathname === "/runner-profile/onboarding") {
+					await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ snapshot: completed, diagnostics: [] }) });
+					return;
+				}
+				if (pathname === "/planning/training-approach-eligibility") {
+					eligibilityCalls += 1;
+					await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(eligibility) });
+					return;
+				}
+				await route.fulfill({ status, contentType: "application/json", body: JSON.stringify({ detail }) });
+			});
+			await page.goto("/onboarding");
+			await page.getByRole("button", { name: "Crear mi plan" }).click();
+			const kaio = page.getByRole("radio", { name: /Camino Kaio/ });
+			await kaio.check();
+			await page.getByRole("button", { name: /Generar mi plan/ }).click();
+			await expect(page.getByText("Paso 7 de 7")).toBeVisible();
+			await expect(kaio).not.toBeChecked();
+			expect(eligibilityCalls).toBe(2);
+		});
+	}
+
+	for (const [name, status, detail] of [
+		["missing onboarding", 404, "Onboarding snapshot not found"],
+		["incomplete onboarding", 409, "Onboarding is incomplete"],
+	] as const) {
+		test(`reconciles ${name} after a draft outcome`, async ({ page }) => {
+			await authenticate(page);
+			let draftFailed = false;
+			let reconciledReads = 0;
+			await page.route(`${API_ORIGIN}/**`, async (route: Route) => {
+				const pathname = new URL(route.request().url()).pathname;
+				if (pathname === "/runner-profile/onboarding") {
+					if (!draftFailed) {
+						await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ snapshot: completed, diagnostics: [] }) });
+					} else if (status === 404) {
+						reconciledReads += 1;
+						await route.fulfill({ status: 404, body: "not found" });
+					} else {
+						reconciledReads += 1;
+						await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ snapshot: { ...completed, state: "incomplete" }, diagnostics: [] }) });
+					}
+					return;
+				}
+				if (pathname === "/planning/training-approach-eligibility") {
+					await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(eligibility) });
+					return;
+				}
+				draftFailed = true;
+				await route.fulfill({ status, contentType: "application/json", body: JSON.stringify({ detail }) });
+			});
+			await page.goto("/onboarding");
+			await page.getByRole("button", { name: "Crear mi plan" }).click();
+			await page.getByRole("radio", { name: /Camino Kaio/ }).check();
+			await page.getByRole("button", { name: /Generar mi plan/ }).click();
+			await expect(page.getByRole("heading", { name: "Empecemos por tu objetivo" })).toBeVisible();
+			expect(reconciledReads).toBeGreaterThanOrEqual(1);
+		});
+	}
+
+	test("returns unsupported drafts to the existing objective recovery", async ({ page }) => {
+		await authenticate(page);
+		await page.route(`${API_ORIGIN}/**`, async (route: Route) => {
+			const pathname = new URL(route.request().url()).pathname;
+			if (pathname === "/runner-profile/onboarding") {
+				await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ snapshot: completed, diagnostics: [] }) });
+				return;
+			}
+			if (pathname === "/planning/training-approach-eligibility") {
+				await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(eligibility) });
+				return;
+			}
+			await route.fulfill({ status: 422, contentType: "application/json", body: JSON.stringify({ detail: "unsupported_modality" }) });
+		});
+		await page.goto("/onboarding");
+		await page.getByRole("button", { name: "Crear mi plan" }).click();
+		await page.getByRole("radio", { name: /Camino Kaio/ }).check();
+		await page.getByRole("button", { name: /Generar mi plan/ }).click();
+		await expect(page.getByRole("heading", { name: "Necesitamos revisar tu objetivo" })).toBeVisible();
+	});
+
+	test("routes rejected draft authentication through session recovery", async ({ page }) => {
+		await authenticate(page);
+		await page.route(`${API_ORIGIN}/**`, async (route: Route) => {
+			const pathname = new URL(route.request().url()).pathname;
+			if (pathname === "/runner-profile/onboarding") {
+				await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ snapshot: completed, diagnostics: [] }) });
+				return;
+			}
+			if (pathname === "/planning/training-approach-eligibility") {
+				await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(eligibility) });
+				return;
+			}
+			await route.fulfill({ status: 401 });
+		});
+		await page.goto("/onboarding");
+		await page.getByRole("button", { name: "Crear mi plan" }).click();
+		await page.getByRole("radio", { name: /Camino Kaio/ }).check();
+		await page.getByRole("button", { name: /Generar mi plan/ }).click();
+		await expect(page).toHaveURL(/\/login\?returnTo=%2Fonboarding$/);
+	});
+
+	test("keeps true draft conflicts distinct from retryable failures", async ({ page }) => {
+		await authenticate(page);
+		await page.route(`${API_ORIGIN}/**`, async (route: Route) => {
+			const pathname = new URL(route.request().url()).pathname;
+			if (pathname === "/runner-profile/onboarding") {
+				await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ snapshot: completed, diagnostics: [] }) });
+				return;
+			}
+			if (pathname === "/planning/training-approach-eligibility") {
+				await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(eligibility) });
+				return;
+			}
+			await route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ detail: "draft_plan_conflict" }) });
+		});
+		await page.goto("/onboarding");
+		await page.getByRole("button", { name: "Crear mi plan" }).click();
+		await page.getByRole("radio", { name: /Camino Kaio/ }).check();
+		await page.getByRole("button", { name: /Generar mi plan/ }).click();
+		await expect(page.getByText("Tu plan ya no se puede modificar", { exact: false })).toBeVisible();
+		await expect(page.getByText("Revisa tu conexión", { exact: false })).toHaveCount(0);
 	});
 });

@@ -17,7 +17,7 @@ Este usuario no busca únicamente una lista de entrenamientos. Necesita entender
 | Recorrido | Objetivo del usuario | Resultado esperado |
 | --- | --- | --- |
 | Primer acceso | Acceder con una cuenta existente o iniciar el registro | El usuario autenticado puede continuar hacia el onboarding |
-| Onboarding | Compartir contexto deportivo y elegir enfoque del plan | Kaito recopila la información necesaria, recomienda un enfoque y permite elegir entre opciones elegibles |
+| Onboarding | Compartir contexto deportivo y elegir enfoque del plan | Kaito recopila la información necesaria y permite elegir explícitamente entre opciones elegibles |
 | Generación del plan | Obtener una planificación personalizada | El usuario recibe un plan inicial asociado a su objetivo |
 | Consulta del dashboard | Entender el estado actual de su preparación | El usuario ve KPIs, calendario semanal y próximos entrenamientos |
 | Detalle del entrenamiento | Comprender qué debe hacer y por qué | El usuario revisa la sesión y su propósito dentro del plan |
@@ -88,9 +88,9 @@ El usuario necesita introducir su información sin sentirse abrumado y entender 
 8. En el Paso 5, el usuario indica sus accesos y preferencia de planificación.
 9. En el Paso 6, el usuario elige su estado físico y puede describir dolor o limitaciones en un campo siempre visible y opcional. Continuar completa el onboarding; el detalle se recorta en sus extremos y se omite si está vacío.
 10. Kaito evalúa elegibilidad de enfoques y muestra tarjetas visuales de Camino Kaio, Modo Z y Kaioken.
-11. Kaito recomienda un enfoque según el perfil del corredor.
-12. El usuario elige entre los enfoques elegibles; los bloqueados se muestran con motivo.
-13. Kaito confirma que tiene suficiente información (incluido enfoque elegido) para generar el plan inicial.
+11. El usuario elige explícitamente entre los enfoques elegibles, sin preselección ni decoración de recomendación; los bloqueados permanecen visibles con todos sus motivos.
+12. Kaito guarda un único borrador de plan asociado al corredor con el enfoque elegido.
+13. Kaito confirma que tiene suficiente información para iniciar el siguiente paso de generación del plan.
 
 ### Resultado esperado
 
@@ -244,7 +244,7 @@ Los journeys estarán correctamente cubiertos si el MVP permite demostrar que:
 - Una sesión inmediata continúa a onboarding; un resultado sin sesión continúa a login con orientación neutral, sin afirmar que el correo se envió definitivamente.
 - Los límites de frecuencia bloquean reintentos durante el cooldown y no se presenta recuperación de contraseña mientras esa capacidad no exista.
 - El usuario puede completar un onboarding inicial sin fricción excesiva una vez autenticado.
-- Kaito recomienda un enfoque (Camino Kaio, Modo Z o Kaioken), permite elegir entre los elegibles y muestra los bloqueados con motivo.
+- Kaito muestra Camino Kaio, Modo Z y Kaioken en ese orden, exige una elección explícita entre los elegibles y muestra los bloqueados con todos sus motivos.
 - Kaito puede generar un plan inicial a partir del contexto del usuario.
 - El usuario puede consultar el estado del plan desde un dashboard.
 - El usuario puede entender el propósito de cada entrenamiento.

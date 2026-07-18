@@ -125,7 +125,7 @@ Checklist mínimo de validación:
 
 1. **Consistencia modal**: sesiones acordes a la modalidad elegida.
 2. **Seguridad básica**: sin incrementos bruscos ni compensaciones agresivas.
-3. **Alineación con planApproach**: exigencia compatible con `kaio_path`, `z_mode` o `kaioken`.
+3. **Alineación con planApproach**: exigencia compatible con `kaio_path`, `mode_z` o `kaioken`.
 4. **Datos trazables**: no hay campos inventados ni supuestos ocultos.
 5. **Estructura MVP**: sesiones con propósito, intensidad e instrucciones accionables.
 6. **Backyard/OCR específicos**: Backyard por vueltas/horas; OCR con componente de obstáculos/agarre.
