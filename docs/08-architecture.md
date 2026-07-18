@@ -78,7 +78,7 @@ apps/web/
         └── _use-cases/              # Carga, guardado y finalización
 ```
 
-Auth y onboarding son capacidades reales. En onboarding, los Pasos 1–4 usan el diseño visual del recorrido lineal de siete pasos. El Paso 4 mantiene el estado de interacción local y proyecta solo el mapa disperso de minutos exactos; no hay progreso clicable ni autosave.
+Auth y onboarding son capacidades reales. En onboarding, los Pasos 1–6 usan el diseño visual del recorrido lineal de siete pasos. El Paso 4 mantiene el estado de interacción local y proyecta solo el mapa disperso de minutos exactos; el Paso 6 completa el onboarding con el estado físico requerido y un detalle opcional normalizado. No hay progreso clicable ni autosave.
 
 ### Forma ilustrativa cuando existan consumidores reales
 
@@ -193,7 +193,7 @@ En módulos simples/CRUD, se permite simplificación sin imponer todas las capas
 
 - SQLAlchemy como capa ORM/repositorio en backend.
 - Para onboarding, Supabase CLI es la autoridad de esquema, migraciones y RLS; esta entrega no añade migración ni Alembic.
-- Los snapshots de onboarding permanecen como JSONB por propietario: `profile.availability.minutes_by_day` guarda únicamente minutos exactos dispersos. La API protegida valida al guardar y al leer; la prueba local verifica CRUD propio y denegación entre dos usuarios.
+- Los snapshots de onboarding permanecen como JSONB por propietario: `profile.availability.minutes_by_day` guarda únicamente minutos exactos dispersos y `profile.physical_status` guarda el enum requerido más un detalle opcional normalizado de hasta 500 caracteres. La API protegida valida al guardar y al leer; no existe migración SQL y la prueba local verifica CRUD propio y denegación entre dos usuarios.
 
 ### Invariantes de persistencia (MVP)
 
@@ -368,7 +368,7 @@ En cada cambio relevante:
 - Docker como estrategia de estandarización de entorno para `web`, `api` y servicios necesarios.
 - Objetivo: paridad razonable local/CI/entornos de despliegue.
 - Los `Dockerfile` locales y `compose.yaml` ya definen los servicios `web` y `api`; no constituyen configuración de despliegue ni CD.
-- La entrega del Paso 4 coordina API y web sobre un estado limpio: las cinco respuestas retiradas no se traducen ni se conservan. No hay migración ni almacenamiento de duración base.
+- La entrega hasta el Paso 6 coordina API y web sobre un estado limpio: las cinco respuestas retiradas no se traducen ni se conservan, `profile.restrictions` sigue eliminándose y no se reutiliza para el estado físico. No hay migración ni almacenamiento de duración base.
 
 ---
 

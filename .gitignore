@@ -22,3 +22,4 @@ __pycache__/
 /supabase/.temp/
 .codegraph/
 .gga
+.DS_Store

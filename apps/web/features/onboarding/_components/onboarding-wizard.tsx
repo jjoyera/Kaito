@@ -27,6 +27,7 @@ import {
 	type FieldErrors,
 	type GoalDraft,
 	type OnboardingSnapshotDraft,
+	type PhysicalStatusDraft,
 	type PriorHistoryDraft,
 	type TrainingPreferencesDraft,
 } from "../_domain/step-validation";
@@ -187,6 +188,19 @@ export function OnboardingWizard() {
 		}));
 	}
 
+	function updatePhysicalStatus(patch: Partial<PhysicalStatusDraft>) {
+		updateDraft((current) => ({
+			...current,
+			profile: {
+				...current.profile,
+				physical_status: {
+					...current.profile.physical_status,
+					...patch,
+				},
+			},
+		}));
+	}
+
 	function handleBack() {
 		setStepIndex((current) => Math.max(0, current - 1));
 		setFieldErrors({});
@@ -270,7 +284,7 @@ export function OnboardingWizard() {
 	const isLastStep = stepIndex === ONBOARDING_STEPS.length - 1;
 	let nextButtonLabel = "Continuar";
 	if (saveStatus === "saving") nextButtonLabel = "Guardando…";
-	else if (isLastStep) nextButtonLabel = "Completar";
+	else if (isLastStep) nextButtonLabel = "Continuar";
 
 	return (
 		<div className="onboarding-wizard">
@@ -286,6 +300,7 @@ export function OnboardingWizard() {
 				availabilityIssues={availabilityIssues}
 				onAvailabilityAction={updateAvailability}
 				onPreferencesChange={updatePreferences}
+				onPhysicalStatusChange={updatePhysicalStatus}
 			>
 				{saveStatus === "save_error" ? (
 					<p className="onboarding-form-error" role="alert">

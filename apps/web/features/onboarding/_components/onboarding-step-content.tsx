@@ -11,6 +11,7 @@ import type {
 	FieldErrors,
 	GoalDraft,
 	OnboardingSnapshotDraft,
+	PhysicalStatusDraft,
 	PriorHistoryDraft,
 	TrainingPreferencesDraft,
 } from "../_domain/step-validation";
@@ -18,6 +19,7 @@ import { AvailabilityStep } from "./availability-step";
 import { BaselineStep } from "./baseline-step";
 import { GoalStep } from "./goal-step";
 import { PriorHistoryStep } from "./prior-history-step";
+import { PhysicalStatusStep } from "./physical-status-step";
 import { PreferencesStep } from "./preferences-step";
 
 type OnboardingStepContentProps = Readonly<{
@@ -31,6 +33,7 @@ type OnboardingStepContentProps = Readonly<{
 	availabilityIssues: readonly AvailabilityIssue[];
 	onAvailabilityAction: (action: AvailabilityAction) => void;
 	onPreferencesChange: (patch: Partial<TrainingPreferencesDraft>) => void;
+	onPhysicalStatusChange: (patch: Partial<PhysicalStatusDraft>) => void;
 	children: ReactNode;
 }>;
 
@@ -45,6 +48,7 @@ export function OnboardingStepContent({
 	availabilityIssues,
 	onAvailabilityAction,
 	onPreferencesChange,
+	onPhysicalStatusChange,
 	children,
 }: OnboardingStepContentProps) {
 	let heading: ReactNode = null;
@@ -123,6 +127,21 @@ export function OnboardingStepContent({
 					value={draft.profile.training_preferences ?? {}}
 					errors={errors}
 					onChange={onPreferencesChange}
+				/>
+			);
+			break;
+		case "physical_status":
+			heading = (
+				<header className="onboarding-step-intro">
+					<h1>¿Cómo te encuentras físicamente?</h1>
+					<p>Tu salud manda. Si algo molesta, lo tendré en cuenta.</p>
+				</header>
+			);
+			body = (
+				<PhysicalStatusStep
+					value={draft.profile.physical_status ?? {}}
+					errors={errors}
+					onChange={onPhysicalStatusChange}
 				/>
 			);
 			break;

@@ -235,6 +235,56 @@ describe("validateStep(availability)", () => {
 	});
 });
 
+describe("validateStep(physical_status)", () => {
+	test("requires a physical status but accepts an omitted detail", () => {
+		assert.deepEqual(validateStep("physical_status", draft()), {
+			"profile.physical_status.status": "required",
+		});
+		assert.deepEqual(
+			validateStep(
+				"physical_status",
+				draft({ profile: { physical_status: { status: "feeling_good" } } }),
+			),
+			{},
+		);
+	});
+
+	test("rejects an unknown status and detail longer than 500 characters", () => {
+		const errors = validateStep(
+			"physical_status",
+			draft({
+				profile: {
+					physical_status: {
+						status: "fine",
+						pain_or_limitation_detail: "x".repeat(501),
+					} as unknown as OnboardingSnapshotDraft["profile"]["physical_status"],
+				},
+			}),
+		);
+		assert.deepEqual(errors, {
+			"profile.physical_status.status": "invalid_type",
+			"profile.physical_status.pain_or_limitation_detail": "invalid_length",
+		});
+	});
+
+	test("preserves valid internal whitespace in the optional detail", () => {
+		assert.deepEqual(
+			validateStep(
+				"physical_status",
+				draft({
+					profile: {
+						physical_status: {
+							status: "recovering",
+							pain_or_limitation_detail: "Rodilla derecha\n  al bajar",
+						},
+					},
+				}),
+			),
+			{},
+		);
+	});
+});
+
 describe("validateStep(preferences)", () => {
 	test("requires all three training preference choices", () => {
 		const errors = validateStep("preferences", draft());

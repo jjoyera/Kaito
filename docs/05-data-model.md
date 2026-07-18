@@ -47,9 +47,9 @@ Su objetivo es alinear producto, journeys y requisitos funcionales sobre **qué 
 ### `RunnerProfile`
 
 - **Propósito**: persistir la base del onboarding del corredor.
-- **Campos clave**: `id`, `userId`, `experienceLevel`, `baseline4Weeks`, `weeklyAvailability`, `preferences`, `constraints`, `onboardingCompletedAt`.
+- **Campos clave**: `id`, `userId`, `experienceLevel`, `baseline4Weeks`, `weeklyAvailability`, `preferences`, `physicalStatus`, `constraints`, `onboardingCompletedAt`.
 - **Relaciones**: pertenece a un único `User`.
-- **Notas**: `baseline4Weeks` conserva los totales de sesiones, distancia, desnivel positivo y salida más larga de las cuatro semanas anteriores, además de la constancia reciente (`irregular|fairly_consistent|very_consistent`). La disponibilidad canónica es solo `profile.availability.minutes_by_day`: un objeto JSONB disperso de días a minutos enteros exactos (15–300), con mínimo de tres días y 150 minutos semanales. No guarda duración base ni categoría; los campos retirados no tienen compatibilidad ni migración. El snapshot pertenece al usuario autenticado y RLS impide el acceso entre usuarios.
+- **Notas**: `baseline4Weeks` conserva los totales de sesiones, distancia, desnivel positivo y salida más larga de las cuatro semanas anteriores, además de la constancia reciente (`irregular|fairly_consistent|very_consistent`). La disponibilidad canónica es solo `profile.availability.minutes_by_day`: un objeto JSONB disperso de días a minutos enteros exactos (15–300), con mínimo de tres días y 150 minutos semanales. `profile.physical_status` guarda un `status` obligatorio (`feeling_good|carrying_fatigue|recovering`) y puede guardar `pain_or_limitation_detail` normalizado hasta 500 caracteres; el detalle vacío se omite. No guarda duración base ni categoría; los campos retirados, incluido `profile.restrictions`, no tienen compatibilidad ni migración. El snapshot pertenece al usuario autenticado y RLS impide el acceso entre usuarios.
 
 ### `TrainingGoal`
 

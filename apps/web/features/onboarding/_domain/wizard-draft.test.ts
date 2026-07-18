@@ -33,6 +33,9 @@ const completeDraft: OnboardingSnapshotDraft = {
 			gym_access: "yes",
 			planning_preference: "fixed_routine",
 		},
+		physical_status: {
+			status: "feeling_good",
+		},
 	},
 	goal: {
 		modality: "trail" as const,
@@ -62,6 +65,35 @@ describe("wizard draft normalization", () => {
 });
 
 describe("wizard draft preparation", () => {
+	test("trims physical detail at the boundary and omits it when blank", () => {
+		const withDetail = applyConditionalClearing({
+			profile: {
+				physical_status: {
+					status: "carrying_fatigue",
+					pain_or_limitation_detail: "  Gemelo derecho\n  tras correr  ",
+				},
+			},
+			goal: {},
+		});
+		assert.deepEqual(withDetail.profile.physical_status, {
+			status: "carrying_fatigue",
+			pain_or_limitation_detail: "Gemelo derecho\n  tras correr",
+		});
+
+		const blankDetail = applyConditionalClearing({
+			profile: {
+				physical_status: {
+					status: "feeling_good",
+					pain_or_limitation_detail: " \n ",
+				},
+			},
+			goal: {},
+		});
+		assert.deepEqual(blankDetail.profile.physical_status, {
+			status: "feeling_good",
+		});
+	});
+
 	test("clears hidden goal values without mutating preferences or the draft", () => {
 		const draft = {
 			profile: {
@@ -126,6 +158,6 @@ describe("wizard diagnostic navigation", () => {
 	});
 
 	test("falls back to the final executable step when the draft is complete", () => {
-		assert.equal(firstIncompleteStepIndex(completeDraft, {}), 4);
+		assert.equal(firstIncompleteStepIndex(completeDraft, {}), 5);
 	});
 });

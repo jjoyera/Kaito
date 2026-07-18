@@ -6,9 +6,10 @@
 - A valid session hands off to `/onboarding`, a private route protected by the proxy and a server-side check.
 - Onboarding starts with a value-proposition introduction and the `Crear mi plan` CTA.
 - Step 1 displays `Paso 1 de 7` and `14%`, offers only Trail or Ultra, and asks for distance, positive elevation, and target date. It has no technicality, maximum-altitude, or back controls.
-- Steps 1–5 use the linear seven-step visual design. Step 4 displays `Paso 4 de 7` and `57%`, uses compact accessible weekday controls, presets 45/60/120, and exact 15–300 minute overrides. `Varía por día` is derived UI state; the payload contains only the sparse `profile.availability.minutes_by_day` map.
+- Steps 1–6 use the linear seven-step visual design. Step 4 displays `Paso 4 de 7` and `57%`, uses compact accessible weekday controls, presets 45/60/120, and exact 15–300 minute overrides. `Varía por día` is derived UI state; the payload contains only the sparse `profile.availability.minutes_by_day` map.
 - Step 4 requires at least three days and 150 weekly minutes. Back keeps mounted local edits without a request; Continue saves before Step 5, blocks duplicate requests, preserves answers for retry, and reloads the last successful exact map. Progress is not clickable and there is no autosave.
-- Step 5 displays `Paso 5 de 7` and `71%` and requires explicit choices for mountain/trail access, gym access, and planning preference. The payload stores only the documented enums under `profile.training_preferences`; no answers are defaulted. Legacy `profile.restrictions` data is removed during API normalization.
+- Step 5 displays `Paso 5 de 7` and `71%` and requires explicit choices for mountain/trail access, gym access, and planning preference. The payload stores only the documented enums under `profile.training_preferences`; no answers are defaulted.
+- Step 6 displays `Paso 6 de 7` and `86%`, requires one physical-status choice, and always shows an optional 500-character pain/limitation detail. Continue completes onboarding; the detail is trimmed, omitted when blank, and never receives placeholder text as data. Legacy `profile.restrictions` data is removed during API normalization.
 
 ## Contribution and ownership
 

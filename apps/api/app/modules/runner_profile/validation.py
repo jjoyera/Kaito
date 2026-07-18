@@ -25,6 +25,9 @@ _REMOVED_PRIOR_HISTORY_FIELDS = frozenset(
     }
 )
 _RECENT_CONSISTENCIES = frozenset({"irregular", "fairly_consistent", "very_consistent"})
+_PHYSICAL_STATUS_VALUES = frozenset(
+    {"feeling_good", "carrying_fatigue", "recovering"}
+)
 _TRAINING_PREFERENCE_VALUES = {
     "mountain_trail_access": frozenset(
         {"easy_access", "weekends_only", "very_limited"}
@@ -100,6 +103,7 @@ def _validate_structural(profile: dict[str, Any], goal: dict[str, Any]) -> None:
     _validate_baseline(profile)
     _validate_profile_numbers(profile)
     _validate_training_preferences(profile)
+    _validate_physical_status(profile)
     _validate_goal(goal)
 
 
@@ -109,6 +113,7 @@ def _validate_profile_blocks(profile: dict[str, Any]) -> None:
         "baseline_4_weeks",
         "availability",
         "training_preferences",
+        "physical_status",
     ):
         if block in profile and not isinstance(profile[block], Mapping):
             raise ValueError("malformed_snapshot")
@@ -163,6 +168,18 @@ def _validate_training_preferences(profile: dict[str, Any]) -> None:
         raise ValueError("malformed_snapshot")
 
 
+def _validate_physical_status(profile: dict[str, Any]) -> None:
+    physical_status = _mapping(profile.get("physical_status", {})) or {}
+    status = physical_status.get("status")
+    detail = physical_status.get("pain_or_limitation_detail")
+    if status is not None and not isinstance(status, str):
+        raise ValueError("malformed_snapshot")
+    if detail is not None and (
+        not isinstance(detail, str) or len(detail.strip()) > 500
+    ):
+        raise ValueError("malformed_snapshot")
+
+
 def _validate_goal(goal: dict[str, Any]) -> None:
     _validate_goal_measurements(goal)
     _validate_goal_integers(goal)
@@ -198,6 +215,16 @@ def _validate_goal_strings(goal: dict[str, Any]) -> None:
 
 def _clear_hidden(profile: dict[str, Any], goal: dict[str, Any]) -> None:
     profile.pop("restrictions", None)
+    physical_status = _mapping(profile.get("physical_status"))
+    if physical_status is not None:
+        detail = physical_status.get("pain_or_limitation_detail")
+        if isinstance(detail, str):
+            normalized_detail = detail.strip()
+            if normalized_detail:
+                physical_status["pain_or_limitation_detail"] = normalized_detail
+            else:
+                physical_status.pop("pain_or_limitation_detail", None)
+        profile["physical_status"] = physical_status
     baseline = _mapping(profile.get("baseline_4_weeks"))
     if baseline is not None:
         baseline.pop("training_hours", None)
@@ -230,6 +257,7 @@ def _completion_diagnostics(
     _add_required_diagnostics(profile, goal, diagnostics)
     _add_availability_diagnostics(profile, diagnostics)
     _add_training_preference_diagnostics(profile, diagnostics)
+    _add_physical_status_diagnostics(profile, diagnostics)
     _add_baseline_diagnostics(profile, diagnostics)
     _add_goal_diagnostics(goal, validation_date, diagnostics)
     return diagnostics
@@ -304,6 +332,19 @@ def _add_training_preference_diagnostics(
             diagnostics.append(
                 _diagnostic("out_of_range", f"profile.training_preferences.{field}")
             )
+
+
+def _add_physical_status_diagnostics(
+    profile: JsonObject, diagnostics: list[Diagnostic]
+) -> None:
+    physical_status = profile.get("physical_status", {})
+    status = physical_status.get("status")
+    if status is None:
+        diagnostics.append(_diagnostic("required", "profile.physical_status.status"))
+    elif status not in _PHYSICAL_STATUS_VALUES:
+        diagnostics.append(
+            _diagnostic("out_of_range", "profile.physical_status.status")
+        )
 
 
 def _add_baseline_diagnostics(

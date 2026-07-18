@@ -70,6 +70,9 @@ def _snapshot() -> dict:
                 "gym_access": "yes",
                 "planning_preference": "fixed_routine",
             },
+            "physical_status": {
+                "status": "feeling_good",
+            },
         },
         "goal": {
             "modality": "trail",
@@ -269,6 +272,44 @@ def test_put_rejects_invalid_availability_with_bounded_422(
     assert response.json() == {"detail": "Invalid onboarding snapshot"}
     assert "holiday" not in response.text
     _assert_bounded_equal(_OWNER_ID in response.text, False, "owner disclosure")
+    assert transactions.calls == 0
+
+
+def test_put_normalizes_and_returns_physical_status_detail(client: TestClient) -> None:
+    snapshot = _snapshot()
+    snapshot["profile"]["physical_status"] = {
+        "status": "recovering",
+        "pain_or_limitation_detail": "  Tobillo izquierdo\n  al bajar  ",
+    }
+
+    response = client.put(
+        "/runner-profile/onboarding",
+        headers=_auth_headers(),
+        json={"snapshot": snapshot, "validation_date": _VALIDATION_DATE},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["snapshot"]["profile"]["physical_status"] == {
+        "status": "recovering",
+        "pain_or_limitation_detail": "Tobillo izquierdo\n  al bajar",
+    }
+
+
+def test_put_rejects_overlong_physical_status_detail_with_bounded_422(
+    client: TestClient,
+) -> None:
+    snapshot = _snapshot()
+    snapshot["profile"]["physical_status"]["pain_or_limitation_detail"] = "x" * 501
+    transactions = client.app.state.onboarding_transactions
+
+    response = client.put(
+        "/runner-profile/onboarding",
+        headers=_auth_headers(),
+        json={"snapshot": snapshot, "validation_date": _VALIDATION_DATE},
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "Invalid onboarding snapshot"}
     assert transactions.calls == 0
 
 

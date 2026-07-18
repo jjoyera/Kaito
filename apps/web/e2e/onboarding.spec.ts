@@ -295,6 +295,7 @@ async function startAtAvailabilityStep(page: Page) {
 async function startAtPreferencesStep(
 	page: Page,
 	trainingPreferences?: Record<string, string>,
+	physicalStatus?: Record<string, string>,
 ) {
 	await authenticate(page);
 	let saveCount = 0;
@@ -322,6 +323,7 @@ async function startAtPreferencesStep(
 			...(trainingPreferences
 				? { training_preferences: trainingPreferences }
 				: {}),
+			...(physicalStatus ? { physical_status: physicalStatus } : {}),
 		},
 		goal: {
 			modality: "trail",
@@ -368,14 +370,14 @@ test.describe("onboarding Step 5 preferences", () => {
 		await expect(page.getByRole("radiogroup", { name: "Acceso a gimnasio" })).toBeVisible();
 		await expect(page.getByRole("radiogroup", { name: "Preferencia de planificación" })).toBeVisible();
 
-		await page.getByRole("button", { name: "Completar" }).click();
+		await page.getByRole("button", { name: "Continuar" }).click();
 		expect(state.getSaveCount()).toBe(0);
 		await expect(page.locator(".onboarding-field-error[role='alert']")).toHaveCount(3);
 
 		await page.getByRole("radio", { name: "Solo fines de semana" }).check();
 		await page.getByRole("radio", { name: "Solo en casa" }).check();
 		await page.getByRole("radio", { name: "Flexible por semana" }).check();
-		await page.getByRole("button", { name: "Completar" }).click();
+		await page.getByRole("button", { name: "Continuar" }).click();
 		await expect.poll(state.getSaveCount).toBe(1);
 		expect(state.getSavedSnapshot()?.profile.training_preferences).toEqual({
 			mountain_trail_access: "weekends_only",
@@ -383,15 +385,21 @@ test.describe("onboarding Step 5 preferences", () => {
 			planning_preference: "flexible_weekly",
 		});
 		expect(state.getSavedSnapshot()?.profile).not.toHaveProperty("restrictions");
+		await expect(page.getByText("Paso 6 de 7")).toBeVisible();
 	});
 
 	test("preserves loaded preferences and mounted choices after Back and return", async ({ page }) => {
-		const state = await startAtPreferencesStep(page, {
-			mountain_trail_access: "easy_access",
-			gym_access: "yes",
-			planning_preference: "fixed_routine",
-		});
+		const state = await startAtPreferencesStep(
+			page,
+			{
+				mountain_trail_access: "easy_access",
+				gym_access: "yes",
+				planning_preference: "fixed_routine",
+			},
+			{ status: "feeling_good" },
+		);
 
+		await page.getByRole("button", { name: /Atrás/ }).click();
 		await expect(page.getByRole("radio", { name: "Sí, fácil acceso" })).toBeChecked();
 		await expect(page.getByRole("radio", { name: "Sí", exact: true })).toBeChecked();
 		await expect(page.getByRole("radio", { name: "Rutina fija" })).toBeChecked();
@@ -401,6 +409,88 @@ test.describe("onboarding Step 5 preferences", () => {
 		await page.getByRole("button", { name: "Continuar" }).click();
 		await expect(page.getByRole("radio", { name: "Muy limitado" })).toBeChecked();
 		await expect(page.getByRole("radio", { name: "Sí", exact: true })).toBeChecked();
+	});
+});
+
+test.describe("onboarding Step 6 physical status", () => {
+	test("blocks missing status, preserves optional detail, and completes with a normalized payload", async ({ page }) => {
+		const state = await startAtPreferencesStep(page);
+		await page.getByRole("radio", { name: "Sí, fácil acceso" }).check();
+		await page.getByRole("radio", { name: "Sí", exact: true }).check();
+		await page.getByRole("radio", { name: "Rutina fija" }).check();
+		await page.getByRole("button", { name: "Continuar" }).click();
+
+		await expect(page.getByText("Paso 6 de 7")).toBeVisible();
+		await expect(page.getByText("86%", { exact: true })).toBeVisible();
+		await expect(page.getByRole("heading", { name: "¿Cómo te encuentras físicamente?" })).toBeVisible();
+		await expect(page.getByText("Tu salud manda. Si algo molesta, lo tendré en cuenta.")).toBeVisible();
+		await expect(page.getByRole("radiogroup", { name: "Estado físico actual" })).toBeVisible();
+		await expect(page.getByRole("radio", { name: "Me siento bien" })).toBeVisible();
+		await expect(page.getByRole("radio", { name: "Algo cargada" })).toBeVisible();
+		await expect(page.getByRole("radio", { name: "Recuperándome" })).toBeVisible();
+		const detail = page.getByLabel(/¿Dolor o limitación actual\?/);
+		await expect(detail).toHaveAttribute("placeholder", "Ninguna relevante ahora mismo.");
+		await expect(detail).toHaveValue("");
+
+		const savesBeforeValidation = state.getSaveCount();
+		await page.getByRole("button", { name: "Continuar" }).click();
+		expect(state.getSaveCount()).toBe(savesBeforeValidation);
+		await expect(
+			page.locator(".onboarding-physical-status").getByRole("alert"),
+		).toContainText("Estado físico actual");
+
+		await page.getByRole("radio", { name: "Algo cargada" }).check();
+		await detail.fill("  Gemelo derecho\n  tras correr  ");
+		await page.getByRole("button", { name: /Atrás/ }).click();
+		await page.getByRole("button", { name: "Continuar" }).click();
+		await expect(page.getByRole("radio", { name: "Algo cargada" })).toBeChecked();
+		await expect(detail).toHaveValue("Gemelo derecho\n  tras correr");
+
+		const savesBeforeCompletion = state.getSaveCount();
+		await page.getByRole("button", { name: "Continuar" }).click();
+		await expect.poll(state.getSaveCount).toBe(savesBeforeCompletion + 1);
+		expect(state.getSavedSnapshot()?.state).toBe("completed");
+		expect(state.getSavedSnapshot()?.profile.physical_status).toEqual({
+			status: "carrying_fatigue",
+			pain_or_limitation_detail: "Gemelo derecho\n  tras correr",
+		});
+		expect(state.getSavedSnapshot()?.profile).not.toHaveProperty("restrictions");
+		await expect(page.getByRole("heading", { name: "¡Onboarding completado!" })).toBeVisible();
+	});
+
+	test("omits blank optional detail instead of storing the placeholder", async ({ page }) => {
+		const state = await startAtPreferencesStep(page);
+		await page.getByRole("radio", { name: "Sí, fácil acceso" }).check();
+		await page.getByRole("radio", { name: "Sí", exact: true }).check();
+		await page.getByRole("radio", { name: "Rutina fija" }).check();
+		await page.getByRole("button", { name: "Continuar" }).click();
+		await page.getByRole("radio", { name: "Me siento bien" }).check();
+		await page.getByRole("button", { name: "Continuar" }).click();
+
+		await expect.poll(state.getSaveCount).toBe(2);
+		expect(state.getSavedSnapshot()?.profile.physical_status).toEqual({
+			status: "feeling_good",
+		});
+	});
+
+	test("hydrates a persisted physical status and detail", async ({ page }) => {
+		await startAtPreferencesStep(
+			page,
+			{
+				mountain_trail_access: "easy_access",
+				gym_access: "yes",
+				planning_preference: "fixed_routine",
+			},
+			{
+				status: "recovering",
+				pain_or_limitation_detail: "Tobillo izquierdo\n  al bajar",
+			},
+		);
+
+		await expect(page.getByRole("radio", { name: "Recuperándome" })).toBeChecked();
+		await expect(page.getByLabel(/¿Dolor o limitación actual\?/)).toHaveValue(
+			"Tobillo izquierdo\n  al bajar",
+		);
 	});
 });
 

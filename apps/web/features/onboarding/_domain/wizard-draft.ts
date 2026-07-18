@@ -27,8 +27,20 @@ export function createBlankWizardDraft(): OnboardingSnapshotDraft {
 export function applyConditionalClearing(
 	draft: OnboardingSnapshotDraft,
 ): OnboardingSnapshotDraft {
+	const physicalStatus = draft.profile.physical_status;
+	const detail = physicalStatus?.pain_or_limitation_detail?.trim();
 	return {
-		profile: { ...draft.profile },
+		profile: {
+			...draft.profile,
+			...(physicalStatus
+				? {
+						physical_status: {
+							status: physicalStatus.status,
+							...(detail ? { pain_or_limitation_detail: detail } : {}),
+						},
+					}
+				: {}),
+		},
 		goal: clearHiddenGoalFields(draft.goal),
 	};
 }
