@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { getAccessToken } from "../../auth/_adapters/get-access-token";
 import { isTestAuthAdapterEnabledInBrowser } from "../../../shared/testing/test-auth-adapter";
@@ -32,15 +33,21 @@ import {
 	type TrainingPreferencesDraft,
 } from "../_domain/step-validation";
 import { ONBOARDING_STEPS } from "../_domain/steps";
+import {
+	type TrainingApproach,
+	type TrainingApproachAssessment,
+} from "../_domain/training-approach-choice";
 import { completeOnboarding } from "../_use-cases/complete-onboarding";
 import { loadOnboardingDraft } from "../_use-cases/load-onboarding-draft";
+import { loadCurrentTrainingApproachEligibility } from "../_use-cases/load-training-approach-eligibility";
 import { saveOnboardingStep } from "../_use-cases/save-onboarding-step";
-import { CompletionView } from "./completion-view";
+import { saveTrainingPlanDraft } from "../_use-cases/save-training-plan-draft";
 import { OnboardingStatusSurface } from "./onboarding-status-surface";
 import { OnboardingStepContent } from "./onboarding-step-content";
 import { StepNavigator } from "./step-navigator";
+import { TrainingApproachChoice } from "./training-approach-choice";
 
-type Phase = "loading" | "ready" | "load_error" | "completed";
+type Phase = "loading" | "ready" | "load_error" | "eligibility_loading" | "eligibility_error" | "choice";
 type SaveStatus = "idle" | "saving" | "save_error";
 type WizardState = {
 	draft: OnboardingSnapshotDraft;
@@ -86,6 +93,7 @@ function projectAvailability(
 }
 
 export function OnboardingWizard() {
+	const router = useRouter();
 	const dependencies = useMemo(() => createApiDependencies(), []);
 	const today = useMemo(() => todayIsoDate(), []);
 	const saveInFlight = useRef(false);
@@ -100,10 +108,27 @@ export function OnboardingWizard() {
 		readonly AvailabilityIssue[]
 	>([]);
 	const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+	const [assessment, setAssessment] = useState<TrainingApproachAssessment | null>(null);
+	const [selectedApproach, setSelectedApproach] = useState<TrainingApproach | null>(null);
+	const [draftError, setDraftError] = useState<string | null>(null);
+	const [choicePending, setChoicePending] = useState(false);
+	const [eligibilityAttempt, setEligibilityAttempt] = useState(0);
 	const draft = wizard.draft;
 
 	useEffect(() => {
 		let cancelled = false;
+		async function loadEligibility() {
+			setPhase("eligibility_loading");
+			const eligibility = await loadCurrentTrainingApproachEligibility(dependencies);
+			if (cancelled) return;
+			if (eligibility.status === "error") {
+				setPhase("eligibility_error");
+				return;
+			}
+			setAssessment(eligibility.assessment);
+			setPhase("choice");
+		}
+
 		loadOnboardingDraft(today, dependencies).then((outcome) => {
 			if (cancelled) return;
 			if (outcome.status === "error") {
@@ -119,13 +144,11 @@ export function OnboardingWizard() {
 				profile: outcome.result.snapshot.profile,
 				goal: outcome.result.snapshot.goal,
 			});
-			const loadedDiagnostics = toDiagnosticsByField(
-				outcome.result.diagnostics,
-			);
+			const loadedDiagnostics = toDiagnosticsByField(outcome.result.diagnostics);
 			setWizard(createWizardState(loadedDraft));
 
 			if (outcome.result.snapshot.state === "completed") {
-				setPhase("completed");
+				void loadEligibility();
 				return;
 			}
 
@@ -135,7 +158,35 @@ export function OnboardingWizard() {
 		return () => {
 			cancelled = true;
 		};
-	}, [today, dependencies]);
+	}, [today, dependencies, eligibilityAttempt]);
+
+	async function enterChoiceFlow() {
+		setPhase("eligibility_loading");
+		const eligibility = await loadCurrentTrainingApproachEligibility(dependencies);
+		if (eligibility.status === "error") {
+			setPhase("eligibility_error");
+			return;
+		}
+		setAssessment(eligibility.assessment);
+		setPhase("choice");
+	}
+
+	async function handleApproachSubmit() {
+		if (!selectedApproach || choicePending) return;
+		setChoicePending(true);
+		setDraftError(null);
+		const outcome = await saveTrainingPlanDraft(selectedApproach, dependencies);
+		if (outcome.status === "success") {
+			router.push(`/plan/generating?plan_id=${encodeURIComponent(outcome.draft.plan_id)}`);
+			return;
+		}
+		setChoicePending(false);
+		setDraftError(
+			outcome.reason === "conflict"
+				? "Tu plan ya no se puede modificar. Actualiza la página para continuar con su estado actual."
+				: "No hemos podido guardar tu elección. Revisa tu conexión e inténtalo de nuevo.",
+		);
+	}
 
 	function updateDraft(update: (current: OnboardingSnapshotDraft) => OnboardingSnapshotDraft) {
 		setWizard((current) => ({ ...current, draft: update(current.draft) }));
@@ -248,7 +299,7 @@ export function OnboardingWizard() {
 		setSaveStatus("idle");
 
 		if (outcome.status === "completed") {
-			setPhase("completed");
+			await enterChoiceFlow();
 			return;
 		}
 		if (outcome.status === "demoted") {
@@ -288,7 +339,45 @@ export function OnboardingWizard() {
 		);
 	}
 
-	if (phase === "completed") return <CompletionView />;
+	if (phase === "eligibility_loading") {
+		return (
+			<OnboardingStatusSurface
+				variant="loading"
+				title="Comprobando tus opciones"
+				description="Estamos revisando qué enfoques están disponibles con tu situación actual."
+			/>
+		);
+	}
+
+	if (phase === "eligibility_error") {
+		return (
+			<section className="onboarding-status-surface onboarding-status-surface-error" role="alert">
+				<div className="onboarding-status-copy">
+					<h1>No hemos podido comprobar tus opciones</h1>
+					<p>Tus respuestas siguen guardadas. Puedes volver a intentarlo aquí.</p>
+				</div>
+				<button className="onboarding-status-action" type="button" onClick={() => setEligibilityAttempt((value) => value + 1)}>
+					Reintentar
+				</button>
+			</section>
+		);
+	}
+
+	if (phase === "choice" && assessment) {
+		return (
+			<TrainingApproachChoice
+				assessment={assessment}
+				selected={selectedApproach}
+				pending={choicePending}
+				error={draftError}
+				onSelect={(approach) => {
+					setSelectedApproach(approach);
+					setDraftError(null);
+				}}
+				onSubmit={handleApproachSubmit}
+			/>
+		);
+	}
 
 	const currentStep = ONBOARDING_STEPS[stepIndex];
 	const isLastStep = stepIndex === ONBOARDING_STEPS.length - 1;

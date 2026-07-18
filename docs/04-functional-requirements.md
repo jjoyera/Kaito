@@ -181,17 +181,18 @@ El sistema debe evaluar la elegibilidad de enfoques de plan, permitir la selecci
 
 ### Requisitos
 
-- El sistema debe iniciar la generación del plan cuando el onboarding esté completo.
-- El sistema debe evaluar y mostrar las tres opciones visibles: Camino Kaio (`kaio_path`), Modo Z (`z_mode`) y Kaioken (`kaioken`).
-- El sistema debe recomendar una opción según el perfil y contexto del corredor.
-- El usuario debe poder elegir entre los enfoques elegibles.
+- El sistema debe ofrecer la selección de enfoque cuando el onboarding esté completo.
+- El sistema debe evaluar y mostrar siempre las tres opciones visibles, en orden de menor a mayor intensidad: Camino Kaio (`kaio_path`), Modo Z (`mode_z`) y Kaioken (`kaioken`).
+- La interfaz no debe recomendar, preseleccionar ni privilegiar visualmente ninguna opción.
+- El usuario debe elegir explícitamente entre los enfoques elegibles.
 - Si un enfoque está bloqueado, el sistema debe mostrarlo bloqueado con explicación comprensible.
 - `kaioken` debe quedar bloqueado salvo preparación alta demostrable (p. ej., historial sólido y base actual fuerte).
 - Si el corredor viene de un parón, casi sin kilometraje o con base insuficiente para su objetivo/tiempo, solo debe quedar disponible Camino Kaio.
 - El sistema debe persistir la evaluación de disponibilidad y bloqueos usando el concepto `PlanApproachEligibility`.
 - El sistema debe persistir el enfoque elegido en `TrainingPlan.planApproach`.
-- El sistema debe mostrar un estado de generación mientras se procesa el plan.
-- El sistema debe comunicar que está usando objetivo, disponibilidad, experiencia y enfoque elegido.
+- El sistema debe persistir un único borrador de `TrainingPlan` por usuario con el enfoque elegido antes de entrar en generación.
+- La generación real y su estado de progreso se incorporan como capacidad posterior; la pantalla intermedia actual no debe simular progreso.
+- Cuando se implemente la generación, el sistema debe comunicar que usa objetivo, disponibilidad, experiencia y enfoque elegido.
 - El sistema debe usar explícitamente los datos de objetivo específicos de la modalidad al generar la planificación.
 - El sistema debe generar una planificación inicial asociada al usuario.
 - El sistema debe generar la planificación respetando `TrainingPlan.planApproach`.
@@ -373,7 +374,7 @@ El MVP estará correctamente cubierto si:
 - El usuario puede completar un onboarding inicial sin fricción excesiva.
 - Kaito valida que tiene información suficiente antes de generar el plan.
 - Kaito recoge y valida campos de objetivo específicos por modalidad, incluyendo `targetDate` en todas y Backyard Ultra por vueltas/horas/ritmo-margen/estrategia.
-- Kaito recomienda un enfoque de plan, permite elegir entre opciones elegibles y muestra las bloqueadas con motivo.
+- Kaito muestra los tres enfoques sin recomendación visual, exige una elección explícita entre opciones elegibles y muestra las bloqueadas con todos sus motivos.
 - Kaito persiste elegibilidad/bloqueos y enfoque elegido para usarlo en la generación del plan.
 - Kaito genera un plan inicial asociado al usuario y alineado con el enfoque elegido.
 - El usuario puede consultar un dashboard con estado general, KPIs básicos y próximo entrenamiento.

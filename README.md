@@ -11,12 +11,12 @@ forma incremental.
 
 ## Estado actual
 
-El estado implementado entrega autenticación y los seis primeros pasos del nuevo onboarding.
+El estado implementado entrega autenticación, onboarding completo, selección explícita de enfoque y persistencia del borrador inicial de plan.
 
 | Área | Estado |
 | --- | --- |
-| Web | Next.js App Router con signup/login/sesión y onboarding privado en `/onboarding`. |
-| API | FastAPI con health check, verificación JWT Supabase vía JWKS, persistencia de onboarding y elegibilidad determinista de enfoque. |
+| Web | Next.js App Router con signup/login/sesión, onboarding privado, elección accesible de enfoque y destino estático `/plan/generating`. |
+| API | FastAPI con verificación JWT, onboarding, elegibilidad determinista y borrador owner-bound de `TrainingPlan`. |
 | Auth | Signup/login con Supabase, handoff de confirmación a login, backend protegido con `GET /auth/me` y `/onboarding` privado. |
 | Marca | Paleta y assets iniciales bajo `docs/` y `apps/web/public/`. |
 | SDD | Cambios guiados por OpenSpec en `openspec/changes/`. |
@@ -170,12 +170,11 @@ uv run pytest
 normalización de resultados de auth, cooldown, bridge de confirmación y handoff
 autenticado. No requiere cuentas reales de Supabase.
 
-`pnpm test:web-onboarding` cubre el wizard de onboarding: pasos y validación
-por paso, limpieza condicional de campos, mapeo de diagnósticos del backend a
-pasos, y los casos de uso de carga/guardado/completado. Tampoco requiere
-cuentas reales de Supabase ni el API corriendo.
+`pnpm test:web-onboarding` cubre el wizard, sus validaciones, la carga y guardado,
+y el contrato puro de elección de enfoque y borrador. No requiere cuentas reales
+de Supabase ni el API corriendo.
 
-La verificación final superó `pnpm test:web-onboarding`, lint, build y E2E web; Ruff y 233 pruebas API no integradas; y la prueba local de RLS con dos usuarios (24 pruebas).
+La verificación de esta capacidad cubre `pnpm test:web-onboarding`, lint, build y el E2E enfocado de onboarding; Ruff y 241 pruebas API no integradas. La migración incluye RLS owner-bound y se valida con Supabase local cuando ese entorno está disponible.
 
 ## Arquitectura frontend
 

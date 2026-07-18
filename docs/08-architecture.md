@@ -283,14 +283,16 @@ La IA solo usa contexto trazable del dominio MVP y reglas de:
 
 1. `web` recoge onboarding y valida formato para una UX inmediata.
 2. `api` vuelve a validar tipos, enums, requeridos y limpieza condicional antes de persistir; la validación web no es autoridad.
-3. El recurso protegido `GET /planning/training-approach-eligibility` recibe `assessment_date` como fecha local explícita y carga el onboarding completado del propietario derivado del JWT.
+3. El recurso protegido `GET /planning/training-approach-eligibility` exige `assessment_date` igual a la fecha UTC confiable del servidor y carga el onboarding completado del propietario derivado del JWT.
 4. El caso de uso orquesta la lectura y delega todos los umbrales y precedencias a `ApproachEligibilityPolicy`, una política pura del dominio `planning`.
-5. El endpoint solo serializa los tres enfoques, códigos estables de bloqueo, recomendación y restricciones de seguridad. La IA consume después ese límite y no puede ampliarlo.
+5. La web muestra siempre los tres enfoques y sus bloqueos, pero ignora `recommended_approach` para selección y decoración.
+6. `PUT /planning/training-plan-draft` vuelve a cargar el onboarding y reevalúa la elegibilidad con la fecha UTC confiable antes de crear, reutilizar o actualizar el único borrador del propietario.
 
 ```text
 planning/
-├── domain.py       # Política pura, resultados y códigos estables
-├── use_cases.py    # Lectura del onboarding del propietario + orquestación
+├── domain.py       # Política pura y resultados tipados
+├── use_cases.py    # Elegibilidad y guardado seguro del borrador
+├── repository.py   # Transacción SQL owner-bound e idempotencia
 └── router.py       # Auth, outcomes HTTP y serialización
 ```
 
