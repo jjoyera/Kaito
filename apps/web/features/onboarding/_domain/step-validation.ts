@@ -55,11 +55,20 @@ export type MountainTrailAccess =
 	| "very_limited";
 export type GymAccess = "yes" | "home_only";
 export type PlanningPreference = "fixed_routine" | "flexible_weekly";
+export type PhysicalStatus =
+	| "feeling_good"
+	| "carrying_fatigue"
+	| "recovering";
 
 export type TrainingPreferencesDraft = {
 	mountain_trail_access?: MountainTrailAccess;
 	gym_access?: GymAccess;
 	planning_preference?: PlanningPreference;
+};
+
+export type PhysicalStatusDraft = {
+	status?: PhysicalStatus;
+	pain_or_limitation_detail?: string;
 };
 
 export type OnboardingSnapshotDraft = {
@@ -68,6 +77,7 @@ export type OnboardingSnapshotDraft = {
 		baseline_4_weeks?: BaselineDraft;
 		availability?: AvailabilityDraft;
 		training_preferences?: TrainingPreferencesDraft;
+		physical_status?: PhysicalStatusDraft;
 	};
 	goal: GoalDraft;
 };
@@ -111,6 +121,11 @@ const GYM_ACCESS = new Set<GymAccess>(["yes", "home_only"]);
 const PLANNING_PREFERENCES = new Set<PlanningPreference>([
 	"fixed_routine",
 	"flexible_weekly",
+]);
+const PHYSICAL_STATUSES = new Set<PhysicalStatus>([
+	"feeling_good",
+	"carrying_fatigue",
+	"recovering",
 ]);
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -327,6 +342,29 @@ export function validatePreferencesStep(
 	return errors;
 }
 
+export function validatePhysicalStatusStep(
+	physicalStatus: PhysicalStatusDraft,
+): FieldErrors {
+	const errors: FieldErrors = {};
+	if (physicalStatus.status === undefined) {
+		errors["profile.physical_status.status"] = "required";
+	} else if (!PHYSICAL_STATUSES.has(physicalStatus.status)) {
+		errors["profile.physical_status.status"] = "invalid_type";
+	}
+
+	const detail = physicalStatus.pain_or_limitation_detail;
+	if (detail !== undefined) {
+		if (typeof detail !== "string") {
+			errors["profile.physical_status.pain_or_limitation_detail"] =
+				"invalid_type";
+		} else if (detail.trim().length > 500) {
+			errors["profile.physical_status.pain_or_limitation_detail"] =
+				"invalid_length";
+		}
+	}
+	return errors;
+}
+
 export function validateStep(
 	stepId: StepId,
 	snapshot: OnboardingSnapshotDraft,
@@ -342,5 +380,7 @@ export function validateStep(
 			return validateAvailabilityStep(snapshot.profile.availability ?? {});
 		case "preferences":
 			return validatePreferencesStep(snapshot.profile.training_preferences ?? {});
+		case "physical_status":
+			return validatePhysicalStatusStep(snapshot.profile.physical_status ?? {});
 	}
 }

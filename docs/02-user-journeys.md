@@ -68,10 +68,11 @@ El usuario necesita introducir su información sin sentirse abrumado y entender 
 ### Estado de implementación actual
 
 > `/onboarding` entrega una introducción de valor, el CTA `Crear mi plan` y los
-> Pasos 1–4 del recorrido visual lineal de siete pasos. El Paso 4 permite elegir
+> Pasos 1–6 del recorrido visual lineal de siete pasos. El Paso 4 permite elegir
 > días y usar los atajos 45, 60 o 120 minutos, con ajustes exactos por día; exige
-> al menos tres días y 150 minutos semanales. `Varía por día` solo describe el
-> estado visual de valores mixtos y no se persiste.
+> al menos tres días y 150 minutos semanales. El Paso 5 recoge preferencias y el
+> Paso 6 recoge el estado físico y un detalle opcional antes de completar. `Varía
+> por día` solo describe el estado visual de valores mixtos y no se persiste.
 
 ### Recorrido principal
 
@@ -84,10 +85,12 @@ El usuario necesita introducir su información sin sentirse abrumado y entender 
 5. El usuario informa sobre su nivel, volumen actual y antecedentes relevantes.
 6. En el Paso 4, Kaito pregunta por la disponibilidad semanal: el usuario selecciona días, puede aplicar 45, 60 o 120 minutos y ajustar cada día entre 15 y 300 minutos exactos.
 7. El usuario necesita al menos tres días y 150 minutos semanales. Atrás conserva las respuestas locales; Continuar guarda el mapa exacto antes de pasar al siguiente paso. Si falla el guardado, puede reintentar sin perderlas.
-8. Kaito evalúa elegibilidad de enfoques y muestra tarjetas visuales de Camino Kaio, Modo Z y Kaioken.
-9. Kaito recomienda un enfoque según el perfil del corredor.
-10. El usuario elige entre los enfoques elegibles; los bloqueados se muestran con motivo.
-11. Kaito confirma que tiene suficiente información (incluido enfoque elegido) para generar el plan inicial.
+8. En el Paso 5, el usuario indica sus accesos y preferencia de planificación.
+9. En el Paso 6, el usuario elige su estado físico y puede describir dolor o limitaciones en un campo siempre visible y opcional. Continuar completa el onboarding; el detalle se recorta en sus extremos y se omite si está vacío.
+10. Kaito evalúa elegibilidad de enfoques y muestra tarjetas visuales de Camino Kaio, Modo Z y Kaioken.
+11. Kaito recomienda un enfoque según el perfil del corredor.
+12. El usuario elige entre los enfoques elegibles; los bloqueados se muestran con motivo.
+13. Kaito confirma que tiene suficiente información (incluido enfoque elegido) para generar el plan inicial.
 
 ### Resultado esperado
 

@@ -41,6 +41,9 @@ def _completed_snapshot(*, target_date: str = "2026-08-01") -> dict:
                 "gym_access": "yes",
                 "planning_preference": "fixed_routine",
             },
+            "physical_status": {
+                "status": "feeling_good",
+            },
         },
         "goal": {
             "modality": "trail",
@@ -450,6 +453,87 @@ def test_save_strips_legacy_restrictions_from_valid_training_preferences():
     ((_, persisted_snapshot),) = repository.upserts
     assert "restrictions" not in persisted_snapshot.profile
     assert "restrictions" in snapshot["profile"]
+
+
+def test_save_normalizes_optional_physical_detail_and_round_trips_it():
+    snapshot = _completed_snapshot()
+    snapshot["profile"]["physical_status"] = {
+        "status": "carrying_fatigue",
+        "pain_or_limitation_detail": "  Gemelo derecho\n  tras correr  ",
+    }
+    repository = StatefulRecordingRepository()
+    transactions = RecordingTransactions(repository)
+
+    saved = save_onboarding(
+        UserContext("runner-1"),
+        SaveOnboardingInput(snapshot=snapshot, validation_date=date(2026, 7, 13)),
+        transactions,
+    )
+    loaded = read_onboarding(
+        UserContext("runner-1"),
+        ReadOnboardingInput(validation_date=date(2026, 7, 13)),
+        transactions,
+    )
+
+    expected = {
+        "status": "carrying_fatigue",
+        "pain_or_limitation_detail": "Gemelo derecho\n  tras correr",
+    }
+    assert saved.snapshot.profile["physical_status"] == expected
+    assert loaded.snapshot.profile["physical_status"] == expected
+
+
+def test_save_omits_blank_optional_physical_detail():
+    snapshot = _completed_snapshot()
+    snapshot["profile"]["physical_status"]["pain_or_limitation_detail"] = " \n "
+
+    result = save_onboarding(
+        UserContext("runner-1"),
+        SaveOnboardingInput(snapshot=snapshot, validation_date=date(2026, 7, 13)),
+        RecordingTransactions(RecordingRepository()),
+    )
+
+    assert result.snapshot.profile["physical_status"] == {"status": "feeling_good"}
+
+
+def test_save_demotes_completed_snapshot_when_physical_status_is_missing_or_invalid():
+    for value, expected_code in ((None, "required"), ("fine", "out_of_range")):
+        snapshot = _completed_snapshot()
+        if value is None:
+            snapshot["profile"].pop("physical_status")
+        else:
+            snapshot["profile"]["physical_status"]["status"] = value
+
+        result = save_onboarding(
+            UserContext("runner-1"),
+            SaveOnboardingInput(snapshot=snapshot, validation_date=date(2026, 7, 13)),
+            RecordingTransactions(RecordingRepository()),
+        )
+
+        assert result.snapshot.state is OnboardingState.INCOMPLETE
+        assert any(
+            diagnostic.code == expected_code
+            and diagnostic.field == "profile.physical_status.status"
+            for diagnostic in result.diagnostics
+        )
+
+
+def test_save_rejects_malformed_physical_status_detail_before_persistence():
+    for detail in (42, "x" * 501):
+        snapshot = _completed_snapshot()
+        snapshot["profile"]["physical_status"]["pain_or_limitation_detail"] = detail
+        transactions = RecordingTransactions(RecordingRepository())
+
+        with pytest.raises(InvalidOnboardingInput, match="^malformed_snapshot$"):
+            save_onboarding(
+                UserContext("runner-1"),
+                SaveOnboardingInput(
+                    snapshot=snapshot, validation_date=date(2026, 7, 13)
+                ),
+                transactions,
+            )
+
+        assert transactions.calls == []
 
 
 def test_save_demotes_completed_snapshot_when_a_training_preference_is_missing():

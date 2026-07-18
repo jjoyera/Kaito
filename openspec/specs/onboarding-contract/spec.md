@@ -32,6 +32,8 @@ The contract MUST use the following stable identifiers, answer types, requiredne
 | profile | `profile.training_preferences.mountain_trail_access` | enum: `easy_access`, `weekends_only`, `very_limited` | completion-required |
 | profile | `profile.training_preferences.gym_access` | enum: `yes`, `home_only` | completion-required |
 | profile | `profile.training_preferences.planning_preference` | enum: `fixed_routine`, `flexible_weekly` | completion-required |
+| profile | `profile.physical_status.status` | enum: `feeling_good`, `carrying_fatigue`, `recovering` | completion-required |
+| profile | `profile.physical_status.pain_or_limitation_detail` | string, maximum 500 characters after trimming surrounding whitespace | optional; blank values are omitted and internal whitespace/newlines are preserved |
 | goal | `goal.modality` | enum: `trail`, `ultra_trail`, `ocr`, `backyard` | completion-required |
 | goal | `goal.target_date` | string `YYYY-MM-DD` | completion-required; local calendar date |
 | goal | `goal.target_distance_km` | positive number | conditional-required for `trail`, `ultra_trail`, `ocr`; kilometres |
@@ -151,6 +153,22 @@ The contract MUST require mountain/trail access, gym access, and planning prefer
 - GIVEN a training preference value outside its documented enum
 - WHEN completion is requested
 - THEN the snapshot remains incomplete with an out-of-range diagnostic for that field.
+
+### Requirement: Physical status is explicit and safely normalized
+
+The contract MUST require `profile.physical_status.status` with one documented enum value. `profile.physical_status.pain_or_limitation_detail` MUST remain optional, MUST be trimmed only at its surrounding boundary, MUST preserve internal whitespace and newlines, and MUST be omitted when blank. Its normalized value MUST NOT exceed 500 characters. Legacy `profile.restrictions` MUST continue to be removed rather than translated or reused.
+
+#### Scenario: Optional physical detail is normalized
+
+- GIVEN a valid physical status and a detail with surrounding whitespace and internal newlines
+- WHEN the snapshot is saved
+- THEN surrounding whitespace is removed, internal whitespace and newlines are preserved, and the normalized detail round-trips unchanged.
+
+#### Scenario: Blank physical detail is omitted
+
+- GIVEN a valid physical status with no meaningful detail
+- WHEN the snapshot is saved
+- THEN completion remains valid and `pain_or_limitation_detail` is omitted.
 
 ### Requirement: Dates, modality goals, and outcomes
 

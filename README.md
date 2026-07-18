@@ -11,7 +11,7 @@ forma incremental.
 
 ## Estado actual
 
-El estado implementado entrega autenticación y los cuatro primeros pasos del nuevo onboarding.
+El estado implementado entrega autenticación y los seis primeros pasos del nuevo onboarding.
 
 | Área | Estado |
 | --- | --- |
@@ -215,9 +215,10 @@ openspec/              Artefactos SDD/OpenSpec.
   `Crear mi plan`. Su Paso 1 rediseñado muestra `Paso 1 de 7` y `14%`, permite
   elegir solo Trail o Ultra y solicita distancia, desnivel positivo y fecha
   objetivo; no muestra tecnicidad, altitud máxima ni botón de retroceso.
-- Los Pasos 1–4 usan el diseño visual lineal de siete pasos. El Paso 4 recoge disponibilidad con días compactos, atajos 45/60/120 y ajustes exactos de 15–300 minutos; requiere tres días y 150 minutos semanales. `Varía por día` es solo estado de UI.
+- Los Pasos 1–6 usan el diseño visual lineal de siete pasos. El Paso 4 recoge disponibilidad con días compactos, atajos 45/60/120 y ajustes exactos de 15–300 minutos; requiere tres días y 150 minutos semanales. `Varía por día` es solo estado de UI.
 - Continuar guarda el mapa disperso `profile.availability.minutes_by_day` antes de avanzar; Atrás conserva el estado local, y los fallos permiten reintentar sin perder respuestas. No hay autosave ni duración base persistida.
-- Persistencia de onboarding por usuario mediante API protegida, JSONB con ownership y RLS de Supabase; no se añadió migración, compatibilidad para los cinco campos retirados ni almacenamiento de duración base. Consulta los detalles en los documentos de `docs/` y `apps/web/README.md`.
+- El Paso 5 recoge las tres preferencias obligatorias y el Paso 6 exige un estado físico, admite un detalle opcional de hasta 500 caracteres y completa el onboarding con una CTA `Continuar`. El detalle se recorta en sus extremos y se omite si queda vacío.
+- Persistencia de onboarding por usuario mediante API protegida, JSONB con ownership y RLS de Supabase; no se añadió migración, compatibilidad para los cinco campos retirados ni almacenamiento de duración base. `profile.restrictions` continúa eliminándose y no se reutiliza. Consulta los detalles en los documentos de `docs/` y `apps/web/README.md`.
 - La validación incluye lint, build, unitarios y E2E web, Ruff y pruebas API, además de prueba RLS local de dos usuarios.
 - Paquete `@kaito/api-client` reservado para un futuro cliente generado; hoy no
   exporta código ni contratos de producto.

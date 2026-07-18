@@ -7,7 +7,14 @@ describe("ONBOARDING_STEPS", () => {
 	test("declares the fixed onboarding order with no plan-approach content", () => {
 		assert.deepEqual(
 			ONBOARDING_STEPS.map((step) => step.id),
-			["goal", "prior_history", "baseline", "availability", "preferences"],
+			[
+				"goal",
+				"prior_history",
+				"baseline",
+				"availability",
+				"preferences",
+				"physical_status",
+			],
 		);
 	});
 
@@ -64,12 +71,23 @@ describe("ONBOARDING_STEPS", () => {
 			"profile.training_preferences.planning_preference",
 		]);
 	});
+
+	test("physical-status step owns its required status and optional detail", () => {
+		const physicalStatusStep = ONBOARDING_STEPS.find(
+			(step) => step.id === "physical_status",
+		);
+		assert.deepEqual(physicalStatusStep?.fields, [
+			"profile.physical_status.status",
+			"profile.physical_status.pain_or_limitation_detail",
+		]);
+	});
 });
 
 describe("stepIndex", () => {
 	test("returns the position of a known step", () => {
 		assert.equal(stepIndex("goal"), 0);
 		assert.equal(stepIndex("preferences"), 4);
+		assert.equal(stepIndex("physical_status"), 5);
 	});
 });
 
@@ -80,10 +98,12 @@ describe("stepAfter / stepBefore", () => {
 	});
 
 	test("returns undefined past the last step", () => {
-		assert.equal(stepAfter("preferences"), undefined);
+		assert.equal(stepAfter("preferences"), "physical_status");
+		assert.equal(stepAfter("physical_status"), undefined);
 	});
 
 	test("walks backward through the fixed order", () => {
+		assert.equal(stepBefore("physical_status"), "preferences");
 		assert.equal(stepBefore("preferences"), "availability");
 		assert.equal(stepBefore("prior_history"), "goal");
 	});

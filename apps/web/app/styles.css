@@ -711,8 +711,14 @@ p {
 }
 
 .onboarding-prior-history,
-.onboarding-preferences {
+.onboarding-preferences,
+.onboarding-physical-status {
 	gap: 1.35rem;
+}
+
+.onboarding-optional-indicator {
+	color: var(--color-text-secondary);
+	font-weight: 500;
 }
 
 .onboarding-preference-label {
