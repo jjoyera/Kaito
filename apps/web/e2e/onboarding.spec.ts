@@ -999,4 +999,137 @@ test.describe("completed onboarding approach choice", () => {
 		await expect(page).toHaveURL(/plan_id=9dd180d0-058d-4ee5-b8cf-3e93867a4041$/);
 		expect(draftCalls).toBe(2);
 	});
+
+	for (const [name, status, detail] of [
+		["blocked selection", 409, "blocked_approach"],
+		["stale selection", 422, "assessment_date_out_of_range"],
+	] as const) {
+		test(`refreshes eligibility after a ${name} draft outcome`, async ({ page }) => {
+			await authenticate(page);
+			let eligibilityCalls = 0;
+			await page.route(`${API_ORIGIN}/**`, async (route: Route) => {
+				const pathname = new URL(route.request().url()).pathname;
+				if (pathname === "/runner-profile/onboarding") {
+					await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ snapshot: completed, diagnostics: [] }) });
+					return;
+				}
+				if (pathname === "/planning/training-approach-eligibility") {
+					eligibilityCalls += 1;
+					await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(eligibility) });
+					return;
+				}
+				await route.fulfill({ status, contentType: "application/json", body: JSON.stringify({ detail }) });
+			});
+			await page.goto("/onboarding");
+			await page.getByRole("button", { name: "Crear mi plan" }).click();
+			const kaio = page.getByRole("radio", { name: /Camino Kaio/ });
+			await kaio.check();
+			await page.getByRole("button", { name: /Generar mi plan/ }).click();
+			await expect(page.getByText("Paso 7 de 7")).toBeVisible();
+			await expect(kaio).not.toBeChecked();
+			expect(eligibilityCalls).toBe(2);
+		});
+	}
+
+	for (const [name, status, detail] of [
+		["missing onboarding", 404, "Onboarding snapshot not found"],
+		["incomplete onboarding", 409, "Onboarding is incomplete"],
+	] as const) {
+		test(`reconciles ${name} after a draft outcome`, async ({ page }) => {
+			await authenticate(page);
+			let draftFailed = false;
+			let reconciledReads = 0;
+			await page.route(`${API_ORIGIN}/**`, async (route: Route) => {
+				const pathname = new URL(route.request().url()).pathname;
+				if (pathname === "/runner-profile/onboarding") {
+					if (!draftFailed) {
+						await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ snapshot: completed, diagnostics: [] }) });
+					} else if (status === 404) {
+						reconciledReads += 1;
+						await route.fulfill({ status: 404, body: "not found" });
+					} else {
+						reconciledReads += 1;
+						await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ snapshot: { ...completed, state: "incomplete" }, diagnostics: [] }) });
+					}
+					return;
+				}
+				if (pathname === "/planning/training-approach-eligibility") {
+					await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(eligibility) });
+					return;
+				}
+				draftFailed = true;
+				await route.fulfill({ status, contentType: "application/json", body: JSON.stringify({ detail }) });
+			});
+			await page.goto("/onboarding");
+			await page.getByRole("button", { name: "Crear mi plan" }).click();
+			await page.getByRole("radio", { name: /Camino Kaio/ }).check();
+			await page.getByRole("button", { name: /Generar mi plan/ }).click();
+			await expect(page.getByRole("heading", { name: "Empecemos por tu objetivo" })).toBeVisible();
+			expect(reconciledReads).toBeGreaterThanOrEqual(1);
+		});
+	}
+
+	test("returns unsupported drafts to the existing objective recovery", async ({ page }) => {
+		await authenticate(page);
+		await page.route(`${API_ORIGIN}/**`, async (route: Route) => {
+			const pathname = new URL(route.request().url()).pathname;
+			if (pathname === "/runner-profile/onboarding") {
+				await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ snapshot: completed, diagnostics: [] }) });
+				return;
+			}
+			if (pathname === "/planning/training-approach-eligibility") {
+				await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(eligibility) });
+				return;
+			}
+			await route.fulfill({ status: 422, contentType: "application/json", body: JSON.stringify({ detail: "unsupported_modality" }) });
+		});
+		await page.goto("/onboarding");
+		await page.getByRole("button", { name: "Crear mi plan" }).click();
+		await page.getByRole("radio", { name: /Camino Kaio/ }).check();
+		await page.getByRole("button", { name: /Generar mi plan/ }).click();
+		await expect(page.getByRole("heading", { name: "Necesitamos revisar tu objetivo" })).toBeVisible();
+	});
+
+	test("routes rejected draft authentication through session recovery", async ({ page }) => {
+		await authenticate(page);
+		await page.route(`${API_ORIGIN}/**`, async (route: Route) => {
+			const pathname = new URL(route.request().url()).pathname;
+			if (pathname === "/runner-profile/onboarding") {
+				await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ snapshot: completed, diagnostics: [] }) });
+				return;
+			}
+			if (pathname === "/planning/training-approach-eligibility") {
+				await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(eligibility) });
+				return;
+			}
+			await route.fulfill({ status: 401 });
+		});
+		await page.goto("/onboarding");
+		await page.getByRole("button", { name: "Crear mi plan" }).click();
+		await page.getByRole("radio", { name: /Camino Kaio/ }).check();
+		await page.getByRole("button", { name: /Generar mi plan/ }).click();
+		await expect(page).toHaveURL(/\/login\?returnTo=%2Fonboarding$/);
+	});
+
+	test("keeps true draft conflicts distinct from retryable failures", async ({ page }) => {
+		await authenticate(page);
+		await page.route(`${API_ORIGIN}/**`, async (route: Route) => {
+			const pathname = new URL(route.request().url()).pathname;
+			if (pathname === "/runner-profile/onboarding") {
+				await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ snapshot: completed, diagnostics: [] }) });
+				return;
+			}
+			if (pathname === "/planning/training-approach-eligibility") {
+				await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(eligibility) });
+				return;
+			}
+			await route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ detail: "draft_plan_conflict" }) });
+		});
+		await page.goto("/onboarding");
+		await page.getByRole("button", { name: "Crear mi plan" }).click();
+		await page.getByRole("radio", { name: /Camino Kaio/ }).check();
+		await page.getByRole("button", { name: /Generar mi plan/ }).click();
+		await expect(page.getByText("Tu plan ya no se puede modificar", { exact: false })).toBeVisible();
+		await expect(page.getByText("Revisa tu conexión", { exact: false })).toHaveCount(0);
+	});
 });

@@ -7,6 +7,9 @@ import type {
 export type PlanningResourceErrorKind =
 	| "onboarding_missing"
 	| "onboarding_incomplete_or_conflict"
+	| "onboarding_incomplete"
+	| "blocked"
+	| "draft_conflict"
 	| "unsupported"
 	| "stale";
 
@@ -57,9 +60,22 @@ export async function saveTrainingPlanDraft(
 		{ passthroughStatuses: [404, 409, 422] },
 	);
 	if (response.status === 404) throw new PlanningResourceError("onboarding_missing");
-	if (response.status === 409) throw new PlanningResourceError("onboarding_incomplete_or_conflict");
+	if (response.status === 409) throw new PlanningResourceError(await classifyDraftConflict(response));
 	if (response.status === 422) throw new PlanningResourceError(await classifyUnprocessable(response));
 	return parseDraftResponse(await response.json());
+}
+
+async function classifyDraftConflict(
+	response: Response,
+): Promise<"onboarding_incomplete" | "blocked" | "draft_conflict"> {
+	try {
+		const body = await response.json() as { detail?: unknown };
+		if (body.detail === "Onboarding is incomplete") return "onboarding_incomplete";
+		if (body.detail === "blocked_approach") return "blocked";
+		return "draft_conflict";
+	} catch {
+		return "draft_conflict";
+	}
 }
 
 async function classifyUnprocessable(response: Response): Promise<"unsupported" | "stale"> {

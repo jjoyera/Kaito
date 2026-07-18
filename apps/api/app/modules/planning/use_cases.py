@@ -103,38 +103,12 @@ def save_training_plan_draft(
     try:
         with transactions(user) as repository:
             stored = repository.read_onboarding(owner_id, lock_for_draft=True)
-            if stored is None:
-                expected_error = OnboardingNotFound("onboarding_snapshot_not_found")
-            elif (
-                stored.get("state") == "completed"
-                and isinstance(stored.get("goal"), Mapping)
-                and stored["goal"].get("modality") in {"ocr", "backyard"}
-            ):
-                expected_error = UnsupportedEligibilityModality()
-            else:
-                try:
-                    snapshot, _ = parse_and_normalize(stored, trusted_utc_date)
-                    if snapshot.state is not OnboardingState.COMPLETED:
-                        expected_error = IncompleteOnboarding()
-                    else:
-                        assessment = (policy or ApproachEligibilityPolicy()).assess(
-                            {"profile": snapshot.profile, "goal": snapshot.goal},
-                            trusted_utc_date,
-                        )
-                        selected = next(
-                            item
-                            for item in assessment.approaches
-                            if item.approach == data.plan_approach
-                        )
-                        if not selected.available:
-                            expected_error = BlockedTrainingApproach()
-                except UnsupportedEligibilityModality as error:
-                    expected_error = error
-                except ValueError as error:
-                    expected_error = CorruptOnboardingData(
-                        "stored_onboarding_snapshot_is_invalid"
-                    )
-                    expected_error.__cause__ = error
+            expected_error = _draft_onboarding_error(
+                stored,
+                data.plan_approach,
+                trusted_utc_date,
+                policy or ApproachEligibilityPolicy(),
+            )
             if expected_error is None:
                 try:
                     saved = repository.save_draft(owner_id, data.plan_approach)
@@ -151,6 +125,39 @@ def save_training_plan_draft(
         status="draft",
         plan_approach=saved["plan_approach"],
     )
+
+
+def _draft_onboarding_error(
+    stored: Mapping[str, Any] | None,
+    plan_approach: Approach,
+    trusted_utc_date: date,
+    policy: ApproachEligibilityPolicy,
+) -> Exception | None:
+    if stored is None:
+        return OnboardingNotFound("onboarding_snapshot_not_found")
+    if (
+        stored.get("state") == "completed"
+        and isinstance(stored.get("goal"), Mapping)
+        and stored["goal"].get("modality") in {"ocr", "backyard"}
+    ):
+        return UnsupportedEligibilityModality()
+    try:
+        snapshot, _ = parse_and_normalize(stored, trusted_utc_date)
+        if snapshot.state is not OnboardingState.COMPLETED:
+            return IncompleteOnboarding()
+        assessment = policy.assess(
+            {"profile": snapshot.profile, "goal": snapshot.goal}, trusted_utc_date
+        )
+    except UnsupportedEligibilityModality as error:
+        return error
+    except ValueError as error:
+        invalid = CorruptOnboardingData("stored_onboarding_snapshot_is_invalid")
+        invalid.__cause__ = error
+        return invalid
+    selected = next(
+        item for item in assessment.approaches if item.approach == plan_approach
+    )
+    return None if selected.available else BlockedTrainingApproach()
 
 
 def _read_onboarding_without_mutation(

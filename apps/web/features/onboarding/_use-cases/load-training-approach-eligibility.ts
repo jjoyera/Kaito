@@ -17,6 +17,24 @@ export type EligibilityLoadOutcome =
 			reason: "auth" | "onboarding_missing" | "onboarding_incomplete" | "unsupported" | "unavailable";
 	  };
 
+type EligibilityLoadErrorReason = Extract<EligibilityLoadOutcome, { status: "error" }>["reason"];
+
+function mapPlanningResourceError(error: PlanningResourceError): EligibilityLoadErrorReason {
+	switch (error.kind) {
+		case "onboarding_missing": return "onboarding_missing";
+		case "onboarding_incomplete_or_conflict":
+		case "onboarding_incomplete": return "onboarding_incomplete";
+		case "unsupported": return "unsupported";
+		default: return "unavailable";
+	}
+}
+
+function mapPrivateApiError(error: PrivateApiError): EligibilityLoadErrorReason {
+	return error.kind === "auth_required" || error.kind === "auth_rejected"
+		? "auth"
+		: "unavailable";
+}
+
 export async function loadTrainingApproachEligibility(
 	assessmentDate: string,
 	dependencies: PrivateFetchDependencies,
@@ -29,13 +47,10 @@ export async function loadTrainingApproachEligibility(
 		};
 	} catch (error) {
 		if (error instanceof PlanningResourceError) {
-			if (error.kind === "onboarding_missing") return { status: "error", reason: "onboarding_missing" };
-			if (error.kind === "onboarding_incomplete_or_conflict") return { status: "error", reason: "onboarding_incomplete" };
-			return { status: "error", reason: error.kind === "unsupported" ? "unsupported" : "unavailable" };
+			return { status: "error", reason: mapPlanningResourceError(error) };
 		}
 		if (error instanceof PrivateApiError) {
-			if (["auth_required", "auth_rejected"].includes(error.kind)) return { status: "error", reason: "auth" };
-			return { status: "error", reason: "unavailable" };
+			return { status: "error", reason: mapPrivateApiError(error) };
 		}
 		captureException(error);
 		return { status: "error", reason: "unavailable" };

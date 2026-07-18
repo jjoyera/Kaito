@@ -28,12 +28,35 @@ describe("training planning use cases", () => {
 		assert.equal(captured.length, 0);
 	});
 
-	it("maps draft conflicts without exposing backend details", async () => {
-		const outcome = await saveTrainingPlanDraft(
+	it("maps each expected draft API detail to its recovery outcome", async () => {
+		for (const [status, detail, reason] of [
+			[404, "Onboarding snapshot not found", "onboarding_missing"],
+			[409, "Onboarding is incomplete", "onboarding_incomplete"],
+			[409, "blocked_approach", "blocked"],
+			[409, "draft_plan_conflict", "conflict"],
+			[422, "unsupported_modality", "unsupported"],
+			[422, "assessment_date_out_of_range", "stale"],
+		] as const) {
+			const outcome = await saveTrainingPlanDraft(
+				"kaio_path",
+				dependencies(async () => new Response(JSON.stringify({ detail }), { status })),
+			);
+			assert.deepEqual(outcome, { status: "error", reason });
+		}
+	});
+
+	it("preserves the exact authentication recovery outcome", async () => {
+		const required = await saveTrainingPlanDraft("kaio_path", {
+			apiBaseUrl: "https://api.kaito.test",
+			getAccessToken: async () => undefined,
+			fetcher: async () => new Response(),
+		});
+		const rejected = await saveTrainingPlanDraft(
 			"kaio_path",
-			dependencies(async () => new Response("private detail", { status: 409 })),
+			dependencies(async () => new Response(null, { status: 401 })),
 		);
-		assert.deepEqual(outcome, { status: "error", reason: "conflict" });
+		assert.deepEqual(required, { status: "error", reason: "auth_required" });
+		assert.deepEqual(rejected, { status: "error", reason: "auth_rejected" });
 	});
 
 	it("captures malformed success without leaking its body", async () => {

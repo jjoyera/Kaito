@@ -51,6 +51,22 @@ describe("training planning API", () => {
 		}
 	});
 
+	it("classifies exact draft conflict details by endpoint semantics", async () => {
+		for (const [detail, kind] of [
+			["Onboarding is incomplete", "onboarding_incomplete"],
+			["blocked_approach", "blocked"],
+			["draft_plan_conflict", "draft_conflict"],
+		] as const) {
+			await assert.rejects(
+				saveTrainingPlanDraft(
+					"mode_z",
+					dependencies(async () => new Response(JSON.stringify({ detail }), { status: 409 })),
+				),
+				(error) => error instanceof PlanningResourceError && error.kind === kind,
+			);
+		}
+	});
+
 	it("persists only the canonical selected approach", async () => {
 		let body: string | undefined;
 		const result = await saveTrainingPlanDraft(

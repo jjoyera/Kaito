@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { getAccessToken } from "../../auth/_adapters/get-access-token";
+import { getBrowserSupabaseClient } from "../../auth/_infrastructure/supabase/browser";
+import { createSessionRecoveryController } from "../../auth/_use-cases/session-recovery-controller";
 import { isTestAuthAdapterEnabledInBrowser } from "../../../shared/testing/test-auth-adapter";
 import type { OnboardingApiDependencies } from "../_adapters/onboarding-api";
 import {
@@ -72,6 +74,14 @@ function createApiDependencies(): OnboardingApiDependencies {
 	};
 }
 
+async function signOutBrowserSession(): Promise<void> {
+	if (isTestAuthAdapterEnabledInBrowser()) {
+		document.cookie = "kaito-e2e-session=; Path=/; Max-Age=0; SameSite=Lax";
+		return;
+	}
+	await getBrowserSupabaseClient()?.auth.signOut();
+}
+
 function createWizardState(draft: OnboardingSnapshotDraft): WizardState {
 	return {
 		draft,
@@ -95,6 +105,11 @@ function projectAvailability(
 export function OnboardingWizard() {
 	const router = useRouter();
 	const dependencies = useMemo(() => createApiDependencies(), []);
+	const authRecovery = useMemo(() => createSessionRecoveryController({
+		currentPath: "/onboarding",
+		signOut: signOutBrowserSession,
+		replace: (destination) => router.replace(destination),
+	}), [router]);
 	const today = useMemo(() => todayIsoDate(), []);
 	const saveInFlight = useRef(false);
 
@@ -181,11 +196,32 @@ export function OnboardingWizard() {
 			return;
 		}
 		setChoicePending(false);
-		setDraftError(
-			outcome.reason === "conflict"
-				? "Tu plan ya no se puede modificar. Actualiza la página para continuar con su estado actual."
-				: "No hemos podido guardar tu elección. Revisa tu conexión e inténtalo de nuevo.",
-		);
+		switch (outcome.reason) {
+			case "auth_required":
+			case "auth_rejected":
+				await authRecovery.recover(outcome.reason);
+				return;
+			case "blocked":
+			case "stale":
+				setSelectedApproach(null);
+				await enterChoiceFlow();
+				return;
+			case "unsupported":
+				setSelectedApproach(null);
+				setPhase("eligibility_unsupported");
+				return;
+			case "onboarding_missing":
+			case "onboarding_incomplete":
+				setSelectedApproach(null);
+				setPhase("loading");
+				setEligibilityAttempt((value) => value + 1);
+				return;
+			case "conflict":
+				setDraftError("Tu plan ya no se puede modificar. Actualiza la página para continuar con su estado actual.");
+				return;
+			case "unavailable":
+				setDraftError("No hemos podido guardar tu elección. Revisa tu conexión e inténtalo de nuevo.");
+		}
 	}
 
 	function updateDraft(update: (current: OnboardingSnapshotDraft) => OnboardingSnapshotDraft) {

@@ -1102,13 +1102,13 @@ p {
 .onboarding-approach-card[data-disabled] .onboarding-approach-label { cursor: not-allowed; }
 .onboarding-approach-label input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .onboarding-approach-card:has(input:focus-visible), .onboarding-why-action:focus-visible, .onboarding-panel-close:focus-visible, .onboarding-reasons-toggle:focus-visible { outline: 3px solid rgb(232 137 58 / 55%); outline-offset: 3px; }
-.onboarding-approach-icon, .onboarding-panel-icon { display: grid; width: 2.75rem; height: 2.75rem; place-items: center; border-radius: 0.8rem; background: #e9e5dc; color: #898477; }
+.onboarding-approach-icon, .onboarding-panel-icon { display: grid; width: 2.75rem; height: 2.75rem; place-items: center; border-radius: 0.8rem; background: #e9e5dc; color: #857f72; }
 .onboarding-approach-icon svg, .onboarding-panel-icon svg { width: 1.55rem; fill: none; stroke: currentcolor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .onboarding-approach-card[data-selected] .onboarding-approach-icon, .onboarding-selected-icon { background: #4a965f; color: white; }
 .onboarding-approach-name { grid-column: 1 / -1; font-family: var(--font-heading); font-size: 1.05rem; font-weight: 750; color: var(--color-ink); }
 .onboarding-choice-check, .onboarding-card-lock, .onboarding-choice-neutral { display: grid; width: 1.5rem; height: 1.5rem; place-items: center; border-radius: 999px; }
 .onboarding-choice-check { background: #559b66; color: white; }
-.onboarding-card-lock { color: #918a7e; background: #ece8df; }
+.onboarding-card-lock { color: #877f73; background: #ece8df; }
 .onboarding-choice-neutral { border: 2px solid #bbb4a8; background: #fffdf8; }
 .onboarding-choice-check svg, .onboarding-card-lock svg, .onboarding-blocked-panel .onboarding-panel-icon svg { width: 1rem; fill: none; stroke: currentcolor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .onboarding-level-markers { display: flex; gap: 0.3rem; margin-top: 0.65rem; }

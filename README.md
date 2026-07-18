@@ -219,13 +219,15 @@ openspec/              Artefactos SDD/OpenSpec.
 - El Paso 5 recoge las tres preferencias obligatorias y el Paso 6 exige estado físico y presencia de dolor o limitación. Si existe, pregunta de forma accesible si afecta al correr y admite un detalle opcional de hasta 500 caracteres; al responder que no existe dolor, impacto y detalle se eliminan de forma determinista.
 - Persistencia de onboarding por usuario mediante API protegida, JSONB con ownership y RLS de Supabase; el backend valida los enums del historial previo y el estado físico estructurado sin confiar en la web.
 - Elegibilidad protegida en `GET /planning/training-approach-eligibility`: una política pura devuelve Camino Kaio, Modo Z y Kaioken con disponibilidad, códigos estables de bloqueo, recomendación y restricciones de seguridad para Trail y Ultra Trail. OCR y Backyard permanecen disponibles en onboarding, pero todavía no son modalidades elegibles.
+- El Paso 7 presenta los enfoques elegibles, conserva la selección al reintentar fallos de conexión y guarda un único borrador owner-bound antes de navegar a `/plan/generating`; los bloqueos o datos desactualizados vuelven a comprobar la elegibilidad y los estados incompletos regresan al onboarding.
 - La validación incluye lint, build, unitarios y E2E web, Ruff y pruebas API, además de prueba RLS local de dos usuarios.
 - Paquete `@kaito/api-client` reservado para un futuro cliente generado; hoy no
   exporta código ni contratos de producto.
 
-Todavía no hay password reset, magic links, social auth, demo access, pantalla de
-selección de enfoque, dashboard, Strava, IA/RAG, planes de entrenamiento reales ni
-despliegue/CD. El backend ya calcula qué enfoques puede ofrecer esa futura pantalla.
+Todavía no hay password reset, magic links, social auth, demo access, dashboard,
+Strava, IA/RAG, generación de planes de entrenamiento reales ni despliegue/CD. Tras
+el Paso 7, la selección crea o actualiza el borrador y `/plan/generating` muestra por
+ahora el destino estático de generación.
 
 ## Flujo SDD/OpenSpec
 
