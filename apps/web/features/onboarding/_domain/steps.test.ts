@@ -7,7 +7,7 @@ describe("ONBOARDING_STEPS", () => {
 	test("declares the fixed onboarding order with no plan-approach content", () => {
 		assert.deepEqual(
 			ONBOARDING_STEPS.map((step) => step.id),
-			["goal", "prior_history", "baseline", "availability", "restrictions"],
+			["goal", "prior_history", "baseline", "availability", "preferences"],
 		);
 	});
 
@@ -54,13 +54,14 @@ describe("ONBOARDING_STEPS", () => {
 		]);
 	});
 
-	test("restrictions step owns has_restrictions and detail", () => {
-		const restrictionsStep = ONBOARDING_STEPS.find(
-			(step) => step.id === "restrictions",
+	test("preferences step owns the three training preference choices", () => {
+		const preferencesStep = ONBOARDING_STEPS.find(
+			(step) => step.id === "preferences",
 		);
-		assert.deepEqual(restrictionsStep?.fields, [
-			"profile.restrictions.has_restrictions",
-			"profile.restrictions.detail",
+		assert.deepEqual(preferencesStep?.fields, [
+			"profile.training_preferences.mountain_trail_access",
+			"profile.training_preferences.gym_access",
+			"profile.training_preferences.planning_preference",
 		]);
 	});
 });
@@ -68,7 +69,7 @@ describe("ONBOARDING_STEPS", () => {
 describe("stepIndex", () => {
 	test("returns the position of a known step", () => {
 		assert.equal(stepIndex("goal"), 0);
-		assert.equal(stepIndex("restrictions"), 4);
+		assert.equal(stepIndex("preferences"), 4);
 	});
 });
 
@@ -79,11 +80,11 @@ describe("stepAfter / stepBefore", () => {
 	});
 
 	test("returns undefined past the last step", () => {
-		assert.equal(stepAfter("restrictions"), undefined);
+		assert.equal(stepAfter("preferences"), undefined);
 	});
 
 	test("walks backward through the fixed order", () => {
-		assert.equal(stepBefore("restrictions"), "availability");
+		assert.equal(stepBefore("preferences"), "availability");
 		assert.equal(stepBefore("prior_history"), "goal");
 	});
 

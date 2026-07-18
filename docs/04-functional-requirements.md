@@ -144,7 +144,8 @@ El sistema debe guiar al usuario mediante un onboarding inicial para recopilar l
 - El contrato activo usa un estado limpio: no acepta ni conserva `training_years`, `completed_race_count_range`, `practiced_modalities`, `practiced_terrain` ni `goal.technicality`; no incluye migración ni compatibilidad para esas respuestas retiradas.
 - El sistema debe preguntar por la disponibilidad semanal en el Paso 4 de siete: días compactos, atajos de 45/60/120 minutos y ajustes exactos de 15 a 300 minutos por día. Solo se guarda el mapa disperso de minutos; `Varía por día` es una ayuda visual.
 - El sistema debe bloquear Continuar si hay menos de tres días o menos de 150 minutos semanales; Atrás conserva el estado local y Continuar guarda antes de avanzar. Un fallo permite reintentar sin perder las respuestas.
-- El sistema debe permitir indicar restricciones o preferencias básicas.
+- En el Paso 5 de siete, el sistema debe solicitar tres preferencias obligatorias: acceso a montaña o desnivel (`easy_access`, `weekends_only` o `very_limited`), acceso a gimnasio (`yes` o `home_only`) y preferencia de planificación (`fixed_routine` o `flexible_weekly`). Las respuestas se guardan en `profile.training_preferences` y nunca se completan con valores predeterminados.
+- El contrato activo reemplaza las restricciones anteriores: la API no debe conservar ni volver a emitir `profile.restrictions` al normalizar un onboarding.
 - El sistema debe explicar de forma breve por qué solicita esa información.
 - El sistema debe evitar preguntas excesivas que bloqueen el inicio del producto.
 

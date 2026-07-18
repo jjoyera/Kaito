@@ -65,7 +65,11 @@ def _snapshot() -> dict:
             "availability": {
                 "minutes_by_day": {"monday": 45, "wednesday": 75, "saturday": 120}
             },
-            "restrictions": {"has_restrictions": False},
+            "training_preferences": {
+                "mountain_trail_access": "easy_access",
+                "gym_access": "yes",
+                "planning_preference": "fixed_routine",
+            },
         },
         "goal": {
             "modality": "trail",
@@ -266,6 +270,31 @@ def test_put_rejects_invalid_availability_with_bounded_422(
     assert "holiday" not in response.text
     _assert_bounded_equal(_OWNER_ID in response.text, False, "owner disclosure")
     assert transactions.calls == 0
+
+
+def test_put_demotes_invalid_training_preference_with_bounded_diagnostic(
+    client: TestClient,
+) -> None:
+    snapshot = _snapshot()
+    snapshot["profile"]["training_preferences"]["gym_access"] = "no"
+
+    response = client.put(
+        "/runner-profile/onboarding",
+        headers=_auth_headers(),
+        json={"snapshot": snapshot, "validation_date": _VALIDATION_DATE},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["snapshot"]["state"] == "incomplete"
+    assert response.json()["diagnostics"] == [
+        {
+            "code": "out_of_range",
+            "field": "profile.training_preferences.gym_access",
+            "message_key": "out_of_range",
+            "severity": "error",
+            "metadata": {},
+        }
+    ]
 
 
 def test_get_reads_a_snapshot_for_the_explicit_validation_date(

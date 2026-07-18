@@ -3,7 +3,7 @@ export type StepId =
 	| "prior_history"
 	| "baseline"
 	| "availability"
-	| "restrictions";
+	| "preferences";
 
 export type StepDefinition = {
 	id: StepId;
@@ -48,10 +48,11 @@ export const ONBOARDING_STEPS: readonly StepDefinition[] = [
 		fields: ["profile.availability.minutes_by_day"],
 	},
 	{
-		id: "restrictions",
+		id: "preferences",
 		fields: [
-			"profile.restrictions.has_restrictions",
-			"profile.restrictions.detail",
+			"profile.training_preferences.mountain_trail_access",
+			"profile.training_preferences.gym_access",
+			"profile.training_preferences.planning_preference",
 		],
 	},
 ] as const;

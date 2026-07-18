@@ -29,7 +29,11 @@ const completeSnapshot = {
 		availability: {
 			minutes_by_day: { monday: 60, wednesday: 60, friday: 60 },
 		},
-		restrictions: { has_restrictions: false },
+		training_preferences: {
+			mountain_trail_access: "easy_access" as const,
+			gym_access: "yes" as const,
+			planning_preference: "fixed_routine" as const,
+		},
 	},
 	goal: {
 		modality: "trail" as const,

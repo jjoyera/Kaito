@@ -235,35 +235,49 @@ describe("validateStep(availability)", () => {
 	});
 });
 
-describe("validateStep(restrictions)", () => {
-	test("does not require detail when has_restrictions is false", () => {
-		const errors = validateStep(
-			"restrictions",
-			draft({ profile: { restrictions: { has_restrictions: false } } }),
-		);
-		assert.deepEqual(errors, {});
+describe("validateStep(preferences)", () => {
+	test("requires all three training preference choices", () => {
+		const errors = validateStep("preferences", draft());
+		assert.deepEqual(errors, {
+			"profile.training_preferences.mountain_trail_access": "required",
+			"profile.training_preferences.gym_access": "required",
+			"profile.training_preferences.planning_preference": "required",
+		});
 	});
 
-	test("requires detail when has_restrictions is true", () => {
+	test("accepts a complete set of training preferences", () => {
 		const errors = validateStep(
-			"restrictions",
-			draft({ profile: { restrictions: { has_restrictions: true } } }),
-		);
-		assert.equal(errors["profile.restrictions.detail"], "required");
-	});
-
-	test("accepts trimmed detail within 1-500 characters, including sensitive wording", () => {
-		const errors = validateStep(
-			"restrictions",
+			"preferences",
 			draft({
 				profile: {
-					restrictions: {
-						has_restrictions: true,
-						detail: "Recovering from a knee injury, cleared to run by physio.",
+					training_preferences: {
+						mountain_trail_access: "weekends_only",
+						gym_access: "home_only",
+						planning_preference: "flexible_weekly",
 					},
 				},
 			}),
 		);
 		assert.deepEqual(errors, {});
+	});
+
+	test("rejects values outside the preference enums", () => {
+		const errors = validateStep(
+			"preferences",
+			draft({
+				profile: {
+					training_preferences: {
+						mountain_trail_access: "daily",
+						gym_access: "no",
+						planning_preference: "random",
+					} as unknown as OnboardingSnapshotDraft["profile"]["training_preferences"],
+				},
+			}),
+		);
+		assert.deepEqual(errors, {
+			"profile.training_preferences.mountain_trail_access": "invalid_type",
+			"profile.training_preferences.gym_access": "invalid_type",
+			"profile.training_preferences.planning_preference": "invalid_type",
+		});
 	});
 });

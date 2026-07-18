@@ -12,7 +12,11 @@ const storedResult = {
 			availability: {
 				minutes_by_day: { monday: 45, wednesday: 75, saturday: 120 },
 			},
-			restrictions: { has_restrictions: false },
+			training_preferences: {
+				mountain_trail_access: "easy_access" as const,
+				gym_access: "yes" as const,
+				planning_preference: "fixed_routine" as const,
+			},
 		},
 		goal: { modality: "trail" },
 	},

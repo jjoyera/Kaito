@@ -29,8 +29,9 @@ The contract MUST use the following stable identifiers, answer types, requiredne
 | profile | `profile.baseline_4_weeks.longest_outing_km` | non-negative number | completion-required; kilometres in preceding 4 calendar weeks |
 | profile | `profile.baseline_4_weeks.recent_consistency` | enum: `irregular`, `fairly_consistent`, `very_consistent` | completion-required; perceived consistency across the preceding 4 calendar weeks |
 | profile | `profile.availability.minutes_by_day` | sparse object; only `monday`, `tuesday`, `wednesday`, `thursday`, `friday`, `saturday`, and `sunday` keys are allowed; present values are integers 15–300 | completion-required for at least 3 present days and 150 total weekly minutes; omitted day means unavailable; null values and unknown keys are invalid |
-| profile | `profile.restrictions.has_restrictions` | boolean | completion-required |
-| profile | `profile.restrictions.detail` | trimmed string, length 1–500 | conditional-required when `has_restrictions=true`; otherwise absent and cleared |
+| profile | `profile.training_preferences.mountain_trail_access` | enum: `easy_access`, `weekends_only`, `very_limited` | completion-required |
+| profile | `profile.training_preferences.gym_access` | enum: `yes`, `home_only` | completion-required |
+| profile | `profile.training_preferences.planning_preference` | enum: `fixed_routine`, `flexible_weekly` | completion-required |
 | goal | `goal.modality` | enum: `trail`, `ultra_trail`, `ocr`, `backyard` | completion-required |
 | goal | `goal.target_date` | string `YYYY-MM-DD` | completion-required; local calendar date |
 | goal | `goal.target_distance_km` | positive number | conditional-required for `trail`, `ultra_trail`, `ocr`; kilometres |
@@ -113,13 +114,7 @@ The system MUST accept an `incomplete` draft with absent completion-required fie
 
 ### Requirement: Deterministic conditional clearing
 
-Requiredness and visibility MUST be deterministic from typed answers. When a controlling answer hides a field, the hidden answer MUST be cleared, including restriction detail when restrictions become false and modality-specific fields when modality changes.
-
-#### Scenario: Restriction detail is cleared
-
-- GIVEN `has_restrictions=true` and a detail
-- WHEN it changes to false
-- THEN `detail` is absent and no longer retained.
+Requiredness and visibility MUST be deterministic from typed answers. When a controlling answer hides a field, the hidden answer MUST be cleared, including modality-specific fields when modality changes.
 
 ### Requirement: Objective history and separate four-week baseline
 
@@ -141,15 +136,21 @@ Prior history MUST remain observable and separate from the previous four calenda
 - WHEN completion is requested
 - THEN a blocking validation error is returned.
 
-### Requirement: Restrictions are bounded self-reported context
+### Requirement: Training preferences are explicit required choices
 
-The contract MUST validate only boolean presence, conditional detail presence, trimmed length 1–500, and clearing. It MUST NOT semantically detect or reject diagnostic or medical wording. Consumers and product copy MUST treat detail as self-reported practical training context, not diagnosis or treatment. Pain, active injury, or medical-risk text MUST trigger a safety notice, if applicable, rather than making otherwise valid text invalid.
+The contract MUST require mountain/trail access, gym access, and planning preference under `profile.training_preferences`. Each value MUST use its documented enum and MUST NOT be defaulted when absent.
 
-#### Scenario: Restriction text is not semantically rejected
+#### Scenario: A training preference is missing
 
-- GIVEN `has_restrictions=true` and trimmed detail of 1–500 characters, including medical-risk wording
-- WHEN the contract is validated
-- THEN it passes text validation; any safety notice is separate and non-blocking to text acceptance.
+- GIVEN a snapshot without one of the three training preference choices
+- WHEN completion is requested
+- THEN the snapshot remains incomplete with a required diagnostic for that field.
+
+#### Scenario: A training preference is outside its enum
+
+- GIVEN a training preference value outside its documented enum
+- WHEN completion is requested
+- THEN the snapshot remains incomplete with an out-of-range diagnostic for that field.
 
 ### Requirement: Dates, modality goals, and outcomes
 

@@ -1,10 +1,7 @@
 import { strict as assert } from "node:assert";
 import { describe, test } from "node:test";
 
-import {
-	clearHiddenGoalFields,
-	clearRestrictionDetail,
-} from "./conditional-clearing";
+import { clearHiddenGoalFields } from "./conditional-clearing";
 
 describe("clearHiddenGoalFields", () => {
 	test("clears OCR-specific fields when modality changes to backyard", () => {
@@ -74,36 +71,5 @@ describe("clearHiddenGoalFields", () => {
 	test("returns the goal unchanged when modality is not yet set", () => {
 		const goal = { target_distance_km: 42 };
 		assert.deepEqual(clearHiddenGoalFields(goal), goal);
-	});
-});
-
-describe("clearRestrictionDetail", () => {
-	test("clears detail when has_restrictions becomes false", () => {
-		const restrictions = {
-			has_restrictions: false as const,
-			detail: "This answer must not be retained",
-		};
-
-		const cleared = clearRestrictionDetail(restrictions);
-
-		assert.equal(cleared.detail, undefined);
-		assert.equal(cleared.has_restrictions, false);
-	});
-
-	test("keeps detail when has_restrictions is true", () => {
-		const restrictions = { has_restrictions: true as const, detail: "Knee" };
-		assert.deepEqual(clearRestrictionDetail(restrictions), restrictions);
-	});
-
-	test("does not mutate the original restrictions object", () => {
-		const restrictions = {
-			has_restrictions: false as const,
-			detail: "keep this off the wire",
-		};
-		const original = { ...restrictions };
-
-		clearRestrictionDetail(restrictions);
-
-		assert.deepEqual(restrictions, original);
 	});
 });

@@ -36,7 +36,11 @@ def _completed_snapshot(*, target_date: str = "2026-08-01") -> dict:
             "availability": {
                 "minutes_by_day": {"monday": 45, "wednesday": 75, "saturday": 120}
             },
-            "restrictions": {"has_restrictions": True, "detail": "Avoid late sessions"},
+            "training_preferences": {
+                "mountain_trail_access": "easy_access",
+                "gym_access": "yes",
+                "planning_preference": "fixed_routine",
+            },
         },
         "goal": {
             "modality": "trail",
@@ -426,11 +430,11 @@ def test_stray_training_hours_does_not_replace_required_recent_consistency():
     )
 
 
-def test_save_clears_hidden_restriction_detail_before_persisting_normalization():
+def test_save_strips_legacy_restrictions_from_valid_training_preferences():
     snapshot = _completed_snapshot()
     snapshot["profile"]["restrictions"] = {
-        "has_restrictions": False,
-        "detail": "This answer must not be retained",
+        "has_restrictions": True,
+        "detail": "Legacy value",
     }
     repository = RecordingRepository()
 
@@ -440,12 +444,55 @@ def test_save_clears_hidden_restriction_detail_before_persisting_normalization()
         RecordingTransactions(repository),
     )
 
-    assert result.snapshot.profile["restrictions"] == {"has_restrictions": False}
+    assert result.snapshot.state is OnboardingState.COMPLETED
+    assert result.diagnostics == ()
+    assert "restrictions" not in result.snapshot.profile
     ((_, persisted_snapshot),) = repository.upserts
-    assert persisted_snapshot.profile["restrictions"] == {"has_restrictions": False}
-    assert (
-        snapshot["profile"]["restrictions"]["detail"]
-        == "This answer must not be retained"
+    assert "restrictions" not in persisted_snapshot.profile
+    assert "restrictions" in snapshot["profile"]
+
+
+def test_save_demotes_completed_snapshot_when_a_training_preference_is_missing():
+    snapshot = _completed_snapshot()
+    snapshot["profile"]["training_preferences"].pop("gym_access")
+
+    result = save_onboarding(
+        UserContext("runner-1"),
+        SaveOnboardingInput(snapshot=snapshot, validation_date=date(2026, 7, 13)),
+        RecordingTransactions(RecordingRepository()),
+    )
+
+    assert result.snapshot.state is OnboardingState.INCOMPLETE
+    assert any(
+        diagnostic.code == "required"
+        and diagnostic.field == "profile.training_preferences.gym_access"
+        for diagnostic in result.diagnostics
+    )
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("mountain_trail_access", "daily"),
+        ("gym_access", "no"),
+        ("planning_preference", "random"),
+    ],
+)
+def test_save_demotes_completed_snapshot_for_invalid_training_preference(field, value):
+    snapshot = _completed_snapshot()
+    snapshot["profile"]["training_preferences"][field] = value
+
+    result = save_onboarding(
+        UserContext("runner-1"),
+        SaveOnboardingInput(snapshot=snapshot, validation_date=date(2026, 7, 13)),
+        RecordingTransactions(RecordingRepository()),
+    )
+
+    assert result.snapshot.state is OnboardingState.INCOMPLETE
+    assert any(
+        diagnostic.code == "out_of_range"
+        and diagnostic.field == f"profile.training_preferences.{field}"
+        for diagnostic in result.diagnostics
     )
 
 

@@ -12,13 +12,13 @@ import type {
 	GoalDraft,
 	OnboardingSnapshotDraft,
 	PriorHistoryDraft,
-	RestrictionsDraft,
+	TrainingPreferencesDraft,
 } from "../_domain/step-validation";
 import { AvailabilityStep } from "./availability-step";
 import { BaselineStep } from "./baseline-step";
 import { GoalStep } from "./goal-step";
 import { PriorHistoryStep } from "./prior-history-step";
-import { RestrictionsStep } from "./restrictions-step";
+import { PreferencesStep } from "./preferences-step";
 
 type OnboardingStepContentProps = Readonly<{
 	stepId: StepId;
@@ -30,7 +30,7 @@ type OnboardingStepContentProps = Readonly<{
 	availability: AvailabilityInteractionState;
 	availabilityIssues: readonly AvailabilityIssue[];
 	onAvailabilityAction: (action: AvailabilityAction) => void;
-	onRestrictionsChange: (patch: Partial<RestrictionsDraft>) => void;
+	onPreferencesChange: (patch: Partial<TrainingPreferencesDraft>) => void;
 	children: ReactNode;
 }>;
 
@@ -44,7 +44,7 @@ export function OnboardingStepContent({
 	availability,
 	availabilityIssues,
 	onAvailabilityAction,
-	onRestrictionsChange,
+	onPreferencesChange,
 	children,
 }: OnboardingStepContentProps) {
 	let heading: ReactNode = null;
@@ -111,12 +111,18 @@ export function OnboardingStepContent({
 				/>
 			);
 			break;
-		case "restrictions":
+		case "preferences":
+			heading = (
+				<header className="onboarding-step-intro">
+					<h1>Tus preferencias y recursos</h1>
+					<p>Cada plan se adapta a lo que tienes disponible de verdad.</p>
+				</header>
+			);
 			body = (
-				<RestrictionsStep
-					value={draft.profile.restrictions ?? {}}
+				<PreferencesStep
+					value={draft.profile.training_preferences ?? {}}
 					errors={errors}
-					onChange={onRestrictionsChange}
+					onChange={onPreferencesChange}
 				/>
 			);
 			break;

@@ -14,19 +14,22 @@ function dependencies(
 	};
 }
 
+const profile = {
+	availability: {
+		minutes_by_day: { monday: 45, wednesday: 75, saturday: 120 },
+	},
+	training_preferences: {
+		mountain_trail_access: "easy_access" as const,
+		gym_access: "yes" as const,
+		planning_preference: "fixed_routine" as const,
+	},
+};
+
 describe("saveOnboardingStep", () => {
 	it("persists the accumulated snapshot with state incomplete on advance", async () => {
 		let capturedBody: string | undefined;
 		const outcome = await saveOnboardingStep(
-			{
-				profile: {
-					availability: {
-						minutes_by_day: { monday: 45, wednesday: 75, saturday: 120 },
-					},
-					restrictions: { has_restrictions: false },
-				},
-				goal: { modality: "trail" },
-			},
+			{ profile, goal: { modality: "trail" } },
 			"2026-07-13",
 			dependencies(async (_input, init) => {
 				capturedBody = String(init?.body);
@@ -35,12 +38,7 @@ describe("saveOnboardingStep", () => {
 						snapshot: {
 							contract_version: "1",
 							state: "incomplete",
-							profile: {
-							availability: {
-								minutes_by_day: { monday: 45, wednesday: 75, saturday: 120 },
-							},
-							restrictions: { has_restrictions: false },
-						},
+							profile,
 							goal: { modality: "trail" },
 						},
 						diagnostics: [],
@@ -56,12 +54,7 @@ describe("saveOnboardingStep", () => {
 					snapshot: {
 						contract_version: "1",
 						state: "incomplete",
-						profile: {
-							availability: {
-								minutes_by_day: { monday: 45, wednesday: 75, saturday: 120 },
-							},
-							restrictions: { has_restrictions: false },
-						},
+						profile,
 						goal: { modality: "trail" },
 					},
 					validation_date: "2026-07-13",

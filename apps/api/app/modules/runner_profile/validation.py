@@ -25,6 +25,13 @@ _REMOVED_PRIOR_HISTORY_FIELDS = frozenset(
     }
 )
 _RECENT_CONSISTENCIES = frozenset({"irregular", "fairly_consistent", "very_consistent"})
+_TRAINING_PREFERENCE_VALUES = {
+    "mountain_trail_access": frozenset(
+        {"easy_access", "weekends_only", "very_limited"}
+    ),
+    "gym_access": frozenset({"yes", "home_only"}),
+    "planning_preference": frozenset({"fixed_routine", "flexible_weekly"}),
+}
 
 
 def _diagnostic(code: str, field: str) -> Diagnostic:
@@ -92,12 +99,17 @@ def _validate_structural(profile: dict[str, Any], goal: dict[str, Any]) -> None:
     _validate_availability(profile)
     _validate_baseline(profile)
     _validate_profile_numbers(profile)
-    _validate_restrictions(profile)
+    _validate_training_preferences(profile)
     _validate_goal(goal)
 
 
 def _validate_profile_blocks(profile: dict[str, Any]) -> None:
-    for block in ("prior_history", "baseline_4_weeks", "availability", "restrictions"):
+    for block in (
+        "prior_history",
+        "baseline_4_weeks",
+        "availability",
+        "training_preferences",
+    ):
         if block in profile and not isinstance(profile[block], Mapping):
             raise ValueError("malformed_snapshot")
 
@@ -142,13 +154,12 @@ def _validate_profile_numbers(profile: dict[str, Any]) -> None:
         raise ValueError("malformed_snapshot")
 
 
-def _validate_restrictions(profile: dict[str, Any]) -> None:
-    restrictions = _mapping(profile.get("restrictions", {})) or {}
-    if "has_restrictions" in restrictions and not isinstance(
-        restrictions["has_restrictions"], bool
+def _validate_training_preferences(profile: dict[str, Any]) -> None:
+    preferences = _mapping(profile.get("training_preferences", {})) or {}
+    if any(
+        field in preferences and not isinstance(preferences[field], str)
+        for field in _TRAINING_PREFERENCE_VALUES
     ):
-        raise ValueError("malformed_snapshot")
-    if "detail" in restrictions and not isinstance(restrictions["detail"], str):
         raise ValueError("malformed_snapshot")
 
 
@@ -186,15 +197,11 @@ def _validate_goal_strings(goal: dict[str, Any]) -> None:
 
 
 def _clear_hidden(profile: dict[str, Any], goal: dict[str, Any]) -> None:
+    profile.pop("restrictions", None)
     baseline = _mapping(profile.get("baseline_4_weeks"))
     if baseline is not None:
         baseline.pop("training_hours", None)
         profile["baseline_4_weeks"] = baseline
-    restrictions = _mapping(profile.get("restrictions"))
-    if restrictions is not None:
-        if restrictions.get("has_restrictions") is False:
-            restrictions.pop("detail", None)
-        profile["restrictions"] = restrictions
     modality = goal.get("modality")
     hidden = {
         "trail": {"obstacle_count", "obstacle_difficulty", "target_loops"},
@@ -222,7 +229,7 @@ def _completion_diagnostics(
     profile, goal, diagnostics = snapshot.profile, snapshot.goal, []
     _add_required_diagnostics(profile, goal, diagnostics)
     _add_availability_diagnostics(profile, diagnostics)
-    _add_restriction_diagnostics(profile, diagnostics)
+    _add_training_preference_diagnostics(profile, diagnostics)
     _add_baseline_diagnostics(profile, diagnostics)
     _add_goal_diagnostics(goal, validation_date, diagnostics)
     return diagnostics
@@ -248,9 +255,9 @@ def _add_required_diagnostics(
             "profile.baseline_4_weeks",
         ),
         (
-            profile.get("restrictions", {}),
-            ("has_restrictions",),
-            "profile.restrictions",
+            profile.get("training_preferences", {}),
+            tuple(_TRAINING_PREFERENCE_VALUES),
+            "profile.training_preferences",
         ),
         (goal, ("modality", "target_date"), "goal"),
     )
@@ -287,15 +294,16 @@ def _add_availability_diagnostics(
             )
 
 
-def _add_restriction_diagnostics(
+def _add_training_preference_diagnostics(
     profile: JsonObject, diagnostics: list[Diagnostic]
 ) -> None:
-    restrictions = profile.get("restrictions", {})
-    if restrictions.get("has_restrictions") and not (
-        isinstance(restrictions.get("detail"), str)
-        and 1 <= len(restrictions["detail"].strip()) <= 500
-    ):
-        diagnostics.append(_diagnostic("required", "profile.restrictions.detail"))
+    preferences = profile.get("training_preferences", {})
+    for field, allowed in _TRAINING_PREFERENCE_VALUES.items():
+        value = preferences.get(field)
+        if value is not None and value not in allowed:
+            diagnostics.append(
+                _diagnostic("out_of_range", f"profile.training_preferences.{field}")
+            )
 
 
 def _add_baseline_diagnostics(
