@@ -63,9 +63,7 @@ test.describe("session route flow", () => {
 		await page.goto("/");
 		const navigation = page.goto("/onboarding");
 
-		await expect(page.getByRole("status")).toHaveText(
-			/Loading your onboarding area/i,
-		);
+		await expect(page.getByRole("status")).toHaveText(/Preparando tu plan/i);
 		await expect(
 			page.getByRole("heading", { name: /cuéntanos tu punto de partida/i }),
 		).toHaveCount(0);
