@@ -104,14 +104,16 @@ def test_real_backend_only_writes_and_repository_contract(
                     (owner,),
                 )
             admin.execute(
-                "UPDATE training_plans SET status='active' WHERE id=%s",
-                (first.plan_id,),
+                "UPDATE training_plans SET status='active', start_date=%s, "
+                "end_date=%s, block_focus='Aerobic durability' WHERE id=%s",
+                (date(2026, 7, 6), date(2026, 7, 12), first.plan_id),
             )
             with pytest.raises(psycopg.errors.UniqueViolation):
                 admin.execute(
-                    "INSERT INTO training_plans(owner_id,status,plan_approach) "
-                    "VALUES (%s,'active','kaio_path')",
-                    (owner,),
+                    "INSERT INTO training_plans"
+                    "(owner_id,status,plan_approach,start_date,end_date,block_focus) "
+                    "VALUES (%s,'active','kaio_path',%s,%s,'Aerobic durability')",
+                    (owner, date(2026, 7, 6), date(2026, 7, 12)),
                 )
         with pytest.raises(DraftPlanConflict):
             save_training_plan_draft(
