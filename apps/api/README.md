@@ -153,11 +153,18 @@ adaptador usa Responses API y Structured Outputs con el prompt versionado
 | Salida | `GeneratedTrainingBlock`, el contrato Pydantic existente de planificación. |
 | Errores | Fallos neutrales que no filtran detalles del proveedor. |
 
-M1 solo implementa el puerto neutral y el adaptador de proveedor. No existe todavía
-un recorrido de llamada real para el usuario: la orquestación y reparación única
-(M2), la persistencia (M3), los endpoints (M4) y la UI/E2E (M5) siguen pendientes.
-La validación deportiva posterior a la respuesta pertenece a M2; no forma parte del
-adaptador ni debe simularse mediante un endpoint.
+El flujo interno ya ensambla contexto owner-bound, invoca este adaptador, aplica
+validación determinista y permite como máximo un segundo intento exclusivamente cuando
+el primer bloque incumple esa validación. Un resultado válido se persiste y activa junto
+con todas sus sesiones en una transacción; cualquier fallo revierte la sustitución
+completa. La lectura de repositorio devuelve el plan activo y sus sesiones ordenadas por
+semana y posición.
+
+Esta capacidad existe en las capas de aplicación y repositorio, pero todavía no está
+expuesta por HTTP: `POST /planning/generate` y `GET /planning/active` pertenecen a T3.4,
+y la pantalla de generación, el dashboard y el E2E siguen pendientes. La configuración
+de OpenAI permanece exclusivamente en variables de entorno del backend; no debe
+trasladarse a la web ni documentarse con valores secretos.
 
 ---
 
@@ -237,3 +244,19 @@ def mi_handler(user: UserContext = Depends(get_current_user)) -> dict:
 ```
 
 El handler recibe un `UserContext` verificado sin conocer los detalles del proveedor de autenticación.
+
+### Propiedad de planes y sesiones
+
+Las tablas canónicas `training_plans` y `training_sessions` aplican RLS además de los
+filtros owner-bound del repositorio:
+
+- `authenticated` puede leer sus propias filas de plan, con independencia del estado, y solo las sesiones que pertenecen a su plan activo;
+- las filas de otros propietarios y las escrituras directas de `authenticated` están denegadas;
+- `kaito_api_login` mantiene lecturas y escrituras acotadas al propietario derivado de los claims verificados instalados por el backend;
+- `anon` y `PUBLIC` no tienen acceso.
+
+Las migraciones de esquema y políticas son aditivas y se despliegan mediante el historial
+de migraciones de Supabase. No se reescriben migraciones ya aplicadas ni se corrigen
+entornos con ediciones SQL manuales; cualquier evolución requiere una migración nueva.
+Las credenciales, identificadores de producción y valores de configuración sensibles no
+se incluyen en la documentación.

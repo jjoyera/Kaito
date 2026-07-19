@@ -200,8 +200,11 @@ El sistema debe evaluar la elegibilidad de enfoques de plan, permitir la selecci
 - La validación debe exigir igualdad exacta entre la suma semanal de kilómetros de las sesiones `run` y la proyección semanal autorizada, ubicar cada sesión dentro de su ventana semanal y no aceptar sesiones posteriores a la fecha objetivo.
 - El bloque se limita al tramo autorizado de 1–4 semanas y se trunca en la fecha objetivo; no representa por sí solo un plan completo persistido.
 - La validación deportiva debe aplicar los guardrails canónicos de distribución de intensidad, fuerza y separación de sesiones demandantes definidos en [`07-training-knowledge.md`](07-training-knowledge.md).
-- El proveedor M1 y su prompt ya existen como infraestructura interna. La orquestación/reparación, persistencia/activación, endpoints y experiencia UI/E2E se incorporan en M2–M5; la pantalla intermedia actual no debe simular progreso.
-- Cuando se implemente la generación, el sistema debe comunicar que usa objetivo, disponibilidad, experiencia y enfoque elegido.
+- El flujo interno implementado construye contexto owner-bound, obtiene de OpenAI un bloque estructurado, lo valida de forma determinista y permite como máximo un segundo intento solo por fallo de validación; después persiste y activa plan y sesiones de forma atómica.
+- La sustitución debe archivar el plan activo anterior solo dentro de la misma transacción; cualquier fallo revierte plan, sesiones y activación completos.
+- Los usuarios autenticados pueden leer sus propias filas de plan, con independencia del estado, y solo las sesiones de su plan activo; las filas ajenas y las escrituras directas quedan denegadas. El backend mantiene lecturas y escrituras owner-bound con `kaito_api_login` bajo claims verificados, mientras `anon` y `PUBLIC` quedan denegados.
+- Este flujo existe en aplicación y repositorio, pero no está expuesto por HTTP hasta T3.4. La pantalla intermedia actual no debe simular progreso y el dashboard/E2E siguen pendientes.
+- Cuando T3.4 y PR D expongan la generación al usuario, la interfaz debe comunicar que usa objetivo, disponibilidad, experiencia y enfoque elegido.
 - El sistema debe usar explícitamente los datos de objetivo específicos de la modalidad al generar la planificación.
 - El sistema debe generar una planificación inicial asociada al usuario.
 - El sistema debe generar la planificación respetando `TrainingPlan.planApproach`.
@@ -213,19 +216,20 @@ El sistema debe evaluar la elegibilidad de enfoques de plan, permitir la selecci
 
 | Hito | Estado actual |
 | --- | --- |
-| T1.1–T1.3 (PR #86) | Entregados: contexto owner-bound, calendario/proyección determinista, contrato del bloque y guardrails deportivos previos al proveedor. |
-| M1 | Entregado en la rama actual: puerto neutral, prompt `training-block-v1` y adaptador OpenAI Responses API con Structured Outputs. |
-| M2 | Pendiente: orquestación, validación posterior al proveedor y una reparación. |
-| M3 | Pendiente: persistencia y activación owner-bound del resultado. |
-| M4 | Pendiente: endpoints de generación y consulta. |
-| M5 | Pendiente: UI, dashboard y E2E del recorrido. |
+| T1.1–T1.3 | Entregados: contexto owner-bound, calendario/proyección determinista, contrato del bloque y guardrails deportivos. |
+| T2.1–T2.3 | Entregados: puerto neutral, prompt `training-block-v1`, adaptador OpenAI, orquestación y una repetición solo por fallo de validación. |
+| T3.1 | Entregado y aplicado: esquema canónico de `training_plans` y `training_sessions`. |
+| T3.2 | Entregado: persistencia/activación atómica y lectura owner-bound ordenada. |
+| T3.3 | Entregado: lectura autenticada propia y CRUD backend owner-scoped mediante RLS. |
+| T3.4 | Pendiente: `POST /planning/generate` y `GET /planning/active`. |
+| PR D | Pendiente: pantalla de generación conectada, dashboard y E2E. |
 
-La infraestructura existente no implica que el usuario reciba todavía un plan generado,
-persistido o activado.
+Este estado no implica aprobación de Gentle ni disponibilidad del recorrido para el
+usuario: sin T3.4 no existe una frontera HTTP para invocar o consultar la capacidad.
 
 ### Resultado esperado
 
-Cuando se complete la capacidad posterior, el usuario recibirá un plan inicial vinculado a su cuenta, con enfoque explícito y trazabilidad de opciones elegibles/bloqueadas.
+Cuando T3.4 y PR D completen la exposición y experiencia, el usuario recibirá un plan inicial vinculado a su cuenta, con enfoque explícito y trazabilidad de opciones elegibles/bloqueadas.
 
 ## RF-08 Dashboard del plan activo
 
@@ -400,7 +404,7 @@ El MVP estará correctamente cubierto si:
 - Kaito muestra los tres enfoques sin recomendación visual, exige una elección explícita entre opciones elegibles y muestra las bloqueadas con todos sus motivos.
 - Kaito persiste elegibilidad/bloqueos y enfoque elegido para usarlo en la generación del plan.
 - T1.1–T1.3 validan un bloque estructurado de 1–4 semanas contra enfoque, proyección semanal, ventanas de fecha, fecha objetivo y guardrails deportivos, sin atribuir readiness al proveedor.
-- M1 aporta el puerto y adaptador OpenAI internos; la orquestación de extremo a extremo, persistencia, activación, endpoints y UI siguen pendientes en M2–M5.
+- T2.1–T3.3 aportan internamente generación validada, persistencia/activación atómica, lectura ordenada y aislamiento owner-bound; T3.4 y la UI/E2E siguen pendientes.
 - El usuario puede consultar un dashboard con estado general, KPIs básicos y próximo entrenamiento.
 - El usuario puede abrir un entrenamiento y entender su propósito.
 - El usuario puede registrar cumplimiento y métricas simples.

@@ -8,13 +8,15 @@ La IA debe ayudar al usuario a mantener claridad y continuidad, dentro de límit
 
 ### Estado implementado
 
-La infraestructura M1 ya dispone de un puerto neutral, el prompt versionado
-`training-block-v1` y un adaptador OpenAI Responses API con Structured Outputs. M1
-no ejecuta todavía el recorrido del usuario: M2–M5 deben añadir orquestación y una
-reparación, persistencia, endpoints y UI/E2E.
+El backend ya implementa el recorrido interno T2.1–T3.3: construye contexto vinculado
+al propietario, obtiene de OpenAI un bloque estructurado, aplica validación determinista,
+permite como máximo un segundo intento solo si falla esa validación y persiste/activa el
+resultado de forma atómica. La lectura owner-bound del plan activo también existe.
 
-Las secciones siguientes describen el comportamiento objetivo del MVP salvo cuando
-se identifica expresamente el contrato implementado por M1.
+Este recorrido vive en las capas de aplicación y repositorio. Hasta T3.4 no existen
+`POST /planning/generate` ni `GET /planning/active`; la UI de generación, el dashboard
+y el E2E permanecen pendientes. Las secciones siguientes distinguen este estado del
+comportamiento objetivo posterior del MVP.
 
 ## 2) Responsabilidades de la IA
 
@@ -43,7 +45,7 @@ y trazable del dominio, incluidas las entidades y políticas siguientes:
 
 Si falta información crítica, la IA debe indicarlo explícitamente y pedir completar datos. **No puede inventar datos faltantes.**
 
-En el contrato implementado por M1, el proveedor recibe exclusivamente
+En el contrato implementado, el proveedor recibe exclusivamente
 `ProviderGenerationContext`, ya construido y autorizado por Kaito; no recibe las
 entidades anteriores de forma independiente ni decide qué datos añadir. La política
 numérica canónica de generación y validación está en
@@ -76,9 +78,9 @@ El contrato completo y sus umbrales se definen en [`openspec/specs/training-appr
 
 ## 5) Outputs esperados
 
-El adaptador M1 devuelve únicamente `GeneratedTrainingBlock`, parseado mediante
-Structured Outputs al contrato Pydantic existente. No devuelve readiness, persistencia,
-estado de UI ni mensajes del proveedor.
+El adaptador devuelve únicamente `GeneratedTrainingBlock`, parseado mediante
+Structured Outputs al contrato Pydantic existente. No devuelve readiness, decisiones de
+persistencia, estado de UI ni mensajes crudos del proveedor.
 
 El MVP completo debe convertir y complementar ese bloque para ofrecer:
 
@@ -87,7 +89,27 @@ El MVP completo debe convertir y complementar ese bloque para ofrecer:
 3. **Adjustment proposal**: qué cambió, por qué cambió, impacto esperado inmediato.
 4. **User-facing messages**: mensajes breves y accionables para dashboard o confirmaciones.
 
-## 6) Reglas de comportamiento
+## 6) Flujo implementado de generación
+
+```text
+contexto owner-bound
+  -> OpenAI: bloque estructurado
+  -> validación determinista
+  -> como máximo un segundo intento solo por fallo de validación
+  -> persistencia y activación atómicas
+```
+
+El contexto y las decisiones autorizadas se ensamblan una sola vez. Un timeout, refusal,
+fallo de transporte o respuesta no parseable se devuelve como error neutral y no activa
+el reintento de validación. Ningún bloque inválido llega al repositorio. Si falla cualquier
+inserción o cambio de estado, la transacción revierte también el archivado del plan
+anterior.
+
+La configuración de OpenAI es backend-only y se obtiene de variables de entorno; nunca
+se entrega al dominio, al frontend ni a la documentación con valores secretos. Esta
+capacidad no es una API hasta completar T3.4.
+
+## 7) Reglas de comportamiento
 
 1. Priorizar claridad sobre tecnicismos.
 2. Explicar el “por qué” de cada decisión relevante.
@@ -96,7 +118,7 @@ El MVP completo debe convertir y complementar ese bloque para ofrecer:
 5. No compensar carga perdida de forma agresiva.
 6. Mantenerse dentro del alcance MVP (sin razonamiento clínico avanzado).
 
-## 7) Comportamiento de reajuste
+## 8) Comportamiento de reajuste
 
 La IA debe aplicar la política de `03-plan-adjustment-policy.md` como fuente normativa.
 
@@ -114,7 +136,7 @@ La IA debe aplicar la política de `03-plan-adjustment-policy.md` como fuente no
 - Replanificar con lógica deportiva avanzada fuera del MVP.
 - Hacer “sobrecompensación” para recuperar todo de golpe.
 
-## 8) Tono de comunicación
+## 9) Tono de comunicación
 
 La IA debe comunicarse con un tono:
 
@@ -124,7 +146,7 @@ La IA debe comunicarse con un tono:
 - Respetuoso (no paternalista).
 - Con jerga mínima y explicada cuando sea necesaria.
 
-## 9) Comportamientos prohibidos / límites
+## 10) Comportamientos prohibidos / límites
 
 La IA de Kaito MVP **no debe**:
 
@@ -134,7 +156,7 @@ La IA de Kaito MVP **no debe**:
 - Inventar datos faltantes del usuario.
 - Ignorar políticas de seguridad por haber elegido `kaioken`.
 
-## 10) Criterios de aceptación
+## 11) Criterios de aceptación
 
 Este comportamiento se considera correctamente definido para MVP si:
 
@@ -144,8 +166,11 @@ Este comportamiento se considera correctamente definido para MVP si:
 - Ante dolor/molestias/fatiga relevante, el ajuste es conservador.
 - Los mensajes comunican límites de responsabilidad sin ambigüedad.
 - No se observan invenciones de datos en outputs de IA.
+- El flujo interno valida antes de persistir y solo repite por un primer fallo de validación.
+- Un fallo de persistencia no deja un plan parcial ni sustituye el activo anterior.
+- No se afirma disponibilidad HTTP o UI antes de T3.4 y PR D.
 
-## 11) Referencias
+## 12) Referencias
 
 - [`00-product-vision.md`](00-product-vision.md)
 - [`02-user-journeys.md`](02-user-journeys.md)
