@@ -6,7 +6,10 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from app.modules.planning.domain import Approach, ProjectedWeek
-from app.modules.planning.generation_contract import GeneratedTrainingBlock
+from app.modules.planning.generation_contract import (
+    GeneratedTrainingBlock,
+    GeneratedTrainingWeek,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,6 +40,38 @@ def validate_generated_training_block(
     violations: list[GenerationViolation] = []
     expected_weeks = tuple(expected_projected_weeks)
 
+    _validate_context(
+        generation_window_start, goal_date, expected_weeks, violations
+    )
+    _validate_approach_and_count(
+        block, authorized_approach, expected_weeks, violations
+    )
+
+    for position, generated_week in enumerate(block.weeks):
+        projected_week = (
+            expected_weeks[position] if position < len(expected_weeks) else None
+        )
+        _validate_week_correspondence(generated_week, projected_week, violations)
+        _validate_session_date_windows(
+            generated_week,
+            position,
+            generation_window_start,
+            goal_date,
+            violations,
+        )
+        _validate_weekly_running_distance(
+            generated_week, projected_week, violations
+        )
+
+    return tuple(violations)
+
+
+def _validate_context(
+    generation_window_start: date,
+    goal_date: date,
+    expected_weeks: tuple[ProjectedWeek, ...],
+    violations: list[GenerationViolation],
+) -> None:
     if goal_date < generation_window_start:
         violations.append(GenerationViolation("goal_before_window_start"))
 
@@ -54,75 +89,97 @@ def validate_generated_training_block(
     ):
         violations.append(GenerationViolation("out_of_order_projected_weeks"))
 
+
+def _validate_approach_and_count(
+    block: GeneratedTrainingBlock,
+    authorized_approach: Approach,
+    expected_weeks: tuple[ProjectedWeek, ...],
+    violations: list[GenerationViolation],
+) -> None:
     if block.applied_approach != authorized_approach:
         violations.append(GenerationViolation("applied_approach_mismatch"))
-
     if len(block.weeks) != len(expected_weeks):
         violations.append(GenerationViolation("generated_week_count_mismatch"))
 
-    for position, generated_week in enumerate(block.weeks):
-        projected_week = (
-            expected_weeks[position] if position < len(expected_weeks) else None
+
+def _validate_week_correspondence(
+    generated_week: GeneratedTrainingWeek,
+    projected_week: ProjectedWeek | None,
+    violations: list[GenerationViolation],
+) -> None:
+    if (
+        projected_week is not None
+        and generated_week.week_number != projected_week.week_number
+    ):
+        violations.append(
+            GenerationViolation(
+                "generated_week_number_mismatch",
+                week_number=generated_week.week_number,
+                expected_week_number=projected_week.week_number,
+            )
         )
-        if (
-            projected_week is not None
-            and generated_week.week_number != projected_week.week_number
-        ):
+
+
+def _validate_session_date_windows(
+    generated_week: GeneratedTrainingWeek,
+    position: int,
+    generation_window_start: date,
+    goal_date: date,
+    violations: list[GenerationViolation],
+) -> None:
+    week_start = generation_window_start + timedelta(days=position * 7)
+    week_end = week_start + timedelta(days=6)
+    for session_index, generated_session in enumerate(generated_week.sessions):
+        if generated_session.scheduled_date < week_start:
             violations.append(
                 GenerationViolation(
-                    "generated_week_number_mismatch",
+                    "session_before_week_window",
                     week_number=generated_week.week_number,
-                    expected_week_number=projected_week.week_number,
+                    session_index=session_index,
+                )
+            )
+        elif generated_session.scheduled_date > week_end:
+            violations.append(
+                GenerationViolation(
+                    "session_after_week_window",
+                    week_number=generated_week.week_number,
+                    session_index=session_index,
                 )
             )
 
-        week_start = generation_window_start + timedelta(days=position * 7)
-        week_end = week_start + timedelta(days=6)
-        for session_index, generated_session in enumerate(generated_week.sessions):
-            if generated_session.scheduled_date < week_start:
-                violations.append(
-                    GenerationViolation(
-                        "session_before_week_window",
-                        week_number=generated_week.week_number,
-                        session_index=session_index,
-                    )
+        if generated_session.scheduled_date > goal_date:
+            violations.append(
+                GenerationViolation(
+                    "session_after_goal_date",
+                    week_number=generated_week.week_number,
+                    session_index=session_index,
                 )
-            elif generated_session.scheduled_date > week_end:
-                violations.append(
-                    GenerationViolation(
-                        "session_after_week_window",
-                        week_number=generated_week.week_number,
-                        session_index=session_index,
-                    )
-                )
-
-            if generated_session.scheduled_date > goal_date:
-                violations.append(
-                    GenerationViolation(
-                        "session_after_goal_date",
-                        week_number=generated_week.week_number,
-                        session_index=session_index,
-                    )
-                )
-
-        if projected_week is not None:
-            actual_running_kilometers = sum(
-                (
-                    generated_session.planned_distance_kilometers
-                    for generated_session in generated_week.sessions
-                    if generated_session.session_category == "run"
-                ),
-                Decimal("0"),
             )
-            if actual_running_kilometers != projected_week.estimated_kilometers:
-                violations.append(
-                    GenerationViolation(
-                        "weekly_running_distance_mismatch",
-                        week_number=generated_week.week_number,
-                        expected_week_number=projected_week.week_number,
-                        actual_kilometers=actual_running_kilometers,
-                        expected_kilometers=projected_week.estimated_kilometers,
-                    )
-                )
 
-    return tuple(violations)
+
+def _validate_weekly_running_distance(
+    generated_week: GeneratedTrainingWeek,
+    projected_week: ProjectedWeek | None,
+    violations: list[GenerationViolation],
+) -> None:
+    if projected_week is None:
+        return
+
+    actual_running_kilometers = sum(
+        (
+            session.planned_distance_kilometers
+            for session in generated_week.sessions
+            if session.session_category == "run"
+        ),
+        Decimal("0"),
+    )
+    if actual_running_kilometers != projected_week.estimated_kilometers:
+        violations.append(
+            GenerationViolation(
+                "weekly_running_distance_mismatch",
+                week_number=generated_week.week_number,
+                expected_week_number=projected_week.week_number,
+                actual_kilometers=actual_running_kilometers,
+                expected_kilometers=projected_week.estimated_kilometers,
+            )
+        )
