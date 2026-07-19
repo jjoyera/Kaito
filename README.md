@@ -11,12 +11,12 @@ forma incremental.
 
 ## Estado actual
 
-El estado implementado entrega autenticación, onboarding completo, selección explícita de enfoque, persistencia del borrador inicial de plan y la infraestructura M1 del proveedor IA. Todavía no existe generación de extremo a extremo para el usuario.
+El estado implementado entrega autenticación, onboarding completo, selección explícita de enfoque y, en backend, generación validada con persistencia/activación atómica y lectura owner-bound del plan activo. Esta capacidad existe en las capas de aplicación y repositorio, pero todavía no está expuesta por HTTP ni conectada a la web.
 
 | Área | Estado |
 | --- | --- |
 | Web | Next.js App Router con signup/login/sesión, onboarding privado, elección accesible de enfoque y destino estático `/plan/generating`. |
-| API | FastAPI con verificación JWT, onboarding, elegibilidad determinista, contexto owner-bound en `Europe/Madrid`, proyección y guardrails deportivos, borrador de `TrainingPlan` y adaptador OpenAI mediante Responses API. |
+| API | FastAPI con verificación JWT, onboarding, elegibilidad determinista y flujo interno de generación, validación, persistencia/activación y lectura owner-bound. Los endpoints de generación y plan activo siguen pendientes. |
 | Auth | Signup/login con Supabase, handoff de confirmación a login, backend protegido con `GET /auth/me` y `/onboarding` privado. |
 | Marca | Paleta y assets iniciales bajo `docs/` y `apps/web/public/`. |
 | SDD | Cambios guiados por OpenSpec en `openspec/changes/`. |
@@ -222,16 +222,21 @@ openspec/              Artefactos SDD/OpenSpec.
 - El Paso 7 presenta los enfoques elegibles, conserva la selección al reintentar fallos de conexión y guarda un único borrador owner-bound antes de navegar a `/plan/generating`; los bloqueos o datos desactualizados vuelven a comprobar la elegibilidad y los estados incompletos regresan al onboarding.
 - La planificación determinista construye contexto vinculado al propietario en `Europe/Madrid`, empieza estrictamente el lunes siguiente, calcula el horizonte completo antes de recortar las primeras 1–4 semanas y trunca las fechas en el objetivo.
 - La política deportiva valida distribución de intensidad, fuerza y separación determinista de sesiones demandantes; los valores canónicos están en [`docs/07-training-knowledge.md`](docs/07-training-knowledge.md).
-- La infraestructura IA M1 expone un puerto neutral y un adaptador OpenAI Responses API con Structured Outputs, prompt versionado `training-block-v1`, modelo fijado `gpt-5.5-2026-04-23`, timeout de 60 segundos, reintentos del SDK desactivados y fallos neutrales sin filtraciones del proveedor.
+- El flujo interno de generación ya cubre contexto owner-bound, salida estructurada de OpenAI, validación con una única repetición condicionada y sustitución atómica del plan activo; T3.4 todavía debe exponerlo por HTTP.
+- Planes y sesiones aplican restricciones canónicas y RLS owner-scoped. La configuración IA permanece en el backend y el esquema evoluciona mediante migraciones aditivas de Supabase; consulta los documentos canónicos enlazados abajo.
 - La validación incluye lint, build, unitarios y E2E web, Ruff y pruebas API, además de prueba RLS local de dos usuarios.
 - Paquete `@kaito/api-client` reservado para un futuro cliente generado; hoy no
   exporta código ni contratos de producto.
 
 Todavía no hay password reset, magic links, social auth, demo access, dashboard,
-Strava/RAG ni generación de planes de entrenamiento de extremo a extremo. M1 solo
-aporta infraestructura interna: quedan pendientes la orquestación y reparación única
-(M2), persistencia (M3), endpoints (M4) y UI/E2E (M5). Tras el Paso 7, la selección
+Strava/RAG ni generación de planes de extremo a extremo accesible al usuario. El flujo
+interno ya cubre orquestación, una repetición solo por fallo de validación,
+persistencia/activación y lectura owner-bound; quedan pendientes `POST
+/planning/generate`, `GET /planning/active` y la UI/E2E. Tras el Paso 7, la selección
 crea o actualiza el borrador y `/plan/generating` muestra por ahora un destino estático.
+Los detalles canónicos están en [`docs/05-data-model.md`](docs/05-data-model.md),
+[`docs/06-ai-behavior.md`](docs/06-ai-behavior.md) y
+[`docs/08-architecture.md`](docs/08-architecture.md).
 
 ## Flujo SDD/OpenSpec
 

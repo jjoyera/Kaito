@@ -70,20 +70,20 @@ Su objetivo es alinear producto, journeys y requisitos funcionales sobre **qué 
 ### `TrainingPlan`
 
 - **Propósito**: encapsular una versión de planificación (inicial o reajustada) del usuario.
-- **Campos clave**: el borrador runtime mínimo persiste `id`, `userId`, `status` (`draft|active|archived`), `planApproach` (`kaio_path|mode_z|kaioken`), `createdAt` y `updatedAt`. `startDate`, `endDate`, `version`, `previousPlanId?`, `generatedAt` y `activatedAt` se incorporarán cuando exista generación/activación real.
+- **Campos canónicos persistentes**: `id`, `owner_id`, `status` (`draft|active|archived`), `plan_approach` (`kaio_path|mode_z|kaioken`), `start_date`, `end_date`, `block_focus`, `created_at` y `updated_at`. Los borradores mantienen `start_date`, `end_date` y `block_focus` nulos; los planes activos o archivados exigen fechas y foco no vacío.
 - **Relaciones**:
   - pertenece a `User`.
   - 1:N con `TrainingSession`.
   - 1:N con `PlanAdjustment`.
   - 1:1 lógico con `TrainingGoal` principal (MVP).
-- **Notas**: la base de datos impide más de un plan `draft` y más de un plan `active` por usuario. Mientras siga en `draft`, guardar otra opción actualiza el mismo registro de forma idempotente; un plan activo impide mutar ese borrador. Cuando Kaito reajuste, creará una nueva versión y archivará la anterior. `planApproach` guarda Camino Kaio, Modo Z o Kaioken.
+- **Notas**: la base de datos impide más de un plan `draft` y más de un plan `active` por propietario. Un plan generado cubre entre 1 y 4 semanas: `end_date >= start_date` y `end_date < start_date + 28 días`. Mientras siga en `draft`, guardar otra opción actualiza el mismo registro de forma idempotente; un plan activo impide mutar ese borrador. La sustitución implementada inserta un candidato, todas sus sesiones, archiva el activo anterior y activa el candidato en una única transacción. Si cualquier paso falla, se revierte todo y el plan anterior conserva su estado.
 
 ### `TrainingSession`
 
 - **Propósito**: definir cada entrenamiento planificado visible en dashboard/calendario.
-- **Campos clave conceptuales persistentes**: `id`, `planId`, `scheduledDate`, `sessionType`, `plannedDurationMin`, `plannedDistanceKm?`, `plannedElevationM?`, `purpose`, `isKeySession`.
+- **Campos canónicos persistentes**: `id`, `plan_id`, `week_number`, `scheduled_date`, `session_type`, `session_category`, `planned_duration_minutes`, `planned_distance_kilometers`, `planned_elevation_meters`, `intensity_description`, `target_rpe_min`, `target_rpe_max`, `instructions`, `purpose`, `session_order` y `created_at`.
 - **Relaciones**: pertenece a `TrainingPlan`.
-- **Notas**: representa lo planificado; la ejecución real vive en `TrainingLog`. Antes de persistencia, el contrato neutral ya tipa `sessionCategory` (`run|strength|recovery|cross_training`), `intensitySegments` (`low|threshold|high`), `intensityDescription`, `targetRpeMin`, `targetRpeMax` e `instructions`. En carrera, los segmentos son obligatorios y suman exactamente la duración; en las demás categorías se omiten. El mapeo final a almacenamiento y la RLS de planes/sesiones generados siguen pendientes.
+- **Notas**: representa lo planificado; la ejecución real vive en `TrainingLog`. `week_number` está entre 1 y 4, la fecha debe caer dentro del rango del plan y corresponder a su semana, duración es positiva, distancia y desnivel son no negativos, y `1 <= target_rpe_min <= target_rpe_max <= 10`. `session_order` es positivo y único por plan/semana. La FK `plan_id` aplica `ON DELETE CASCADE`, por lo que no quedan sesiones huérfanas. El contrato neutral conserva además los segmentos de intensidad de carrera; estos son obligatorios y suman exactamente la duración antes de persistir.
 
 ### `TrainingLog`
 
@@ -127,7 +127,7 @@ Su objetivo es alinear producto, journeys y requisitos funcionales sobre **qué 
 
 ## 6) Contratos calculados de la base de generación
 
-Estos resultados tipados están implementados como lógica pura y no añaden todavía tablas ni persistencia:
+Estos resultados tipados alimentan el flujo implementado de generación y persistencia. Las tablas canónicas almacenan el plan y las sesiones validadas, no los cálculos intermedios de readiness:
 
 | Resultado | Contenido y autoridad |
 | --- | --- |
@@ -155,6 +155,10 @@ Estos resultados tipados están implementados como lógica pura y no añaden tod
 12. **La envolvente semanal generada es exacta**: la suma de `plannedDistanceKm` de las sesiones `run` debe coincidir exactamente con los kilómetros proyectados para esa semana.
 13. **Las fechas generadas están acotadas**: cada sesión pertenece a la ventana de siete días de su semana y ninguna sesión puede superar la fecha objetivo.
 14. **Readiness pertenece al backend**: el contrato generado no puede declarar elegibilidad, demanda, capacidad ni seguridad de progresión.
+15. **La sustitución del activo es atómica**: candidato, sesiones, archivado anterior y activación nueva se confirman o revierten juntos.
+16. **La lectura mantiene ownership y orden estable**: el repositorio filtra por `owner_id` y devuelve sesiones por `week_number`, `session_order`.
+17. **RLS separa canales**: `authenticated` puede leer sus propias filas de plan, con independencia del estado, y solo las sesiones de su plan activo; las filas ajenas y las escrituras directas quedan denegadas. `kaito_api_login` mantiene lecturas y escrituras owner-bound bajo claims verificados; `anon` y `PUBLIC` quedan denegados.
+18. **La evolución de esquema es aditiva**: se aplica mediante el historial de migraciones de Supabase sin reescribir migraciones ya aplicadas ni editar SQL manualmente en un entorno.
 
 ## 8) Simplificaciones explícitas del MVP
 

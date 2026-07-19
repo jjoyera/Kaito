@@ -23,7 +23,7 @@ Se centra en **cómo se organiza el sistema** (fronteras, responsabilidades, flu
 | Persistencia de onboarding | API protegida + SQLAlchemy runtime + JSONB/RLS de Supabase | El propietario se deriva del JWT; Supabase CLI es la única autoridad de esquema y RLS. |
 | Elegibilidad de enfoque | Política pura determinista en `planning` | Mantiene umbrales, precedencia de seguridad y códigos estables fuera del endpoint, la UI, persistencia y prompts. |
 | Base de generación | Contratos y políticas puras en `planning` | Separa contexto, proyección, demanda, calendario, capacidad y validación del bloque respecto del proveedor IA. |
-| Frontera IA M1 | Puerto neutral en `planning` + adaptador OpenAI en infraestructura | Limita la entrada a `ProviderGenerationContext` y la salida a `GeneratedTrainingBlock` sin acoplar el dominio al SDK. |
+| Generación T2.1–T3.3 | Puerto neutral + adaptador OpenAI + aplicación/repositorio owner-bound | Limita la entrada a `ProviderGenerationContext`, valida de forma determinista y persiste/activa atómicamente sin acoplar el dominio al SDK. |
 | Error monitoring | Sentry | Detección temprana y diagnóstico en frontend/backend. |
 
 ---
@@ -194,14 +194,18 @@ En módulos simples/CRUD, se permite simplificación sin imponer todas las capas
 ### Acceso y evolución de esquema
 
 - SQLAlchemy como capa ORM/repositorio en backend.
-- Para onboarding, Supabase CLI es la autoridad de esquema, migraciones y RLS; esta entrega no añade migración ni Alembic.
+- Supabase CLI y su historial de migraciones son la autoridad de esquema y RLS. Las migraciones son aditivas: no se reescriben las ya aplicadas ni se corrigen entornos mediante SQL manual.
 - Los snapshots de onboarding permanecen como JSONB por propietario: `profile.availability.minutes_by_day` guarda únicamente minutos exactos dispersos; `profile.prior_history` conserva sus tres enums canónicos; `profile.baseline_4_weeks` añade minutos totales de carrera, duración de la salida más larga y D+ de esa salida como enteros estrictos no negativos; y `profile.physical_status` guarda el estado, presencia de dolor/limitación, impacto condicional al correr y detalle opcional normalizado. La salida más larga no puede superar los totales de minutos ni D+ del periodo. La API protegida valida al guardar y al leer. Kaito está en pre-lanzamiento y sin usuarios de producción, por lo que no existe migración SQL ni versionado de datos para este cambio limpio; la prueba local verifica CRUD propio y denegación entre dos usuarios.
 
 ### Invariantes de persistencia (MVP)
 
-- Un único `TrainingPlan` activo por usuario.
-- Reajuste mediante versionado (`previousPlanId`, `version`, archivo del plan anterior).
-- Trazabilidad de ajuste (`PlanAdjustment`) y de edición de logs (`TrainingLogHistory`).
+- `training_plans` persiste propietario, enfoque, estado, fechas de bloque y foco; el rango cubre entre 1 y 4 semanas.
+- `training_sessions` persiste semana, fecha, categoría/tipo, duración, distancia, desnivel, intensidad, RPE 1–10, instrucciones, propósito y orden único por plan/semana.
+- Las fechas de sesión deben pertenecer al rango y semana del plan; duración es positiva, distancia/desnivel no negativos y el rango RPE está ordenado.
+- Cada sesión referencia su plan mediante FK con `ON DELETE CASCADE`; existe un único plan activo por propietario.
+- Inserción del candidato y sesiones, archivado del activo anterior y activación nueva forman una sola transacción: cualquier fallo revierte la sustitución completa.
+- `authenticated` puede leer sus propias filas de plan, con independencia del estado, y solo las sesiones de su plan activo; las filas ajenas y las escrituras directas quedan denegadas. `kaito_api_login` mantiene lecturas y escrituras owner-bound bajo claims verificados; `anon` y `PUBLIC` quedan denegados.
+- Reajuste y versionado de planes, así como trazabilidad de logs, permanecen fuera de esta fase.
 
 ---
 
@@ -237,7 +241,7 @@ En módulos simples/CRUD, se permite simplificación sin imponer todas las capas
 
 ## 9) Arquitectura de IA: generación, validación, conocimiento y trazabilidad
 
-### Estado implementado: T1.1–T1.3 y M1
+### Estado implementado: T1.1–T3.3
 
 La generación está dividida en fronteras explícitas dentro de `apps/api`:
 
@@ -248,16 +252,20 @@ La generación está dividida en fronteras explícitas dentro de `apps/api`:
 | Puerto neutral | Acepta exclusivamente `ProviderGenerationContext` y devuelve `GeneratedTrainingBlock`. |
 | Prompt | `training-block-v1`, versionado y separado del adaptador. |
 | Adaptador OpenAI | Responses API con Structured Outputs, modelo fijado `gpt-5.5-2026-04-23` y dependencia exacta `openai==2.46.0`. |
-| Operación M1 | Timeout por defecto de 60 segundos, reintentos del SDK desactivados y errores neutrales sin filtraciones del proveedor. |
+| Operación del proveedor | Timeout por defecto de 60 segundos, reintentos del SDK desactivados y errores neutrales sin filtraciones del proveedor. |
+| Orquestación | Ensambla el contexto una vez, valida de forma determinista y permite como máximo un segundo intento solo tras fallo de validación. |
+| Persistencia y lectura | Sustitución atómica del plan activo y lectura owner-bound ordenada por semana y sesión. |
+| Seguridad de datos | `authenticated` lee sus propias filas de plan y solo las sesiones del activo propio; filas ajenas y escritura directa denegadas, con CRUD backend owner-bound mediante RLS. |
 
 La política semanal parte de 9 km cuando la base es cero; el bootstrap separado de
 la salida más larga es 3 km/30 min. Los guardrails numéricos canónicos y su condición
 de política de producto revisable se mantienen en
 [`07-training-knowledge.md`](07-training-knowledge.md).
 
-M1 termina en la respuesta tipada del proveedor. El backend seguirá controlando en
-M2 la validación posterior, el único intento de reparación y el resultado del caso de
-uso; M3–M5 añadirán persistencia, endpoints y UI/E2E.
+El flujo implementado continúa tras la respuesta tipada: aplica validación determinista,
+repite como máximo una vez solo por ese tipo de rechazo y persiste/activa el resultado
+en una transacción. También existe la lectura owner-bound en repositorio. T3.4 aún debe
+exponer `POST /planning/generate` y `GET /planning/active`; PR D conectará la UI y E2E.
 
 ### Contexto controlado y fuentes
 
@@ -274,7 +282,7 @@ La IA solo usa contexto trazable del dominio MVP y reglas de:
 - La suma de distancia de carrera debe igualar exactamente la proyección autorizada de cada semana; las fechas deben pertenecer a su ventana y no superar el objetivo.
 - Cada sesión `run` debe respetar simultáneamente los máximos independientes de distancia y duración de su semana; esos máximos no se aplican a categorías no running.
 - Elegibilidad, demanda, calendario, capacidad y trayectoria son valores calculados por backend y quedan fuera de la salida del proveedor.
-- El rechazo posterior al proveedor y una única reparación pertenecen a M2; persistencia, endpoints y publicación al usuario pertenecen a M3–M5.
+- El rechazo posterior al proveedor, el segundo intento condicionado y la persistencia atómica ya están implementados; la exposición HTTP y publicación en UI siguen pendientes.
 
 ---
 
@@ -309,21 +317,25 @@ planning/
 
 OCR y Backyard continúan admitidos por onboarding, pero la frontera de elegibilidad los rechaza explícitamente hasta que existan reglas propias.
 
-### 10.3 Frontera actual y flujo pendiente de generación
+### 10.3 Generación interna implementada y frontera HTTP pendiente
 
-Entregado en T1.1–T1.3 y M1:
+Entregado en T1.1–T3.3:
 
 1. `api` construye contexto owner-bound, proyecta la envolvente semanal y calcula la trayectoria sobre todo el horizonte antes de recortar las próximas 1–4 semanas.
 2. El puerto entrega únicamente `ProviderGenerationContext` al adaptador OpenAI.
 3. Responses API aplica `training-block-v1` y Structured Outputs para devolver `GeneratedTrainingBlock`.
-4. El contrato no acepta readiness ni trayectoria calculados por el proveedor.
+4. El backend valida el bloque contra contexto y guardrails; permite un segundo intento solo si el primero falla esa validación.
+5. El repositorio inserta candidato y sesiones, archiva el activo anterior y activa el nuevo plan en una transacción; después puede leer el activo propio con orden estable.
+6. RLS limita lectura y escritura según propietario y rol, sin acceso para `anon`/`PUBLIC`.
 
-Flujo pendiente:
+Pendiente:
 
-1. M2 invoca el puerto, valida la respuesta contra contexto y guardrails y permite una única reparación.
-2. M3 persiste con ownership el plan y sus sesiones y activa el resultado.
-3. M4 expone los endpoints del caso de uso.
-4. M5 conecta generación, dashboard y pruebas E2E en la web.
+1. T3.4 expone `POST /planning/generate` y `GET /planning/active` con autenticación y errores seguros.
+2. PR D conecta `/plan/generating`, dashboard y pruebas E2E en la web.
+
+Por tanto, el adaptador OpenAI real está cableado al caso de uso interno, pero no a un
+handler HTTP. La configuración del proveedor permanece en variables de entorno del
+backend y no se expone al frontend.
 
 ### 10.4 Registro de entrenamiento + KPIs
 
@@ -406,16 +418,17 @@ En cada cambio relevante:
 ## 15) Evolución fuera del MVP del TFM
 
 RAG, integración Strava y métricas avanzadas quedan fuera del alcance actual. No
-forman parte de la arquitectura implementada ni de los hitos M1–M5.
+forman parte de la arquitectura implementada ni de T1.1–T3.3.
 
 ---
 
 ## 16) No-objetivos explícitos de la fase actual
 
-- No implementar todavía orquestación, validación posterior al proveedor ni reparación (M2).
-- No persistir ni aplicar RLS a planes o sesiones generados (M3).
-- No exponer endpoints de generación (M4).
-- No implementar todavía el dashboard de generación, UI/E2E ni recálculo de `TrainingLog` (M5).
+- No exponer todavía `POST /planning/generate` ni `GET /planning/active` (T3.4).
+- No implementar todavía la pantalla de generación conectada, dashboard ni E2E (PR D).
+- No introducir workers, colas, ejecución durable ni reintentos persistentes.
+- No añadir edición/versionado manual de planes, recálculo por `TrainingLog` ni reajuste automático.
+- No ampliar las validaciones deterministas hasta presentarlas como garantías deportivas avanzadas.
 - No presentar los topes deterministas de trayectoria como garantía individual de seguridad o prevención de lesiones.
 - No crear microservicios.
 - No ampliar estructura ni código fuera de capacidades reales del MVP.

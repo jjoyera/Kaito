@@ -2,6 +2,7 @@
 
 import json
 from datetime import date
+from uuid import uuid4
 
 import psycopg
 import pytest
@@ -57,6 +58,131 @@ def _insert_session(
         ") VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id",
         (plan_id, *_SESSION_VALUES, session_order),
     ).fetchone()[0]
+
+
+def test_authenticated_reads_own_active_plan_and_sessions(
+    identities: RlsFixture,
+) -> None:
+    owner, foreign = identities.first_user, identities.second_user
+    with psycopg.connect(identities.db_url, autocommit=True) as admin:
+        admin.execute(
+            "DELETE FROM training_plans WHERE owner_id = ANY(%s::uuid[])",
+            ([owner, foreign],),
+        )
+        own_active = admin.execute(
+            "INSERT INTO training_plans "
+            "(owner_id,status,plan_approach,start_date,end_date,block_focus) "
+            "VALUES (%s,'active','kaio_path',%s,%s,'Aerobic durability') "
+            "RETURNING id",
+            (owner, date(2026, 7, 6), date(2026, 7, 12)),
+        ).fetchone()[0]
+        own_archived = admin.execute(
+            "INSERT INTO training_plans "
+            "(owner_id,status,plan_approach,start_date,end_date,block_focus) "
+            "VALUES (%s,'archived','kaio_path',%s,%s,'Aerobic durability') "
+            "RETURNING id",
+            (owner, date(2026, 7, 6), date(2026, 7, 12)),
+        ).fetchone()[0]
+        foreign_active = admin.execute(
+            "INSERT INTO training_plans "
+            "(owner_id,status,plan_approach,start_date,end_date,block_focus) "
+            "VALUES (%s,'active','kaio_path',%s,%s,'Aerobic durability') "
+            "RETURNING id",
+            (foreign, date(2026, 7, 6), date(2026, 7, 12)),
+        ).fetchone()[0]
+        own_session = _insert_session(admin, own_active, 1)
+        _insert_session(admin, own_archived, 1)
+        _insert_session(admin, foreign_active, 1)
+
+    with _as_user(identities, owner) as authenticated:
+        assert authenticated.execute(
+            "SELECT plan.id, session.id "
+            "FROM training_plans AS plan "
+            "JOIN training_sessions AS session ON session.plan_id = plan.id "
+            "WHERE plan.status = 'active'"
+        ).fetchall() == [(own_active, own_session)]
+        assert authenticated.execute(
+            "SELECT id FROM training_sessions ORDER BY id"
+        ).fetchall() == [(own_session,)]
+        assert authenticated.execute(
+            "SELECT count(*) FROM training_plans WHERE owner_id = %s", (foreign,)
+        ).fetchone() == (0,)
+        probes = [
+            authenticated.execute(
+                "SELECT count(*) FROM training_sessions WHERE plan_id = %s", (plan_id,)
+            ).fetchone()
+            for plan_id in (foreign_active, uuid4())
+        ]
+        assert probes == [(0,), (0,)]
+
+    for operation in ("INSERT", "UPDATE", "DELETE"):
+        with _as_user(identities, owner) as authenticated:
+            with pytest.raises(psycopg.errors.InsufficientPrivilege):
+                if operation == "INSERT":
+                    _insert_session(authenticated, own_active, 2)
+                elif operation == "UPDATE":
+                    authenticated.execute(
+                        "UPDATE training_sessions SET session_type='Compromised' "
+                        "WHERE id=%s",
+                        (own_session,),
+                    )
+                else:
+                    authenticated.execute(
+                        "DELETE FROM training_sessions WHERE id=%s", (own_session,)
+                    )
+
+
+def test_missing_claims_and_anon_have_no_training_access(
+    identities: RlsFixture,
+) -> None:
+    owner = identities.first_user
+    with psycopg.connect(identities.db_url, autocommit=True) as admin:
+        plan_id = admin.execute(
+            "SELECT id FROM training_plans "
+            "WHERE owner_id=%s AND status='active'",
+            (owner,),
+        ).fetchone()[0]
+
+    with _as_user(identities, owner) as no_claims:
+        no_claims.execute("SELECT set_config('request.jwt.claims', '', true)")
+        assert no_claims.execute("SELECT count(*) FROM training_plans").fetchone() == (
+            0,
+        )
+        visible_sessions = no_claims.execute(
+            "SELECT count(*) FROM training_sessions"
+        ).fetchone()
+        assert visible_sessions == (0,)
+
+    for table in ("plan", "session"):
+        with _as_user(identities, owner) as no_claims:
+            no_claims.execute("SELECT set_config('request.jwt.claims', '', true)")
+            with pytest.raises(psycopg.errors.InsufficientPrivilege):
+                if table == "plan":
+                    no_claims.execute(
+                        "INSERT INTO training_plans(owner_id,status,plan_approach) "
+                        "VALUES (%s,'draft','kaio_path')",
+                        (owner,),
+                    )
+                else:
+                    _insert_session(no_claims, plan_id, 2)
+
+    statements = (
+        ("SELECT count(*) FROM training_plans", None),
+        ("SELECT count(*) FROM training_sessions", None),
+        (
+            "INSERT INTO training_plans(owner_id,status,plan_approach) "
+            "VALUES (%s,'draft','kaio_path')",
+            (owner,),
+        ),
+        ("UPDATE training_sessions SET session_type='Compromised'", None),
+        ("DELETE FROM training_sessions", None),
+    )
+    with psycopg.connect(identities.db_url) as anon:
+        for statement, params in statements:
+            anon.execute("SET LOCAL ROLE anon")
+            with pytest.raises(psycopg.errors.InsufficientPrivilege):
+                anon.execute(statement, params)
+            anon.rollback()
 
 
 def test_backend_training_sessions_are_owner_isolated(
