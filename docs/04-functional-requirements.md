@@ -140,7 +140,7 @@ El sistema debe guiar al usuario mediante un onboarding inicial para recopilar l
   - Trail, ultra-trail y OCR: `targetDistanceKm` y `targetDate`.
   - Backyard Ultra: `targetDate`, `targetLoops` o `targetHours`, `targetLoopDurationMin` (o ritmo equivalente), `expectedRestMarginMin` y notas básicas de estrategia de box/transición. La distancia fija no se usa como objetivo principal.
 - El sistema debe preguntar por la experiencia previa del corredor.
-- El sistema debe recoger, de forma explícita para las cuatro semanas anteriores, las sesiones, la distancia total, el desnivel positivo acumulado, la salida más larga y la constancia reciente (`irregular`, `fairly_consistent` o `very_consistent`). Las horas totales de entrenamiento no forman parte de este paso.
+- El sistema debe recoger, de forma explícita para las cuatro semanas anteriores, las sesiones, la distancia total, el desnivel positivo acumulado, la salida más larga, los minutos totales de carrera, la duración de la salida más larga, el D+ de esa salida y la constancia reciente (`irregular`, `fairly_consistent` o `very_consistent`). No se recoge una bolsa genérica de horas de entrenamiento: `total_running_minutes` representa solo tiempo corriendo.
 - El contrato activo usa un estado limpio: no acepta ni conserva `training_years`, `completed_race_count_range`, `practiced_modalities`, `practiced_terrain` ni `goal.technicality`; no incluye migración ni compatibilidad para esas respuestas retiradas.
 - El sistema debe preguntar por la disponibilidad semanal en el Paso 4 de siete: días compactos, atajos de 45/60/120 minutos y ajustes exactos de 15 a 300 minutos por día. Solo se guarda el mapa disperso de minutos; `Varía por día` es una ayuda visual.
 - El sistema debe bloquear Continuar si hay menos de tres días o menos de 150 minutos semanales; Atrás conserva el estado local y Continuar guarda antes de avanzar. Un fallo permite reintentar sin perder las respuestas.
@@ -166,6 +166,8 @@ El sistema debe validar que el onboarding contiene la información mínima neces
 - El sistema debe comprobar que el objetivo incluye los campos mínimos para la modalidad elegida.
 - El sistema debe comprobar que existe `targetDate` (fecha objetivo del evento) para cualquier modalidad antes de construir el plan.
 - El sistema debe comprobar que existe información mínima sobre experiencia y disponibilidad.
+- `total_running_minutes`, `longest_outing_duration_minutes` y `longest_outing_positive_elevation_m` deben ser enteros estrictos no negativos; no se aceptan booleanos, fracciones ni valores negativos.
+- La duración de la salida más larga no puede superar los minutos totales de carrera de las cuatro semanas, y su D+ no puede superar el desnivel positivo total del mismo periodo.
 - Si falta información necesaria, el sistema debe pedirla antes de continuar.
 - El sistema no debe generar un plan inicial con datos insuficientes.
 
@@ -191,7 +193,11 @@ El sistema debe evaluar la elegibilidad de enfoques de plan, permitir la selecci
 - El sistema debe persistir la evaluación de disponibilidad y bloqueos usando el concepto `PlanApproachEligibility`.
 - El sistema debe persistir el enfoque elegido en `TrainingPlan.planApproach`.
 - El sistema debe persistir un único borrador de `TrainingPlan` por usuario con el enfoque elegido antes de entrar en generación.
-- La generación real y su estado de progreso se incorporan como capacidad posterior; la pantalla intermedia actual no debe simular progreso.
+- La base de generación entregada en el issue #82 define, sin invocar todavía ningún proveedor, un bloque estructurado de 1–4 semanas con categorías tipadas (`run`, `strength`, `recovery`, `cross_training`), segmentos de intensidad para carrera, rango RPE y contenido accionable.
+- El backend debe conservar la autoridad sobre elegibilidad, enfoque, proyección y readiness: una salida generada no puede aportar ni sobrescribir valores de readiness calculados por Kaito.
+- La validación debe exigir igualdad exacta entre la suma semanal de kilómetros de las sesiones `run` y la proyección semanal autorizada, ubicar cada sesión dentro de su ventana semanal y no aceptar sesiones posteriores a la fecha objetivo.
+- El bloque se limita al tramo autorizado de 1–4 semanas y se trunca en la fecha objetivo; no representa por sí solo un plan completo persistido.
+- La generación real, el proveedor IA, prompts, orquestación, reintentos, persistencia/activación y estado de progreso se incorporan como capacidad posterior; la pantalla intermedia actual no debe simular progreso.
 - Cuando se implemente la generación, el sistema debe comunicar que usa objetivo, disponibilidad, experiencia y enfoque elegido.
 - El sistema debe usar explícitamente los datos de objetivo específicos de la modalidad al generar la planificación.
 - El sistema debe generar una planificación inicial asociada al usuario.
@@ -200,9 +206,19 @@ El sistema debe evaluar la elegibilidad de enfoques de plan, permitir la selecci
 - El sistema debe permitir reevaluar elegibilidad en el futuro para desbloquear enfoques si el usuario progresa, cumple y rinde bien.
 - El sistema debe informar al usuario cuando el plan esté disponible.
 
+### Estado de la base entregada
+
+| Entregado en #82 | Pendiente, fuera de esta base |
+| --- | --- |
+| Contrato neutral de bloque generado y validadores deterministas | Proveedor IA, prompt, orquestación y reintentos |
+| Proyección semanal, demanda del objetivo, calendario y evaluación inicial de capacidad | Persistencia/RLS de planes y sesiones generados |
+| Ventanas de fecha, truncado por objetivo y envolvente exacta de distancia | Dashboard, recálculo de `TrainingLog` y seguridad de trayectoria sesión a sesión |
+
+El issue #24 permanece abierto para la generación real. La base #82 no afirma que el usuario reciba todavía un plan generado, persistido o activado.
+
 ### Resultado esperado
 
-El usuario recibe un plan inicial vinculado a su cuenta, con enfoque explícito y trazabilidad de opciones elegibles/bloqueadas.
+Cuando se complete la capacidad posterior, el usuario recibirá un plan inicial vinculado a su cuenta, con enfoque explícito y trazabilidad de opciones elegibles/bloqueadas.
 
 ## RF-08 Dashboard del plan activo
 
@@ -376,7 +392,8 @@ El MVP estará correctamente cubierto si:
 - Kaito recoge y valida campos de objetivo específicos por modalidad, incluyendo `targetDate` en todas y Backyard Ultra por vueltas/horas/ritmo-margen/estrategia.
 - Kaito muestra los tres enfoques sin recomendación visual, exige una elección explícita entre opciones elegibles y muestra las bloqueadas con todos sus motivos.
 - Kaito persiste elegibilidad/bloqueos y enfoque elegido para usarlo en la generación del plan.
-- Kaito genera un plan inicial asociado al usuario y alineado con el enfoque elegido.
+- La base #82 valida un bloque estructurado de 1–4 semanas contra enfoque, proyección semanal, ventanas de fecha y fecha objetivo, sin atribuir readiness al proveedor.
+- La generación IA, persistencia y activación del plan inicial siguen pendientes en el issue #24.
 - El usuario puede consultar un dashboard con estado general, KPIs básicos y próximo entrenamiento.
 - El usuario puede abrir un entrenamiento y entender su propósito.
 - El usuario puede registrar cumplimiento y métricas simples.

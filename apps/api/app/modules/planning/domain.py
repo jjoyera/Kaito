@@ -1,10 +1,11 @@
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Any, Literal
 
 Approach = Literal["kaio_path", "mode_z", "kaioken"]
+ProjectionPhase = Literal["loading", "recovery", "taper"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -12,6 +13,112 @@ class TrainingPlanDraft:
     plan_id: str
     status: Literal["draft"]
     plan_approach: Approach
+
+
+@dataclass(frozen=True, slots=True)
+class ProjectedWeek:
+    week_number: int
+    phase: ProjectionPhase
+    estimated_kilometers: Decimal
+
+
+@dataclass(frozen=True, slots=True)
+class WeeklyDistanceProjection:
+    weeks: tuple[ProjectedWeek, ...]
+    total_estimated_kilometers: Decimal
+
+
+_APPROACH_LOADING_RATES: dict[Approach, Decimal] = {
+    "kaio_path": Decimal("0.03"),
+    "mode_z": Decimal("0.05"),
+    "kaioken": Decimal("0.07"),
+}
+_MAX_LOADING_RATE = Decimal("0.10")
+_RECOVERY_FACTOR = Decimal("0.80")
+_PENULTIMATE_TAPER_FACTOR = Decimal("0.75")
+_FINAL_TAPER_FACTOR = Decimal("0.50")
+_KILOMETER_QUANTUM = Decimal("0.01")
+
+
+class WeeklyDistanceProjector:
+    """Project authorized training volume without making eligibility decisions.
+
+    Loading volume compounds from the latest loading peak, while recovery weeks
+    leave that peak unchanged. Taper weeks use that latest pre-taper loading peak
+    as their reference, or the baseline when the horizon has no loading week.
+    """
+
+    def project(
+        self,
+        baseline_average_weekly_kilometers: Decimal | int | float | str,
+        weeks_until_goal: int,
+        authorized_approach: str,
+    ) -> WeeklyDistanceProjection:
+        baseline = _validated_baseline(baseline_average_weekly_kilometers)
+        invalid_week_type = isinstance(weeks_until_goal, bool) or not isinstance(
+            weeks_until_goal, int
+        )
+        if invalid_week_type:
+            raise ValueError("invalid_weeks_until_goal")
+        if weeks_until_goal <= 0:
+            raise ValueError("invalid_weeks_until_goal")
+        if authorized_approach not in _APPROACH_LOADING_RATES:
+            raise ValueError("unsupported_projection_approach")
+
+        rate = min(
+            _APPROACH_LOADING_RATES[authorized_approach], _MAX_LOADING_RATE
+        )
+        regular_week_count = max(weeks_until_goal - 2, 0)
+        peak_volume = baseline
+        weeks: list[ProjectedWeek] = []
+
+        for week_number in range(1, regular_week_count + 1):
+            block_position = (week_number - 1) % 4 + 1
+            if block_position <= 3:
+                peak_volume *= Decimal("1") + rate
+                phase: ProjectionPhase = "loading"
+                volume = peak_volume
+            else:
+                phase = "recovery"
+                volume = peak_volume * _RECOVERY_FACTOR
+            weeks.append(_projected_week(week_number, phase, volume))
+
+        if weeks_until_goal >= 2:
+            weeks.append(
+                _projected_week(
+                    weeks_until_goal - 1,
+                    "taper",
+                    peak_volume * _PENULTIMATE_TAPER_FACTOR,
+                )
+            )
+        weeks.append(
+            _projected_week(
+                weeks_until_goal, "taper", peak_volume * _FINAL_TAPER_FACTOR
+            )
+        )
+        total = sum(
+            (week.estimated_kilometers for week in weeks), Decimal("0.00")
+        )
+        return WeeklyDistanceProjection(tuple(weeks), total)
+
+
+def _validated_baseline(value: Decimal | int | float | str) -> Decimal:
+    if isinstance(value, bool):
+        raise ValueError("invalid_baseline_average_weekly_kilometers")
+    try:
+        baseline = Decimal(str(value))
+    except (InvalidOperation, ValueError):
+        raise ValueError("invalid_baseline_average_weekly_kilometers") from None
+    if not baseline.is_finite() or baseline <= 0:
+        raise ValueError("invalid_baseline_average_weekly_kilometers")
+    return baseline
+
+
+def _projected_week(
+    week_number: int, phase: ProjectionPhase, volume: Decimal
+) -> ProjectedWeek:
+    rounded_volume = volume.quantize(_KILOMETER_QUANTUM, rounding=ROUND_HALF_UP)
+    return ProjectedWeek(week_number, phase, rounded_volume)
 
 
 class UnsupportedEligibilityModality(ValueError):

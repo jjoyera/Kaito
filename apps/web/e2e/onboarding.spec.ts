@@ -179,6 +179,13 @@ test.describe("onboarding intro and step 1", () => {
 		await page
 			.getByLabel("Salida más larga de las últimas 4 semanas")
 			.fill("18");
+		await page
+			.getByLabel("Tiempo total corriendo en las últimas 4 semanas")
+			.fill("300");
+		await page.getByLabel("Duración de la salida más larga").fill("90");
+		await page
+			.getByLabel("Desnivel positivo de la salida más larga")
+			.fill("500");
 		await page.getByLabel("Bastante constante").check();
 		await expect(page.getByLabel(/Horas totales/)).toHaveCount(0);
 		const savesBeforeBaseline = savedSnapshots.length;
@@ -190,6 +197,9 @@ test.describe("onboarding intro and step 1", () => {
 				distance_km: 50,
 				positive_elevation_m: 1200,
 				longest_outing_km: 18,
+				total_running_minutes: 300,
+				longest_outing_duration_minutes: 90,
+				longest_outing_positive_elevation_m: 500,
 				recent_consistency: "fairly_consistent",
 			},
 		});
@@ -249,6 +259,9 @@ async function startWithHydratedAvailability(
 				distance_km: 50,
 				positive_elevation_m: 1200,
 				longest_outing_km: 18,
+				total_running_minutes: 300,
+				longest_outing_duration_minutes: 90,
+				longest_outing_positive_elevation_m: 500,
 				recent_consistency: "fairly_consistent",
 			},
 			availability: { minutes_by_day: minutesByDay },
@@ -306,6 +319,13 @@ async function startAtAvailabilityStep(page: Page) {
 	await page
 		.getByLabel("Salida más larga de las últimas 4 semanas")
 		.fill("18");
+	await page
+		.getByLabel("Tiempo total corriendo en las últimas 4 semanas")
+		.fill("300");
+	await page.getByLabel("Duración de la salida más larga").fill("90");
+	await page
+		.getByLabel("Desnivel positivo de la salida más larga")
+		.fill("500");
 	await page.getByLabel("Bastante constante").check();
 	await page.getByRole("button", { name: "Continuar" }).click();
 	await expect(
@@ -337,6 +357,9 @@ async function startAtPreferencesStep(
 				distance_km: 50,
 				positive_elevation_m: 1200,
 				longest_outing_km: 18,
+				total_running_minutes: 300,
+				longest_outing_duration_minutes: 90,
+				longest_outing_positive_elevation_m: 500,
 				recent_consistency: "fairly_consistent",
 			},
 			availability: {

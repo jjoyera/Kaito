@@ -49,7 +49,7 @@ Su objetivo es alinear producto, journeys y requisitos funcionales sobre **qué 
 - **Propósito**: persistir la base del onboarding del corredor.
 - **Campos clave**: `id`, `userId`, `experienceLevel`, `baseline4Weeks`, `weeklyAvailability`, `preferences`, `physicalStatus`, `constraints`, `onboardingCompletedAt`.
 - **Relaciones**: pertenece a un único `User`.
-- **Notas**: `baseline4Weeks` conserva los totales de sesiones, distancia, desnivel positivo y salida más larga de las cuatro semanas anteriores, además de la constancia reciente (`irregular|fairly_consistent|very_consistent`). La disponibilidad canónica es solo `profile.availability.minutes_by_day`: un objeto JSONB disperso de días a minutos enteros exactos (15–300), con mínimo de tres días y 150 minutos semanales. `profile.physical_status` guarda un `status` obligatorio (`feeling_good|carrying_fatigue|recovering`) y puede guardar `pain_or_limitation_detail` normalizado hasta 500 caracteres; el detalle vacío se omite. No guarda duración base ni categoría; los campos retirados, incluido `profile.restrictions`, no tienen compatibilidad ni migración. El snapshot pertenece al usuario autenticado y RLS impide el acceso entre usuarios.
+- **Notas**: `baseline4Weeks` conserva los totales de sesiones, distancia, desnivel positivo y minutos de carrera de las cuatro semanas anteriores; también la distancia, duración y D+ de la salida más larga, además de la constancia reciente (`irregular|fairly_consistent|very_consistent`). `total_running_minutes`, `longest_outing_duration_minutes` y `longest_outing_positive_elevation_m` son enteros estrictos no negativos; la salida más larga no puede superar el total de minutos ni de D+ del periodo. La disponibilidad canónica es solo `profile.availability.minutes_by_day`: un objeto JSONB disperso de días a minutos enteros exactos (15–300), con mínimo de tres días y 150 minutos semanales. `profile.physical_status` guarda un `status` obligatorio (`feeling_good|carrying_fatigue|recovering`) y puede guardar `pain_or_limitation_detail` normalizado hasta 500 caracteres; el detalle vacío se omite. No guarda duración base ni categoría; los campos retirados, incluido `profile.restrictions`, no tienen compatibilidad ni migración. Kaito está en pre-lanzamiento y sin usuarios de producción, por lo que esta ampliación coordinada del contrato no requiere migración ni versionado de datos de producción. El snapshot pertenece al usuario autenticado y RLS impide el acceso entre usuarios.
 
 ### `TrainingGoal`
 
@@ -81,9 +81,9 @@ Su objetivo es alinear producto, journeys y requisitos funcionales sobre **qué 
 ### `TrainingSession`
 
 - **Propósito**: definir cada entrenamiento planificado visible en dashboard/calendario.
-- **Campos clave**: `id`, `planId`, `scheduledDate`, `sessionType`, `plannedDurationMin`, `plannedDistanceKm?`, `plannedElevationM?`, `purpose`, `isKeySession`.
+- **Campos clave conceptuales persistentes**: `id`, `planId`, `scheduledDate`, `sessionType`, `plannedDurationMin`, `plannedDistanceKm?`, `plannedElevationM?`, `purpose`, `isKeySession`.
 - **Relaciones**: pertenece a `TrainingPlan`.
-- **Notas**: representa lo planificado; la ejecución real vive en `TrainingLog`.
+- **Notas**: representa lo planificado; la ejecución real vive en `TrainingLog`. Antes de persistencia, el contrato neutral ya tipa `sessionCategory` (`run|strength|recovery|cross_training`), `intensitySegments` (`low|threshold|high`), `intensityDescription`, `targetRpeMin`, `targetRpeMax` e `instructions`. En carrera, los segmentos son obligatorios y suman exactamente la duración; en las demás categorías se omiten. El mapeo final a almacenamiento y la RLS de planes/sesiones generados siguen pendientes.
 
 ### `TrainingLog`
 
@@ -125,7 +125,18 @@ Su objetivo es alinear producto, journeys y requisitos funcionales sobre **qué 
 - `User` 1 — N `PlanApproachEligibility`
 - `TrainingPlan` 1 — N `PlanAdjustment` como plan origen o plan generado
 
-## 6) Reglas de datos / invariantes
+## 6) Contratos calculados de la base de generación
+
+Estos resultados tipados están implementados como lógica pura y no añaden todavía tablas ni persistencia:
+
+| Resultado | Contenido y autoridad |
+| --- | --- |
+| `GeneratedTrainingBlock` | Bloque neutral de 1–4 semanas; contiene enfoque aplicado, sesiones tipadas, intensidad y RPE. No contiene readiness calculado por el proveedor. |
+| `GoalDemand` | `km_effort`, minutos semanales mínimos de pico, semanas de pico requeridas y base de decisión (`product_floor`, `expert_anchor` o `product_interpolation`). |
+| `ReadinessCalendar` | Semanas ordenadas `build|peak|recovery|taper`, huecos de carga disponibles y déficit temporal de semanas pico. |
+| `ReadinessCapacityAssessment` | Estado inicial `on_track|constrained|not_feasible`, brecha en minutos y códigos de motivo estables. No demuestra que una progresión concreta sea segura. |
+
+## 7) Reglas de datos / invariantes
 
 1. **Un solo plan activo y un solo borrador por usuario**.
 2. **Un objetivo principal por plan activo**.
@@ -141,8 +152,11 @@ Su objetivo es alinear producto, journeys y requisitos funcionales sobre **qué 
    - Onboarding completo y sin plan activo → generar plan.
    - Con plan activo → dashboard.
 11. **`TrainingGoal` debe ser coherente con la modalidad**: toda modalidad exige `targetDate` (fecha del evento). Para Backyard, el objetivo principal no se modela con distancia fija, sino con vueltas/horas (`targetLoops`/`targetHours`) y parámetros de bucle/descanso.
+12. **La envolvente semanal generada es exacta**: la suma de `plannedDistanceKm` de las sesiones `run` debe coincidir exactamente con los kilómetros proyectados para esa semana.
+13. **Las fechas generadas están acotadas**: cada sesión pertenece a la ventana de siete días de su semana y ninguna sesión puede superar la fecha objetivo.
+14. **Readiness pertenece al backend**: el contrato generado no puede declarar elegibilidad, demanda, capacidad ni seguridad de progresión.
 
-## 7) Simplificaciones explícitas del MVP
+## 8) Simplificaciones explícitas del MVP
 
 - Sin gestión avanzada multi-temporada.
 - Sin múltiples objetivos principales simultáneos.
@@ -150,14 +164,14 @@ Su objetivo es alinear producto, journeys y requisitos funcionales sobre **qué 
 - Sin modelo de diagnóstico médico.
 - Sin roles avanzados (admin/coach/athlete multi-tenant).
 
-## 8) Decisiones tomadas
+## 9) Decisiones tomadas
 
 1. **Versionado de reajustes**: cada reajuste crea una nueva versión de `TrainingPlan` basada en el plan anterior. El plan previo queda disponible como histórico y comparación.
 2. **Granularidad del dolor/sensaciones**: el MVP usará enums simples para reducir fricción y facilitar reglas de reajuste.
 3. **Registro por sesión**: cada sesión tiene un único `TrainingLog` actual, pero editable. Las modificaciones se guardan en `TrainingLogHistory`.
 4. **Bloqueo de enfoques de plan**: las opciones no elegibles se muestran bloqueadas con explicación y se registran en `PlanApproachEligibility`. El usuario puede desbloquear enfoques superiores si progresa, cumple el plan y demuestra preparación suficiente.
 
-## 9) Referencias
+## 10) Referencias
 
 - [`00-product-vision.md`](00-product-vision.md)
 - [`02-user-journeys.md`](02-user-journeys.md)

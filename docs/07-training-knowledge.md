@@ -105,6 +105,74 @@ Aplicación en Kaito:
 | Backyard loop simulation | Ritmo por bucle + transición + descanso | Backyard |
 | OCR brick / obstáculos / grip / carries | Transferencia específica de carrera OCR | OCR |
 
+### 6.1 Base determinista entregada para generación (#82)
+
+La base implementada prepara y valida el contexto de una futura generación, pero **no** invoca IA ni persiste planes/sesiones generados. El issue #24 permanece abierto para proveedor, prompt, orquestación, reintentos y entrega completa.
+
+#### Contrato neutral de bloque
+
+| Regla | Contrato |
+|---|---|
+| Horizonte | Entre 1 y 4 semanas, limitado por la ventana autorizada y la fecha objetivo. |
+| Categorías | `run`, `strength`, `recovery`, `cross_training`. |
+| Intensidad | Las sesiones `run` exigen segmentos temporizados `low`, `threshold` o `high`; su suma coincide con la duración. Las demás categorías no incluyen segmentos. |
+| Esfuerzo | Rango RPE objetivo entero 1–10, con mínimo menor o igual que máximo. |
+| Autoridad | El enfoque se contrasta con el autorizado por backend. Readiness, elegibilidad y proyección no son valores generados por IA. |
+| Distancia | La suma exacta de kilómetros de las sesiones `run` coincide con la proyección de cada semana. |
+| Fechas | Cada sesión cae en la ventana de siete días de su semana y nunca después del objetivo. |
+
+#### Demanda del objetivo
+
+Para Trail y Ultra, Kaito normaliza la demanda con la convención de estilo ITRA:
+
+```text
+km-effort = distancia_km + (D+_m / 100)
+```
+
+El resultado se redondea a centésimas. La conversión de km-effort a mínimos de minutos semanales pico y semanas pico es una **política explícita**, no una garantía científica universal:
+
+| Km-effort | Minutos semanales pico | Semanas pico | Base declarada |
+|---:|---:|---:|---|
+| Hasta 25 | 240 | 2 | Suelo de producto |
+| 50 | 360 | 3 | Ancla experta |
+| 100 o más | 540 | 6 | Ancla experta |
+| Entre hitos | Interpolación lineal, redondeada hacia arriba | Interpolación lineal, redondeada hacia arriba | Política de producto |
+
+Las semanas pico contabilizadas son semanas de carga que alcanzan ese mínimo; recuperación y taper se preservan fuera de ese recuento.
+
+#### Calendario y capacidad inicial
+
+- El calendario previo al taper sigue una secuencia 3+1: tres huecos de carga y uno de recuperación.
+- Las dos últimas semanas se reservan para taper; si el horizonte es menor, se preserva el taper disponible.
+- Las semanas pico ocupan los últimos huecos de carga aptos. Recuperación y taper nunca se convierten para forzar el objetivo.
+- Si faltan huecos pico, se informa el déficit temporal exacto (`missing_peak_loading_weeks`).
+
+La evaluación inicial compara promedio semanal reciente, disponibilidad, demanda y calendario. Devuelve estados y motivos estables:
+
+| Estado | Significado |
+|---|---|
+| `on_track` | No detecta brecha ni restricción entre las señales consideradas. |
+| `constrained` | Hay brecha de carga, constancia irregular o restricciones actuales que limitan carga/intensidad. |
+| `not_feasible` | Faltan semanas pico, disponibilidad mínima, semanas de construcción, o existe un bloqueo de aumento para todo el horizonte. |
+
+Los motivos se exponen con códigos estables y acumulables:
+
+- `not_feasible`: `calendar_missing_required_peak_loading_weeks`, `weekly_availability_below_minimum_peak_minutes`, `current_load_below_target_with_no_build_weeks`, `load_increase_blocked_for_horizon`.
+- `constrained`: `current_load_below_target`, `irregular_recent_consistency`, `current_safety_restrictions_limit_load_or_intensity`.
+- `on_track`: sin códigos de motivo.
+
+La brecha y los minutos adicionales por semana de construcción son información de capacidad inicial. **No prueban que esa progresión sea segura**: la trayectoria sesión a sesión, ACWR y el control conjunto de distancia/desnivel quedan fuera de esta base.
+
+### 6.2 Frontera de evidencia y política
+
+| Tipo de decisión | Ejemplos | Cómo debe presentarse |
+|---|---|---|
+| Señal o restricción respaldada por ciencia | Predominio de baja intensidad, taper, sRPE, prudencia ante dolor/fatiga | Como principio o límite, con fuente y sin extrapolar más allá de la evidencia. |
+| Guía experta | Anclas de 50/100 km-effort, plantillas de modalidad, semanas pico | Como heurística experta explícitamente etiquetada. |
+| Política de producto | Suelo hasta 25 km-effort, interpolación, categorías y validación exacta del contrato | Como decisión determinista de Kaito, revisable y sin garantía científica universal. |
+
+Esta separación evita presentar una decisión de producto como evidencia científica o una señal científica como garantía individual de seguridad.
+
 ## 7) Guardrails para generación de planes
 
 Kaito **debe**:
@@ -114,6 +182,8 @@ Kaito **debe**:
 - generar outputs estructurados y trazables.
 
 Kaito **no debe**:
+- aceptar readiness, elegibilidad o proyecciones calculadas por un proveedor IA;
+- presentar la evaluación inicial de capacidad como prueba de progresión segura;
 - hacer catch-up agresivo de carga perdida;
 - inventar datos faltantes;
 - tratar Backyard como ultra de distancia fija;
@@ -130,8 +200,10 @@ Checklist mínimo de validación:
 5. **Estructura MVP**: sesiones con propósito, intensidad e instrucciones accionables.
 6. **Backyard/OCR específicos**: Backyard por vueltas/horas; OCR con componente de obstáculos/agarre.
 7. **Carga semanal actual (MVP)**: usar sRPE con `sessionLoad = actualDurationMin × rpe` y `weeklyLoad` como suma semanal de `sessionLoad`; mantener `feeling` como señal cualitativa complementaria.
+8. **Envolvente y fechas del bloque**: igualdad exacta de kilómetros de carrera por semana, sesiones dentro de su ventana y ninguna posterior al objetivo.
+9. **Autoridad de readiness**: la salida generada no contiene valores de readiness calculados por el proveedor.
 
-Si falla cualquier punto, el plan debe rechazarse o regenerarse antes de entregarlo.
+Si falla cualquier punto, el bloque debe rechazarse. La regeneración automática forma parte de la futura integración IA del issue #24 y no está implementada en esta base.
 
 ## 9) Fuentes consultadas (resumen para uso en Kaito)
 

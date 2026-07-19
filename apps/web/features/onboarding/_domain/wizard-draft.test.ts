@@ -23,6 +23,9 @@ const completeDraft: OnboardingSnapshotDraft = {
 			distance_km: 42,
 			positive_elevation_m: 1500,
 			longest_outing_km: 20,
+			total_running_minutes: 240,
+			longest_outing_duration_minutes: 90,
+			longest_outing_positive_elevation_m: 600,
 			recent_consistency: "fairly_consistent" as const,
 		},
 		availability: {
