@@ -2,6 +2,7 @@ from collections.abc import Mapping
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from datetime import date
+from decimal import Decimal
 from typing import Any, Protocol
 
 from app.modules.auth.context import UserContext
@@ -54,6 +55,47 @@ class SaveTrainingPlanDraftInput:
     plan_approach: Approach
 
 
+@dataclass(frozen=True, slots=True)
+class GeneratedPlanValues:
+    plan_approach: Approach
+    start_date: date
+    end_date: date
+    block_focus: str
+
+
+@dataclass(frozen=True, slots=True)
+class GeneratedSessionValues:
+    week_number: int
+    session_order: int
+    scheduled_date: date
+    session_type: str
+    session_category: str
+    planned_duration_minutes: int
+    planned_distance_kilometers: Decimal
+    planned_elevation_meters: int
+    intensity_description: str
+    target_rpe_min: int
+    target_rpe_max: int
+    instructions: str
+    purpose: str
+
+
+@dataclass(frozen=True, slots=True)
+class ActiveTrainingWeek:
+    week_number: int
+    sessions: tuple[GeneratedSessionValues, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class ActiveTrainingPlan:
+    plan_id: str
+    plan_approach: Approach
+    start_date: date
+    end_date: date
+    block_focus: str
+    weeks: tuple[ActiveTrainingWeek, ...]
+
+
 class TrainingPlanRepository(Protocol):
     def read_onboarding(
         self, owner_id: UserId, *, lock_for_draft: bool = False
@@ -64,6 +106,16 @@ class TrainingPlanRepository(Protocol):
     def save_draft(
         self, owner_id: UserId, approach: Approach
     ) -> Mapping[str, Any]: ...
+
+    def insert_candidate(self, owner_id: UserId, plan: GeneratedPlanValues) -> str: ...
+
+    def insert_session(self, plan_id: str, session: GeneratedSessionValues) -> None: ...
+
+    def archive_active(self, owner_id: UserId) -> None: ...
+
+    def activate_candidate(self, plan_id: str) -> None: ...
+
+    def read_active_plan(self, owner_id: UserId) -> list[Mapping[str, Any]]: ...
 
 
 class TrainingPlanTransactionFactory(Protocol):
@@ -126,6 +178,59 @@ def save_training_plan_draft(
         plan_id=str(saved["plan_id"]),
         status="draft",
         plan_approach=saved["plan_approach"],
+    )
+
+
+def persist_and_activate_training_plan(
+    user: UserContext,
+    plan: GeneratedPlanValues,
+    sessions: tuple[GeneratedSessionValues, ...],
+    transactions: TrainingPlanTransactionFactory,
+) -> str:
+    try:
+        with transactions(user) as repository:
+            owner_id = UserId(user.user_id)
+            plan_id = repository.insert_candidate(owner_id, plan)
+            for session in sessions:
+                repository.insert_session(plan_id, session)
+            repository.archive_active(owner_id)
+            repository.activate_candidate(plan_id)
+            return plan_id
+    except Exception:
+        raise TrainingPlanPersistenceUnavailable() from None
+
+
+def read_active_training_plan(
+    user: UserContext, transactions: TrainingPlanTransactionFactory
+) -> ActiveTrainingPlan | None:
+    try:
+        with transactions(user) as repository:
+            rows = repository.read_active_plan(UserId(user.user_id))
+    except Exception:
+        raise TrainingPlanPersistenceUnavailable() from None
+    if not rows:
+        return None
+    first = rows[0]
+    weeks: list[ActiveTrainingWeek] = []
+    for row in rows:
+        session_fields = GeneratedSessionValues.__dataclass_fields__
+        session = GeneratedSessionValues(
+            **{field: row[field] for field in session_fields}
+        )
+        if not weeks or weeks[-1].week_number != session.week_number:
+            weeks.append(ActiveTrainingWeek(session.week_number, (session,)))
+        else:
+            previous = weeks[-1]
+            weeks[-1] = ActiveTrainingWeek(
+                previous.week_number, previous.sessions + (session,)
+            )
+    return ActiveTrainingPlan(
+        plan_id=str(first["plan_id"]),
+        plan_approach=first["plan_approach"],
+        start_date=first["start_date"],
+        end_date=first["end_date"],
+        block_focus=first["block_focus"],
+        weeks=tuple(weeks),
     )
 
 
