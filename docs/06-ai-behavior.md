@@ -6,6 +6,16 @@ Este documento define cómo debe comportarse la IA de Kaito en el MVP para **gen
 
 La IA debe ayudar al usuario a mantener claridad y continuidad, dentro de límites de seguridad y alcance funcional del producto.
 
+### Estado implementado
+
+La infraestructura M1 ya dispone de un puerto neutral, el prompt versionado
+`training-block-v1` y un adaptador OpenAI Responses API con Structured Outputs. M1
+no ejecuta todavía el recorrido del usuario: M2–M5 deben añadir orquestación y una
+reparación, persistencia, endpoints y UI/E2E.
+
+Las secciones siguientes describen el comportamiento objetivo del MVP salvo cuando
+se identifica expresamente el contrato implementado por M1.
+
 ## 2) Responsabilidades de la IA
 
 La IA en Kaito MVP debe:
@@ -18,7 +28,8 @@ La IA en Kaito MVP debe:
 
 ## 3) Inputs que la IA puede usar
 
-La IA solo puede usar información disponible y trazable en el modelo del MVP:
+En el MVP objetivo, Kaito puede construir contexto a partir de información disponible
+y trazable del dominio, incluidas las entidades y políticas siguientes:
 
 - `RunnerProfile`
 - `TrainingGoal`
@@ -32,7 +43,11 @@ La IA solo puede usar información disponible y trazable en el modelo del MVP:
 
 Si falta información crítica, la IA debe indicarlo explícitamente y pedir completar datos. **No puede inventar datos faltantes.**
 
-Para generación y validación de planes, `07-training-knowledge.md` actúa como referencia de principios, especificidad por modalidad y guardrails operativos.
+En el contrato implementado por M1, el proveedor recibe exclusivamente
+`ProviderGenerationContext`, ya construido y autorizado por Kaito; no recibe las
+entidades anteriores de forma independiente ni decide qué datos añadir. La política
+numérica canónica de generación y validación está en
+[`07-training-knowledge.md`](07-training-knowledge.md) y no se redefine aquí.
 
 ## 4) Plan approach (`TrainingPlan.planApproach`)
 
@@ -61,7 +76,11 @@ El contrato completo y sus umbrales se definen en [`openspec/specs/training-appr
 
 ## 5) Outputs esperados
 
-La IA debe devolver salidas útiles y consistentes con el MVP:
+El adaptador M1 devuelve únicamente `GeneratedTrainingBlock`, parseado mediante
+Structured Outputs al contrato Pydantic existente. No devuelve readiness, persistencia,
+estado de UI ni mensajes del proveedor.
+
+El MVP completo debe convertir y complementar ese bloque para ofrecer:
 
 1. **Structured plan**: semanas/sesiones con objetivos, carga prevista y enfoque (`planApproach`) explícito.
 2. **Session explanation**: propósito de cada sesión y cómo contribuye al objetivo.

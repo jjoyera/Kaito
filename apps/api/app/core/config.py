@@ -11,10 +11,15 @@ No shared secret is used; verification relies on asymmetric JWT Signing Keys.
 The Supabase server-side API key is not used here and must not be added.
 """
 
+import math
 import os
-from dataclasses import dataclass
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from typing import Any
 
 DEFAULT_JWKS_CACHE_TTL_SECONDS = 600
+PINNED_OPENAI_MODEL = "gpt-5.5-2026-04-23"
+DEFAULT_OPENAI_TIMEOUT_SECONDS = 60.0
 
 
 @dataclass(frozen=True)
@@ -46,6 +51,17 @@ class AuthSettings:
 class DatabaseSettings:
     url: str
     expected_role: str
+
+
+class OpenAIConfigError(Exception):
+    """Neutral failure raised for invalid or absent AI provider configuration."""
+
+
+@dataclass(frozen=True)
+class OpenAISettings:
+    api_key: str = field(repr=False)
+    model: str = PINNED_OPENAI_MODEL
+    timeout_seconds: float = DEFAULT_OPENAI_TIMEOUT_SECONDS
 
 
 @dataclass(frozen=True)
@@ -103,6 +119,47 @@ def get_auth_settings() -> AuthSettings:
         jwt_issuer=issuer,
         jwks_cache_ttl_seconds=ttl,
         local_jwt_secret=local_jwt_secret,
+    )
+
+
+def get_openai_settings() -> OpenAISettings:
+    """Read and validate the fixed OpenAI provider configuration at call time."""
+    api_key = (os.getenv("OPENAI_API_KEY") or "").strip()
+    if not api_key:
+        raise OpenAIConfigError("openai_not_configured")
+
+    raw_model = os.getenv("OPENAI_MODEL")
+    model = PINNED_OPENAI_MODEL if raw_model is None else raw_model
+    if model != PINNED_OPENAI_MODEL:
+        raise OpenAIConfigError("openai_model_not_allowed")
+
+    raw_timeout = os.getenv("OPENAI_TIMEOUT_SECONDS")
+    if raw_timeout is None:
+        timeout = DEFAULT_OPENAI_TIMEOUT_SECONDS
+    else:
+        try:
+            timeout = float(raw_timeout.strip())
+        except ValueError as error:
+            raise OpenAIConfigError("openai_timeout_invalid") from error
+        if not math.isfinite(timeout) or timeout <= 0:
+            raise OpenAIConfigError("openai_timeout_invalid")
+
+    return OpenAISettings(api_key=api_key, model=model, timeout_seconds=timeout)
+
+
+def build_openai_client(
+    *, client_factory: Callable[..., Any] | None = None
+) -> Any:
+    """Construct the SDK client without retries; M2 owns retry behavior."""
+    settings = get_openai_settings()
+    if client_factory is None:
+        from openai import OpenAI
+
+        client_factory = OpenAI
+    return client_factory(
+        api_key=settings.api_key,
+        timeout=settings.timeout_seconds,
+        max_retries=0,
     )
 
 
