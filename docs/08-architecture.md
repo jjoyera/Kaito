@@ -2,7 +2,7 @@
 
 ## 1) Propósito
 
-Este documento define la arquitectura técnica objetivo del MVP de Kaito para implementación futura, con decisiones defendibles para revisión arquitectónica del TFM.
+Este documento define la arquitectura técnica actual y objetivo del MVP de Kaito, con decisiones defendibles para revisión arquitectónica del TFM.
 
 Se centra en **cómo se organiza el sistema** (fronteras, responsabilidades, flujos, seguridad, datos, IA y operación), distinguiendo el estado implementado de la arquitectura objetivo.
 
@@ -22,9 +22,8 @@ Se centra en **cómo se organiza el sistema** (fronteras, responsabilidades, flu
 | Contrato de validación | Zod en frontend + Pydantic en backend | Validación temprana de UX y validación autoritativa en frontera API. |
 | Persistencia de onboarding | API protegida + SQLAlchemy runtime + JSONB/RLS de Supabase | El propietario se deriva del JWT; Supabase CLI es la única autoridad de esquema y RLS. |
 | Elegibilidad de enfoque | Política pura determinista en `planning` | Mantiene umbrales, precedencia de seguridad y códigos estables fuera del endpoint, la UI, persistencia y prompts. |
-| Base de generación | Contratos y políticas puras en `planning` | Separa proyección, demanda, calendario, capacidad y validación del bloque respecto del futuro proveedor IA. |
-| Núcleo IA objetivo | FastAPI (`apps/api`) | El backend controlará contexto, reglas, validaciones y ownership cuando se implemente la integración del issue #24. |
-| Observabilidad IA objetivo | Langfuse | Trazabilidad futura de prompts, respuestas, costes y calidad de ejecución IA. |
+| Base de generación | Contratos y políticas puras en `planning` | Separa contexto, proyección, demanda, calendario, capacidad y validación del bloque respecto del proveedor IA. |
+| Frontera IA M1 | Puerto neutral en `planning` + adaptador OpenAI en infraestructura | Limita la entrada a `ProviderGenerationContext` y la salida a `GeneratedTrainingBlock` sin acoplar el dominio al SDK. |
 | Error monitoring | Sentry | Detección temprana y diagnóstico en frontend/backend. |
 
 ---
@@ -54,7 +53,6 @@ apps/api (FastAPI)
 
 Observabilidad transversal:
 - Sentry (web + api)
-- Langfuse (pipeline IA)
 ```
 
 ---
@@ -115,7 +113,6 @@ No se crean árboles vacíos a partir de este ejemplo.
 │       │   │   ├── planning/        # Elegibilidad, generación, sesiones y reajuste/versionado
 │       │   │   ├── training_log/    # Registro real de entrenamientos
 │       │   │   ├── insights/        # KPIs, cumplimiento y cálculos de progreso
-│       │   │   └── ai_coach/        # Adaptadores IA, prompts, generación estructurada y validación
 │       │   └── shared/              # Código común muy controlado
 │       ├── tests/
 │       └── alembic/
@@ -169,7 +166,10 @@ Principio: separar por **frontera de aplicación** primero (`web` vs `api`) y po
 - `planning`: casos de uso de elegibilidad, generación inicial, sesiones y reajuste/versionado.
 - `training_log`: registro de cumplimiento y métricas simples.
 - `insights`: cálculo de KPIs, cumplimiento y progreso para dashboard.
-- `ai_coach`: adaptadores IA, prompts, generación estructurada y soporte de validación.
+
+La frontera IA implementada reparte el puerto neutral en `modules/planning` y el
+adaptador OpenAI y su prompt versionado en `core/ai`; no introduce un módulo de
+dominio hipotético.
 
 ### Capas (aplicar donde haya complejidad)
 
@@ -178,7 +178,7 @@ En módulos con lógica crítica se recomienda:
 - **Domain**: entidades/reglas/invariantes (p. ej., un solo plan activo, reglas de versionado).
 - **Application**: casos de uso (generate plan, apply adjustment, calculate KPIs).
 - **Ports**: interfaces para repositorios, proveedores IA, trazas, reloj, etc.
-- **Adapters**: FastAPI controllers, SQLAlchemy repositories, cliente Langfuse, cliente Supabase.
+- **Adapters**: FastAPI controllers, SQLAlchemy repositories y clientes de proveedores externos.
 
 En módulos simples/CRUD, se permite simplificación sin imponer todas las capas, manteniendo invariantes y testabilidad.
 
@@ -237,31 +237,27 @@ En módulos simples/CRUD, se permite simplificación sin imponer todas las capas
 
 ## 9) Arquitectura de IA: generación, validación, conocimiento y trazabilidad
 
-### Estado implementado: base neutral de generación (#82)
+### Estado implementado: T1.1–T1.3 y M1
 
-`apps/api/app/modules/planning/` contiene una base determinista, todavía sin proveedor IA:
+La generación está dividida en fronteras explícitas dentro de `apps/api`:
 
-| Componente | Responsabilidad |
+| Frontera | Estado y responsabilidad |
 | --- | --- |
-| Proyección semanal | Calcula la envolvente de kilómetros autorizada por enfoque, con carga, recuperación y taper. |
-| Demanda del objetivo | Normaliza Trail/Ultra mediante km-effort y aplica suelo de producto, anclas expertas e interpolación explícitamente etiquetados. |
-| Calendario de readiness | Preserva patrón 3+1, taper y semanas pico; informa el déficit temporal exacto. |
-| Capacidad inicial | Devuelve `on_track`, `constrained` o `not_feasible` con motivos estables, sin afirmar progresión segura. |
-| Contrato generado | Define bloques de 1–4 semanas, categorías, segmentos de intensidad y RPE sin campos de readiness del proveedor. |
-| Trayectoria de sesión | Calcula sobre el horizonte completo los máximos independientes de distancia y duración de la salida más larga y después recorta las próximas 1–4 semanas autorizadas. |
-| Validador contextual | Exige enfoque autorizado, envolvente semanal exacta, ventanas de fecha, truncado por objetivo y ambos topes de trayectoria para cada sesión `run`. |
+| Contexto determinista | Construye `ProviderGenerationContext` vinculado al propietario, en `Europe/Madrid`, desde el lunes estrictamente siguiente; calcula el horizonte completo antes de recortar 1–4 semanas y trunca en la fecha objetivo. |
+| Políticas de `planning` | Calculan proyección, demanda, calendario, capacidad, trayectoria y guardrails deportivos sin delegar autoridad al proveedor. |
+| Puerto neutral | Acepta exclusivamente `ProviderGenerationContext` y devuelve `GeneratedTrainingBlock`. |
+| Prompt | `training-block-v1`, versionado y separado del adaptador. |
+| Adaptador OpenAI | Responses API con Structured Outputs, modelo fijado `gpt-5.5-2026-04-23` y dependencia exacta `openai==2.46.0`. |
+| Operación M1 | Timeout por defecto de 60 segundos, reintentos del SDK desactivados y errores neutrales sin filtraciones del proveedor. |
 
-El bootstrap run-walk de 3 km/30 min y la progresión de 3/5/7 % por enfoque son **política de producto Kaito revisable**, no garantías científicas universales. Recuperación, taper y clamping semanal reducen los topes cuando corresponde. El backend conserva la autoridad: distancia y duración se validan por separado, sin inferir ritmo, y ninguna advertencia o aceptación del riesgo del objetivo permite omitirlas.
+La política semanal parte de 9 km cuando la base es cero; el bootstrap separado de
+la salida más larga es 3 km/30 min. Los guardrails numéricos canónicos y su condición
+de política de producto revisable se mantienen en
+[`07-training-knowledge.md`](07-training-knowledge.md).
 
-### Ubicación objetivo del núcleo IA
-
-El futuro motor de planificación IA residirá en `apps/api` para controlar:
-
-- contexto permitido,
-- reglas de negocio,
-- validación estructural,
-- guardrails de seguridad,
-- persistencia transaccional del resultado.
+M1 termina en la respuesta tipada del proveedor. El backend seguirá controlando en
+M2 la validación posterior, el único intento de reparación y el resultado del caso de
+uso; M3–M5 añadirán persistencia, endpoints y UI/E2E.
 
 ### Contexto controlado y fuentes
 
@@ -271,18 +267,14 @@ La IA solo usa contexto trazable del dominio MVP y reglas de:
 - `docs/07-training-knowledge.md`
 - entidades del modelo (`RunnerProfile`, `TrainingGoal`, `TrainingPlan`, `TrainingSession`, `TrainingLog`, etc.).
 
-### Structured outputs y guardrails
+### Structured Outputs y guardrails
 
-- Ya existe un schema Pydantic neutral para el contenido de un bloque de 1–4 semanas.
+- El adaptador parsea Responses API directamente al schema Pydantic neutral `GeneratedTrainingBlock` para un bloque de 1–4 semanas.
 - Las sesiones usan categorías tipadas, segmentos temporizados de intensidad para carrera y rango RPE 1–10.
 - La suma de distancia de carrera debe igualar exactamente la proyección autorizada de cada semana; las fechas deben pertenecer a su ventana y no superar el objetivo.
 - Cada sesión `run` debe respetar simultáneamente los máximos independientes de distancia y duración de su semana; esos máximos no se aplican a categorías no running.
 - Elegibilidad, demanda, calendario, capacidad y trayectoria son valores calculados por backend y quedan fuera de la salida del proveedor.
-- Rechazo, regeneración, reintentos y publicación pertenecen a la futura orquestación IA.
-
-### Observabilidad IA objetivo
-
-- Langfuse para futuras trazas de prompts, respuestas, latencia, coste y calidad operativa.
+- El rechazo posterior al proveedor y una única reparación pertenecen a M2; persistencia, endpoints y publicación al usuario pertenecen a M3–M5.
 
 ---
 
@@ -317,20 +309,21 @@ planning/
 
 OCR y Backyard continúan admitidos por onboarding, pero la frontera de elegibilidad los rechaza explícitamente hasta que existan reglas propias.
 
-### 10.3 Base actual y flujo futuro de generación
+### 10.3 Frontera actual y flujo pendiente de generación
 
-Base entregada en #82:
+Entregado en T1.1–T1.3 y M1:
 
-1. `api` proyecta la envolvente semanal y calcula la trayectoria de sesión sobre todo el horizonte; después recorta los topes autorizados de las próximas 1–4 semanas.
-2. El contrato neutral acepta solo contenido de un bloque de 1–4 semanas; no acepta readiness ni trayectoria calculados por proveedor.
-3. El validador contrasta enfoque, número/orden de semanas, distancia exacta, ventanas de fecha y ambos topes independientes de cada sesión `run`, truncando el horizonte en el objetivo.
+1. `api` construye contexto owner-bound, proyecta la envolvente semanal y calcula la trayectoria sobre todo el horizonte antes de recortar las próximas 1–4 semanas.
+2. El puerto entrega únicamente `ProviderGenerationContext` al adaptador OpenAI.
+3. Responses API aplica `training-block-v1` y Structured Outputs para devolver `GeneratedTrainingBlock`.
+4. El contrato no acepta readiness ni trayectoria calculados por el proveedor.
 
-Flujo futuro del issue #24:
+Flujo pendiente:
 
-1. Construir prompt y contexto controlado según `06` + `07`.
-2. Invocar proveedor IA y aplicar reintentos/orquestación.
-3. Validar y, si corresponde, regenerar el bloque.
-4. Persistir con RLS `TrainingPlan` + `TrainingSession` y activar el plan.
+1. M2 invoca el puerto, valida la respuesta contra contexto y guardrails y permite una única reparación.
+2. M3 persiste con ownership el plan y sus sesiones y activa el resultado.
+3. M4 expone los endpoints del caso de uso.
+4. M5 conecta generación, dashboard y pruebas E2E en la web.
 
 ### 10.4 Registro de entrenamiento + KPIs
 
@@ -378,8 +371,7 @@ Flujo futuro del issue #24:
 ## 12) Observabilidad y monitorización
 
 - **Sentry**: errores, excepciones y degradación funcional en frontend y backend.
-- **Langfuse**: observabilidad específica de IA (prompts, outputs, latencia, coste, calidad).
-- Métricas técnicas mínimas: disponibilidad API, tiempos de respuesta, ratio de error, ratio de validación fallida IA.
+- Métricas técnicas mínimas del MVP: disponibilidad API, tiempos de respuesta y ratio de error.
 
 ---
 
@@ -411,24 +403,19 @@ En cada cambio relevante:
 
 ---
 
-## 15) Evolución futura (fuera de implementación MVP inmediata)
+## 15) Evolución fuera del MVP del TFM
 
-Ejes previstos de crecimiento, sin adoptar ahora en runtime MVP:
-
-1. **RAG** para ampliar conocimiento especializado con fuentes curadas.
-2. **Integración Strava** para ingestión automática de actividad.
-3. **Workers/colas** para tareas asíncronas (ajustes pesados, re-procesados, jobs periódicos).
-4. **Métricas avanzadas** (más allá de sRPE y KPIs básicos MVP).
-
-Estas extensiones deben respetar las invariantes actuales y no romper la trazabilidad del plan/versionado.
+RAG, integración Strava y métricas avanzadas quedan fuera del alcance actual. No
+forman parte de la arquitectura implementada ni de los hitos M1–M5.
 
 ---
 
 ## 16) No-objetivos explícitos de la fase actual
 
-- No implementar proveedor IA, prompt, orquestación ni reintentos (issue #24 abierto).
-- No persistir ni aplicar RLS a planes o sesiones generados.
-- No implementar dashboard ni recálculo de `TrainingLog`.
+- No implementar todavía orquestación, validación posterior al proveedor ni reparación (M2).
+- No persistir ni aplicar RLS a planes o sesiones generados (M3).
+- No exponer endpoints de generación (M4).
+- No implementar todavía el dashboard de generación, UI/E2E ni recálculo de `TrainingLog` (M5).
 - No presentar los topes deterministas de trayectoria como garantía individual de seguridad o prevención de lesiones.
 - No crear microservicios.
 - No ampliar estructura ni código fuera de capacidades reales del MVP.
@@ -446,5 +433,3 @@ Estas extensiones deben respetar las invariantes actuales y no romper la trazabi
 - [`05-data-model.md`](./05-data-model.md)
 - [`06-ai-behavior.md`](./06-ai-behavior.md)
 - [`07-training-knowledge.md`](./07-training-knowledge.md)
-- [`openspec/changes/architecture-foundation/proposal.md`](../openspec/changes/architecture-foundation/proposal.md)
-- [`openspec/changes/architecture-foundation/exploration.md`](../openspec/changes/architecture-foundation/exploration.md)

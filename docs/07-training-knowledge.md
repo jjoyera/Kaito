@@ -105,9 +105,11 @@ Aplicación en Kaito:
 | Backyard loop simulation | Ritmo por bucle + transición + descanso | Backyard |
 | OCR brick / obstáculos / grip / carries | Transferencia específica de carrera OCR | OCR |
 
-### 6.1 Base determinista entregada para generación (#82)
+### 6.1 Base determinista y proveedor M1
 
-La base implementada prepara y valida el contexto de una futura generación, pero **no** invoca IA ni persiste planes/sesiones generados. El issue #24 permanece abierto para proveedor, prompt, orquestación, reintentos y entrega completa.
+T1.1–T1.3 preparan y validan el contexto determinista de generación. M1 añade el
+puerto neutral y el adaptador OpenAI interno, pero todavía no existen orquestación,
+reparación, persistencia, endpoints ni entrega UI de un plan generado.
 
 #### Contrato neutral de bloque
 
@@ -122,13 +124,30 @@ La base implementada prepara y valida el contexto de una futura generación, per
 | Fechas | Cada sesión cae en la ventana de siete días de su semana y nunca después del objetivo. |
 | Trayectoria de sesión | Cada sesión `run` respeta simultáneamente el máximo independiente de distancia y el de duración de su semana; alcanzar cualquiera de ellos limita la salida, sin inferir ritmo ni convertir entre magnitudes. |
 
-#### Trayectoria de salida más larga
+#### Bootstraps de volumen y salida más larga
 
-El backend calcula la trayectoria sobre el horizonte completo de `WeeklyDistanceProjector` y solo después entrega al validador el tramo autorizado de las próximas 1–4 semanas. La IA distribuye sesiones dentro de esos límites; no los calcula ni los modifica. Una advertencia aceptada o la aceptación del riesgo de no alcanzar el objetivo nunca desactiva estos límites de sesión.
+Kaito mantiene dos bootstraps distintos cuando la línea base es cero:
 
-La progresión usa un bootstrap run-walk de **3 km y 30 min** cuando la línea base es cero, y tasas por enfoque de **3 % (`kaio_path`), 5 % (`mode_z`) y 7 % (`kaioken`)**. Recuperación y taper reducen los máximos, y la distancia se acota además por el volumen semanal proyectado. Distancia y duración siguen siendo topes independientes: no se deduce ritmo para relajar uno a partir del otro.
+| Magnitud | Bootstrap de producto |
+|---|---:|
+| Volumen semanal proyectado | **9 km** |
+| Tope de la salida más larga | **3 km y 30 min** |
 
-> **Política de producto revisable:** el bootstrap 3 km/30 min y las tasas 3/5/7 % son decisiones deterministas de Kaito, no garantías científicas universales ni promesas individuales de prevención de lesiones.
+El backend calcula ambas trayectorias sobre el horizonte completo de
+`WeeklyDistanceProjector` y solo después entrega al validador el tramo autorizado de
+las próximas 1–4 semanas. El proveedor distribuye sesiones dentro de esos límites;
+no los calcula ni los modifica. Una advertencia aceptada o la aceptación del riesgo
+de no alcanzar el objetivo nunca desactiva estos límites.
+
+La salida más larga progresa con tasas por enfoque de **3 % (`kaio_path`), 5 %
+(`mode_z`) y 7 % (`kaioken`)**. Recuperación y taper reducen los máximos, y la
+distancia se acota además por el volumen semanal proyectado. Distancia y duración
+siguen siendo topes independientes: no se deduce ritmo para relajar uno a partir del
+otro.
+
+> **Política de producto revisable:** los bootstraps de 9 km y 3 km/30 min y las
+> tasas 3/5/7 % son decisiones deterministas de Kaito, no garantías científicas
+> universales ni promesas individuales de prevención de lesiones.
 
 #### Demanda del objetivo
 
@@ -184,9 +203,22 @@ Esta separación evita presentar una decisión de producto como evidencia cient�
 
 ## 7) Guardrails para generación de planes
 
+Estos umbrales son la política deportiva canónica del producto para el bloque
+generado; son decisiones revisables del MVP, no una receta científica universal.
+
+| Guardrail del bloque | Regla canónica |
+|---|---|
+| Baja intensidad | Al menos **75 %** del tiempo total de carrera. |
+| Alta intensidad | Como máximo **10 %** del tiempo total de carrera. |
+| Umbral + alta | Como máximo **25 %** del tiempo total de carrera. |
+| Fuerza | Exactamente **1 sesión de al menos 20 minutos** en semanas `build`, `loading` y `peak`; entre 0 y 1 en `recovery` y `taper`. Las restricciones de seguridad pueden eliminar el mínimo. |
+| Sesiones demandantes | Las restricciones deterministas del contexto limitan su inclusión y separación; el proveedor no puede reinterpretarlas ni ignorarlas. |
+| Desnivel | Queda fuera de las garantías de seguridad del MVP; no se presenta como carga controlada conjuntamente con distancia o intensidad. |
+
 Kaito **debe**:
 - respetar disponibilidad real y contexto del corredor;
 - respetar elegibilidad y límites de `TrainingPlan.planApproach`;
+- aplicar los porcentajes sobre el bloque completo, no semana a semana de forma aislada;
 - aplicar ajustes conservadores ante dolor, fatiga alta o mal sueño;
 - generar outputs estructurados y trazables.
 
@@ -212,8 +244,11 @@ Checklist mínimo de validación:
 8. **Envolvente y fechas del bloque**: igualdad exacta de kilómetros de carrera por semana, sesiones dentro de su ventana y ninguna posterior al objetivo.
 9. **Trayectoria de sesión**: cada sesión `run` cumple a la vez los topes independientes de distancia y duración suministrados por backend; las categorías no running no heredan esos topes.
 10. **Autoridad de readiness**: la salida generada no contiene valores de readiness calculados por el proveedor.
+11. **Distribución del bloque**: cumple los límites canónicos de intensidad, fuerza y sesiones demandantes de la sección 7.
+12. **Desnivel**: no se afirma una garantía de seguridad basada en control conjunto de elevación y carga.
 
-Si falla cualquier punto, el bloque debe rechazarse. La regeneración automática forma parte de la futura integración IA del issue #24 y no está implementada en esta base.
+Si falla cualquier punto, el bloque debe rechazarse. La validación posterior al
+proveedor y una reparación pertenecen a M2 y todavía no están orquestadas.
 
 ## 9) Fuentes consultadas (resumen para uso en Kaito)
 

@@ -193,11 +193,14 @@ El sistema debe evaluar la elegibilidad de enfoques de plan, permitir la selecci
 - El sistema debe persistir la evaluación de disponibilidad y bloqueos usando el concepto `PlanApproachEligibility`.
 - El sistema debe persistir el enfoque elegido en `TrainingPlan.planApproach`.
 - El sistema debe persistir un único borrador de `TrainingPlan` por usuario con el enfoque elegido antes de entrar en generación.
-- La base de generación entregada en el issue #82 define, sin invocar todavía ningún proveedor, un bloque estructurado de 1–4 semanas con categorías tipadas (`run`, `strength`, `recovery`, `cross_training`), segmentos de intensidad para carrera, rango RPE y contenido accionable.
+- La base determinista T1.1–T1.3 define un bloque estructurado de 1–4 semanas con categorías tipadas (`run`, `strength`, `recovery`, `cross_training`), segmentos de intensidad para carrera, rango RPE y contenido accionable.
+- El contexto de generación debe estar vinculado al propietario, usar `Europe/Madrid`, comenzar estrictamente el lunes siguiente y calcular el horizonte completo antes de entregar el tramo inicial de 1–4 semanas.
+- Cuando el promedio semanal reciente es cero, la proyección semanal debe arrancar en 9 km. Este bootstrap es distinto de los topes iniciales de la salida más larga definidos en [`07-training-knowledge.md`](07-training-knowledge.md).
 - El backend debe conservar la autoridad sobre elegibilidad, enfoque, proyección y readiness: una salida generada no puede aportar ni sobrescribir valores de readiness calculados por Kaito.
 - La validación debe exigir igualdad exacta entre la suma semanal de kilómetros de las sesiones `run` y la proyección semanal autorizada, ubicar cada sesión dentro de su ventana semanal y no aceptar sesiones posteriores a la fecha objetivo.
 - El bloque se limita al tramo autorizado de 1–4 semanas y se trunca en la fecha objetivo; no representa por sí solo un plan completo persistido.
-- La generación real, el proveedor IA, prompts, orquestación, reintentos, persistencia/activación y estado de progreso se incorporan como capacidad posterior; la pantalla intermedia actual no debe simular progreso.
+- La validación deportiva debe aplicar los guardrails canónicos de distribución de intensidad, fuerza y separación de sesiones demandantes definidos en [`07-training-knowledge.md`](07-training-knowledge.md).
+- El proveedor M1 y su prompt ya existen como infraestructura interna. La orquestación/reparación, persistencia/activación, endpoints y experiencia UI/E2E se incorporan en M2–M5; la pantalla intermedia actual no debe simular progreso.
 - Cuando se implemente la generación, el sistema debe comunicar que usa objetivo, disponibilidad, experiencia y enfoque elegido.
 - El sistema debe usar explícitamente los datos de objetivo específicos de la modalidad al generar la planificación.
 - El sistema debe generar una planificación inicial asociada al usuario.
@@ -206,15 +209,19 @@ El sistema debe evaluar la elegibilidad de enfoques de plan, permitir la selecci
 - El sistema debe permitir reevaluar elegibilidad en el futuro para desbloquear enfoques si el usuario progresa, cumple y rinde bien.
 - El sistema debe informar al usuario cuando el plan esté disponible.
 
-### Estado de la base entregada
+### Estado de entrega
 
-| Entregado en #82 | Pendiente, fuera de esta base |
+| Hito | Estado actual |
 | --- | --- |
-| Contrato neutral de bloque generado y validadores deterministas | Proveedor IA, prompt, orquestación y reintentos |
-| Proyección semanal, demanda del objetivo, calendario y evaluación inicial de capacidad | Persistencia/RLS de planes y sesiones generados |
-| Ventanas de fecha, truncado por objetivo y envolvente exacta de distancia | Dashboard, recálculo de `TrainingLog` y seguridad de trayectoria sesión a sesión |
+| T1.1–T1.3 (PR #86) | Entregados: contexto owner-bound, calendario/proyección determinista, contrato del bloque y guardrails deportivos previos al proveedor. |
+| M1 | Entregado en la rama actual: puerto neutral, prompt `training-block-v1` y adaptador OpenAI Responses API con Structured Outputs. |
+| M2 | Pendiente: orquestación, validación posterior al proveedor y una reparación. |
+| M3 | Pendiente: persistencia y activación owner-bound del resultado. |
+| M4 | Pendiente: endpoints de generación y consulta. |
+| M5 | Pendiente: UI, dashboard y E2E del recorrido. |
 
-El issue #24 permanece abierto para la generación real. La base #82 no afirma que el usuario reciba todavía un plan generado, persistido o activado.
+La infraestructura existente no implica que el usuario reciba todavía un plan generado,
+persistido o activado.
 
 ### Resultado esperado
 
@@ -392,8 +399,8 @@ El MVP estará correctamente cubierto si:
 - Kaito recoge y valida campos de objetivo específicos por modalidad, incluyendo `targetDate` en todas y Backyard Ultra por vueltas/horas/ritmo-margen/estrategia.
 - Kaito muestra los tres enfoques sin recomendación visual, exige una elección explícita entre opciones elegibles y muestra las bloqueadas con todos sus motivos.
 - Kaito persiste elegibilidad/bloqueos y enfoque elegido para usarlo en la generación del plan.
-- La base #82 valida un bloque estructurado de 1–4 semanas contra enfoque, proyección semanal, ventanas de fecha y fecha objetivo, sin atribuir readiness al proveedor.
-- La generación IA, persistencia y activación del plan inicial siguen pendientes en el issue #24.
+- T1.1–T1.3 validan un bloque estructurado de 1–4 semanas contra enfoque, proyección semanal, ventanas de fecha, fecha objetivo y guardrails deportivos, sin atribuir readiness al proveedor.
+- M1 aporta el puerto y adaptador OpenAI internos; la orquestación de extremo a extremo, persistencia, activación, endpoints y UI siguen pendientes en M2–M5.
 - El usuario puede consultar un dashboard con estado general, KPIs básicos y próximo entrenamiento.
 - El usuario puede abrir un entrenamiento y entender su propósito.
 - El usuario puede registrar cumplimiento y métricas simples.

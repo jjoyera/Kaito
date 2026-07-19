@@ -130,6 +130,37 @@ entorno de integración continua.
 
 ---
 
+## Proveedor de IA para bloques de entrenamiento
+
+El adaptador de OpenAI usa Responses API con salida estructurada y el snapshot
+fijo `gpt-5.5-2026-04-23`. La configuración se lee al construir el proveedor;
+la importación de la aplicación y los flujos que no generan planes no requieren
+una API key.
+
+| Variable | Valor por defecto | Descripción |
+| -------- | ----------------- | ----------- |
+| `OPENAI_API_KEY` | ninguno | Requerida al construir el cliente. Se recortan espacios exteriores. |
+| `OPENAI_MODEL` | `gpt-5.5-2026-04-23` | Solo se acepta este snapshot exacto; cualquier otro valor falla de forma cerrada. |
+| `OPENAI_TIMEOUT_SECONDS` | `60` | Timeout positivo y finito en segundos. |
+
+El cliente desactiva los reintentos automáticos del SDK (`max_retries=0`). El
+adaptador usa Responses API y Structured Outputs con el prompt versionado
+`training-block-v1`. Su contrato es deliberadamente estrecho:
+
+| Frontera M1 | Contrato |
+| --- | --- |
+| Entrada exclusiva | `ProviderGenerationContext`, construido por Kaito y vinculado al propietario. |
+| Salida | `GeneratedTrainingBlock`, el contrato Pydantic existente de planificación. |
+| Errores | Fallos neutrales que no filtran detalles del proveedor. |
+
+M1 solo implementa el puerto neutral y el adaptador de proveedor. No existe todavía
+un recorrido de llamada real para el usuario: la orquestación y reparación única
+(M2), la persistencia (M3), los endpoints (M4) y la UI/E2E (M5) siguen pendientes.
+La validación deportiva posterior a la respuesta pertenece a M2; no forma parte del
+adaptador ni debe simularse mediante un endpoint.
+
+---
+
 ## Autenticación
 
 La autenticación del backend se basa en un **límite de verificación independiente del proveedor**. El código de dominio depende únicamente de `UserContext` (id de usuario y email opcional) y de la abstracción `AuthVerifier`; los detalles de Supabase están aislados en el adaptador de infraestructura.

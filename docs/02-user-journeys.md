@@ -118,6 +118,13 @@ El usuario ha completado el onboarding y espera recibir su planificación.
 
 El usuario necesita confianza durante la espera y una transición clara hacia el plan generado.
 
+### Estado actual
+
+La base determinista T1.1–T1.3 y la infraestructura interna M1 del proveedor ya
+existen. La generación de extremo a extremo, la persistencia del resultado, los
+endpoints, el dashboard y la experiencia UI/E2E siguen pendientes; por ahora
+`/plan/generating` es un destino estático y este recorrido describe el objetivo MVP.
+
 ### Recorrido principal
 
 1. Kaito muestra un estado de generación del plan.

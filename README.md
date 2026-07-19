@@ -11,12 +11,12 @@ forma incremental.
 
 ## Estado actual
 
-El estado implementado entrega autenticación, onboarding completo, selección explícita de enfoque y persistencia del borrador inicial de plan.
+El estado implementado entrega autenticación, onboarding completo, selección explícita de enfoque, persistencia del borrador inicial de plan y la infraestructura M1 del proveedor IA. Todavía no existe generación de extremo a extremo para el usuario.
 
 | Área | Estado |
 | --- | --- |
 | Web | Next.js App Router con signup/login/sesión, onboarding privado, elección accesible de enfoque y destino estático `/plan/generating`. |
-| API | FastAPI con verificación JWT, onboarding, elegibilidad determinista y borrador owner-bound de `TrainingPlan`. |
+| API | FastAPI con verificación JWT, onboarding, elegibilidad determinista, contexto owner-bound en `Europe/Madrid`, proyección y guardrails deportivos, borrador de `TrainingPlan` y adaptador OpenAI mediante Responses API. |
 | Auth | Signup/login con Supabase, handoff de confirmación a login, backend protegido con `GET /auth/me` y `/onboarding` privado. |
 | Marca | Paleta y assets iniciales bajo `docs/` y `apps/web/public/`. |
 | SDD | Cambios guiados por OpenSpec en `openspec/changes/`. |
@@ -185,7 +185,7 @@ La web sigue Screaming Architecture: `app/` solo orquesta Next.js y cada capacid
 ```text
 apps/
   web/                  App Next.js, assets de marca y features frontend.
-  api/                  API FastAPI con /health y auth protegida por JWKS.
+  api/                  API FastAPI con auth, planificación determinista y adaptador IA M1.
 packages/
   api-client/           Paquete reservado; todavía no exporta un cliente real.
 docker/                 Dockerfiles locales para web y API.
@@ -220,14 +220,18 @@ openspec/              Artefactos SDD/OpenSpec.
 - Persistencia de onboarding por usuario mediante API protegida, JSONB con ownership y RLS de Supabase; el backend valida los enums del historial previo y el estado físico estructurado sin confiar en la web.
 - Elegibilidad protegida en `GET /planning/training-approach-eligibility`: una política pura devuelve Camino Kaio, Modo Z y Kaioken con disponibilidad, códigos estables de bloqueo, recomendación y restricciones de seguridad para Trail y Ultra Trail. OCR y Backyard permanecen disponibles en onboarding, pero todavía no son modalidades elegibles.
 - El Paso 7 presenta los enfoques elegibles, conserva la selección al reintentar fallos de conexión y guarda un único borrador owner-bound antes de navegar a `/plan/generating`; los bloqueos o datos desactualizados vuelven a comprobar la elegibilidad y los estados incompletos regresan al onboarding.
+- La planificación determinista construye contexto vinculado al propietario en `Europe/Madrid`, empieza estrictamente el lunes siguiente, calcula el horizonte completo antes de recortar las primeras 1–4 semanas y trunca las fechas en el objetivo.
+- La política deportiva valida distribución de intensidad, fuerza y separación determinista de sesiones demandantes; los valores canónicos están en [`docs/07-training-knowledge.md`](docs/07-training-knowledge.md).
+- La infraestructura IA M1 expone un puerto neutral y un adaptador OpenAI Responses API con Structured Outputs, prompt versionado `training-block-v1`, modelo fijado `gpt-5.5-2026-04-23`, timeout de 60 segundos, reintentos del SDK desactivados y fallos neutrales sin filtraciones del proveedor.
 - La validación incluye lint, build, unitarios y E2E web, Ruff y pruebas API, además de prueba RLS local de dos usuarios.
 - Paquete `@kaito/api-client` reservado para un futuro cliente generado; hoy no
   exporta código ni contratos de producto.
 
 Todavía no hay password reset, magic links, social auth, demo access, dashboard,
-Strava, IA/RAG, generación de planes de entrenamiento reales ni despliegue/CD. Tras
-el Paso 7, la selección crea o actualiza el borrador y `/plan/generating` muestra por
-ahora el destino estático de generación.
+Strava/RAG ni generación de planes de entrenamiento de extremo a extremo. M1 solo
+aporta infraestructura interna: quedan pendientes la orquestación y reparación única
+(M2), persistencia (M3), endpoints (M4) y UI/E2E (M5). Tras el Paso 7, la selección
+crea o actualiza el borrador y `/plan/generating` muestra por ahora un destino estático.
 
 ## Flujo SDD/OpenSpec
 
