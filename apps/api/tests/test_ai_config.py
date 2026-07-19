@@ -56,7 +56,7 @@ def test_openai_timeout_defaults_to_sixty_seconds(
 ) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
 
-    assert config.get_openai_settings().timeout_seconds == 60.0
+    assert math.isclose(config.get_openai_settings().timeout_seconds, 60.0)
 
 
 def test_openai_timeout_accepts_positive_finite_override(
