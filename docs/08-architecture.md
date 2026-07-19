@@ -248,9 +248,10 @@ En módulos simples/CRUD, se permite simplificación sin imponer todas las capas
 | Calendario de readiness | Preserva patrón 3+1, taper y semanas pico; informa el déficit temporal exacto. |
 | Capacidad inicial | Devuelve `on_track`, `constrained` o `not_feasible` con motivos estables, sin afirmar progresión segura. |
 | Contrato generado | Define bloques de 1–4 semanas, categorías, segmentos de intensidad y RPE sin campos de readiness del proveedor. |
-| Validador contextual | Exige enfoque autorizado, envolvente semanal exacta, ventanas de fecha y truncado por fecha objetivo. |
+| Trayectoria de sesión | Calcula sobre el horizonte completo los máximos independientes de distancia y duración de la salida más larga y después recorta las próximas 1–4 semanas autorizadas. |
+| Validador contextual | Exige enfoque autorizado, envolvente semanal exacta, ventanas de fecha, truncado por objetivo y ambos topes de trayectoria para cada sesión `run`. |
 
-La trayectoria segura sesión a sesión no se deduce de esta evaluación inicial.
+El bootstrap run-walk de 3 km/30 min y la progresión de 3/5/7 % por enfoque son **política de producto Kaito revisable**, no garantías científicas universales. Recuperación, taper y clamping semanal reducen los topes cuando corresponde. El backend conserva la autoridad: distancia y duración se validan por separado, sin inferir ritmo, y ninguna advertencia o aceptación del riesgo del objetivo permite omitirlas.
 
 ### Ubicación objetivo del núcleo IA
 
@@ -275,7 +276,8 @@ La IA solo usa contexto trazable del dominio MVP y reglas de:
 - Ya existe un schema Pydantic neutral para el contenido de un bloque de 1–4 semanas.
 - Las sesiones usan categorías tipadas, segmentos temporizados de intensidad para carrera y rango RPE 1–10.
 - La suma de distancia de carrera debe igualar exactamente la proyección autorizada de cada semana; las fechas deben pertenecer a su ventana y no superar el objetivo.
-- Elegibilidad, demanda, calendario y capacidad son valores calculados por backend y quedan fuera de la salida del proveedor.
+- Cada sesión `run` debe respetar simultáneamente los máximos independientes de distancia y duración de su semana; esos máximos no se aplican a categorías no running.
+- Elegibilidad, demanda, calendario, capacidad y trayectoria son valores calculados por backend y quedan fuera de la salida del proveedor.
 - Rechazo, regeneración, reintentos y publicación pertenecen a la futura orquestación IA.
 
 ### Observabilidad IA objetivo
@@ -319,9 +321,9 @@ OCR y Backyard continúan admitidos por onboarding, pero la frontera de elegibil
 
 Base entregada en #82:
 
-1. `api` puede proyectar la envolvente semanal autorizada y calcular demanda, calendario y capacidad inicial.
-2. El contrato neutral acepta solo contenido de un bloque de 1–4 semanas; no acepta readiness calculado por proveedor.
-3. El validador contrasta enfoque, número/orden de semanas, distancia exacta y ventanas de fecha, truncando el horizonte en el objetivo.
+1. `api` proyecta la envolvente semanal y calcula la trayectoria de sesión sobre todo el horizonte; después recorta los topes autorizados de las próximas 1–4 semanas.
+2. El contrato neutral acepta solo contenido de un bloque de 1–4 semanas; no acepta readiness ni trayectoria calculados por proveedor.
+3. El validador contrasta enfoque, número/orden de semanas, distancia exacta, ventanas de fecha y ambos topes independientes de cada sesión `run`, truncando el horizonte en el objetivo.
 
 Flujo futuro del issue #24:
 
@@ -427,7 +429,7 @@ Estas extensiones deben respetar las invariantes actuales y no romper la trazabi
 - No implementar proveedor IA, prompt, orquestación ni reintentos (issue #24 abierto).
 - No persistir ni aplicar RLS a planes o sesiones generados.
 - No implementar dashboard ni recálculo de `TrainingLog`.
-- No demostrar seguridad de trayectoria a nivel de sesión.
+- No presentar los topes deterministas de trayectoria como garantía individual de seguridad o prevención de lesiones.
 - No crear microservicios.
 - No ampliar estructura ni código fuera de capacidades reales del MVP.
 - No definir integración completa con Strava en MVP.
