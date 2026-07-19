@@ -29,6 +29,109 @@ from tests.planning.test_approach_eligibility import eligible_snapshot
 pytest_plugins = ("tests.integration.test_onboarding_rls",)
 
 
+_SESSION_VALUES = (
+    1,
+    date(2026, 7, 6),
+    "Easy run",
+    "run",
+    45,
+    8,
+    50,
+    "Conversational",
+    3,
+    4,
+    "Run easily",
+    "Build aerobic durability",
+)
+
+
+def _insert_session(
+    connection: psycopg.Connection, plan_id: str, session_order: int
+) -> str:
+    return connection.execute(
+        "INSERT INTO training_sessions ("
+        "plan_id,week_number,scheduled_date,session_type,session_category,"
+        "planned_duration_minutes,planned_distance_kilometers,"
+        "planned_elevation_meters,intensity_description,target_rpe_min,"
+        "target_rpe_max,instructions,purpose,session_order"
+        ") VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id",
+        (plan_id, *_SESSION_VALUES, session_order),
+    ).fetchone()[0]
+
+
+def test_backend_training_sessions_are_owner_isolated(
+    identities: RlsFixture,
+) -> None:
+    owner, foreign = identities.first_user, identities.second_user
+    with psycopg.connect(identities.db_url, autocommit=True) as admin:
+        admin.execute(
+            "DELETE FROM training_plans WHERE owner_id = ANY(%s::uuid[])",
+            ([owner, foreign],),
+        )
+        plan_ids = {
+            owner_id: admin.execute(
+                "INSERT INTO training_plans "
+                "(owner_id,status,plan_approach,start_date,end_date,block_focus) "
+                "VALUES (%s,'active','kaio_path',%s,%s,'Aerobic durability') "
+                "RETURNING id",
+                (owner_id, date(2026, 7, 6), date(2026, 7, 12)),
+            ).fetchone()[0]
+            for owner_id in (owner, foreign)
+        }
+        own_session = _insert_session(admin, plan_ids[owner], 1)
+        foreign_session = _insert_session(admin, plan_ids[foreign], 1)
+
+    with _as_user(identities, owner) as backend:
+        backend.execute("RESET ROLE")
+        assert backend.execute(
+            "SELECT id FROM training_sessions ORDER BY id"
+        ).fetchall() == [(own_session,)]
+
+        inserted_session = _insert_session(backend, plan_ids[owner], 2)
+        with pytest.raises(
+            (psycopg.errors.ForeignKeyViolation, psycopg.errors.InsufficientPrivilege)
+        ):
+            with backend.transaction():
+                _insert_session(backend, plan_ids[foreign], 2)
+
+        assert backend.execute(
+            "UPDATE training_sessions SET session_type='Recovery run' WHERE id=%s",
+            (inserted_session,),
+        ).rowcount == 1
+        assert backend.execute(
+            "UPDATE training_sessions SET session_type='Compromised' WHERE id=%s",
+            (foreign_session,),
+        ).rowcount == 0
+
+        with pytest.raises(
+            (psycopg.errors.ForeignKeyViolation, psycopg.errors.InsufficientPrivilege)
+        ):
+            with backend.transaction():
+                backend.execute(
+                    "UPDATE training_sessions SET plan_id=%s WHERE id=%s",
+                    (plan_ids[foreign], inserted_session),
+                )
+
+        assert backend.execute(
+            "DELETE FROM training_sessions WHERE id=%s", (inserted_session,)
+        ).rowcount == 1
+        assert backend.execute(
+            "DELETE FROM training_sessions WHERE id=%s", (foreign_session,)
+        ).rowcount == 0
+
+    with _as_user(identities, owner) as no_claims:
+        no_claims.execute("RESET ROLE")
+        no_claims.execute("SELECT set_config('request.jwt.claims', '', true)")
+        visible_sessions = no_claims.execute(
+            "SELECT count(*) FROM training_sessions"
+        ).fetchone()
+        assert visible_sessions == (0,)
+        with pytest.raises(
+            (psycopg.errors.ForeignKeyViolation, psycopg.errors.InsufficientPrivilege)
+        ):
+            _insert_session(no_claims, plan_ids[owner], 3)
+
+
 def test_real_backend_only_writes_and_repository_contract(
     identities: RlsFixture,
 ) -> None:
