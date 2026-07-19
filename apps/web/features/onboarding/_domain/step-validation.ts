@@ -42,6 +42,9 @@ export type BaselineDraft = {
 	distance_km?: number;
 	positive_elevation_m?: number;
 	longest_outing_km?: number;
+	total_running_minutes?: number;
+	longest_outing_duration_minutes?: number;
+	longest_outing_positive_elevation_m?: number;
 	recent_consistency?: RecentConsistency;
 };
 
@@ -285,6 +288,37 @@ export function validateBaselineStep(baseline: BaselineDraft): FieldErrors {
 		errors["profile.baseline_4_weeks.longest_outing_km"] = "required";
 	} else if (!isNonNegativeNumber(baseline.longest_outing_km)) {
 		errors["profile.baseline_4_weeks.longest_outing_km"] = "out_of_range";
+	}
+
+	const integerFields = [
+		["total_running_minutes", baseline.total_running_minutes],
+		["longest_outing_duration_minutes", baseline.longest_outing_duration_minutes],
+		[
+			"longest_outing_positive_elevation_m",
+			baseline.longest_outing_positive_elevation_m,
+		],
+	] as const;
+	for (const [field, value] of integerFields) {
+		const path = `profile.baseline_4_weeks.${field}`;
+		if (value === undefined) errors[path] = "required";
+		else if (!isNonNegativeInteger(value)) errors[path] = "out_of_range";
+	}
+
+	if (
+		isNonNegativeInteger(baseline.longest_outing_duration_minutes) &&
+		isNonNegativeInteger(baseline.total_running_minutes) &&
+		baseline.longest_outing_duration_minutes > baseline.total_running_minutes
+	) {
+		errors["profile.baseline_4_weeks.longest_outing_duration_minutes"] =
+			"out_of_range";
+	}
+	if (
+		isNonNegativeInteger(baseline.longest_outing_positive_elevation_m) &&
+		isNonNegativeNumber(baseline.positive_elevation_m) &&
+		baseline.longest_outing_positive_elevation_m > baseline.positive_elevation_m
+	) {
+		errors["profile.baseline_4_weeks.longest_outing_positive_elevation_m"] =
+			"out_of_range";
 	}
 
 	if (baseline.recent_consistency === undefined) {

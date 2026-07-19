@@ -65,6 +65,9 @@ def _snapshot() -> dict:
                 "distance_km": 75.0,
                 "positive_elevation_m": 1200.0,
                 "longest_outing_km": 25.0,
+                "total_running_minutes": 300,
+                "longest_outing_duration_minutes": 120,
+                "longest_outing_positive_elevation_m": 800,
                 "recent_consistency": "fairly_consistent",
             },
             "availability": {

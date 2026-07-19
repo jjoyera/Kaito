@@ -36,6 +36,9 @@ def _completed_snapshot(*, target_date: str = "2026-08-01") -> dict:
                 "distance_km": 75.0,
                 "positive_elevation_m": 1200.0,
                 "longest_outing_km": 25.0,
+                "total_running_minutes": 300,
+                "longest_outing_duration_minutes": 120,
+                "longest_outing_positive_elevation_m": 800,
                 "recent_consistency": "fairly_consistent",
             },
             "availability": {
@@ -275,8 +278,103 @@ def test_save_demotes_noncanonical_completed_optional_goal_answers(changes, fiel
     assert any(diagnostic.field == field for diagnostic in result.diagnostics)
 
 
-def test_save_accepts_canonical_baseline_with_recent_consistency():
+def test_completed_baseline_requires_new_canonical_answers():
     snapshot = _completed_snapshot()
+    baseline = snapshot["profile"]["baseline_4_weeks"]
+    for field in (
+        "total_running_minutes",
+        "longest_outing_duration_minutes",
+        "longest_outing_positive_elevation_m",
+    ):
+        baseline.pop(field)
+
+    result = save_onboarding(
+        UserContext("runner-1"),
+        SaveOnboardingInput(snapshot=snapshot, validation_date=date(2026, 7, 13)),
+        RecordingTransactions(RecordingRepository()),
+    )
+
+    assert result.snapshot.state is OnboardingState.INCOMPLETE
+    assert {
+        (diagnostic.code, diagnostic.field) for diagnostic in result.diagnostics
+    } >= {
+        ("required", "profile.baseline_4_weeks.total_running_minutes"),
+        ("required", "profile.baseline_4_weeks.longest_outing_duration_minutes"),
+        (
+            "required",
+            "profile.baseline_4_weeks.longest_outing_positive_elevation_m",
+        ),
+    }
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "total_running_minutes",
+        "longest_outing_duration_minutes",
+        "longest_outing_positive_elevation_m",
+    ],
+)
+@pytest.mark.parametrize(
+    "value", [True, 1.5, -1, float("nan"), float("inf"), "60"]
+)
+def test_save_rejects_malformed_new_baseline_integer_values(field, value):
+    snapshot = _completed_snapshot()
+    snapshot["profile"]["baseline_4_weeks"][field] = value
+    transactions = RecordingTransactions(RecordingRepository())
+
+    with pytest.raises(InvalidOnboardingInput, match="^malformed_snapshot$"):
+        save_onboarding(
+            UserContext("runner-1"),
+            SaveOnboardingInput(snapshot=snapshot, validation_date=date(2026, 7, 13)),
+            transactions,
+        )
+
+    assert transactions.calls == []
+
+
+def test_save_demotes_baseline_when_longest_outing_exceeds_totals():
+    snapshot = _completed_snapshot()
+    snapshot["profile"]["baseline_4_weeks"].update(
+        {
+            "total_running_minutes": 60,
+            "longest_outing_duration_minutes": 61,
+            "longest_outing_positive_elevation_m": 1201,
+        }
+    )
+
+    result = save_onboarding(
+        UserContext("runner-1"),
+        SaveOnboardingInput(snapshot=snapshot, validation_date=date(2026, 7, 13)),
+        RecordingTransactions(RecordingRepository()),
+    )
+
+    assert result.snapshot.state is OnboardingState.INCOMPLETE
+    assert {(item.code, item.field) for item in result.diagnostics} >= {
+        (
+            "out_of_range",
+            "profile.baseline_4_weeks.longest_outing_duration_minutes",
+        ),
+        (
+            "out_of_range",
+            "profile.baseline_4_weeks.longest_outing_positive_elevation_m",
+        ),
+    }
+
+
+def test_save_accepts_explicit_all_zero_canonical_baseline():
+    snapshot = _completed_snapshot()
+    snapshot["profile"]["baseline_4_weeks"].update(
+        {
+            "sessions": 0,
+            "distance_km": 0,
+            "positive_elevation_m": 0,
+            "longest_outing_km": 0,
+            "total_running_minutes": 0,
+            "longest_outing_duration_minutes": 0,
+            "longest_outing_positive_elevation_m": 0,
+        }
+    )
     repository = RecordingRepository()
 
     result = save_onboarding(

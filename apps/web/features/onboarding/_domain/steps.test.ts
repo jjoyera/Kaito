@@ -50,13 +50,16 @@ describe("ONBOARDING_STEPS", () => {
 		]);
 	});
 
-	test("baseline step owns retained totals and consistency, but not training hours", () => {
+	test("baseline step owns all canonical totals and consistency, but not training hours", () => {
 		const baselineStep = ONBOARDING_STEPS.find((step) => step.id === "baseline");
 		assert.deepEqual(baselineStep?.fields, [
 			"profile.baseline_4_weeks.sessions",
 			"profile.baseline_4_weeks.distance_km",
 			"profile.baseline_4_weeks.positive_elevation_m",
 			"profile.baseline_4_weeks.longest_outing_km",
+			"profile.baseline_4_weeks.total_running_minutes",
+			"profile.baseline_4_weeks.longest_outing_duration_minutes",
+			"profile.baseline_4_weeks.longest_outing_positive_elevation_m",
 			"profile.baseline_4_weeks.recent_consistency",
 		]);
 	});

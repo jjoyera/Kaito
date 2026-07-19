@@ -81,6 +81,51 @@ export function BaselineStep({ value, errors, onChange }: BaselineStepProps) {
 					)}
 					onChange={(next) => onChange({ longest_outing_km: next })}
 				/>
+				<NumberField
+					id="baseline-total-running-minutes"
+					label="Tiempo total corriendo en las últimas 4 semanas"
+					value={value.total_running_minutes}
+					min={0}
+					step={1}
+					suffix="min"
+					error={fieldErrorMessage(
+						errors["profile.baseline_4_weeks.total_running_minutes"],
+						"Tiempo total corriendo en las últimas 4 semanas",
+					)}
+					onChange={(next) => onChange({ total_running_minutes: next })}
+				/>
+				<NumberField
+					id="baseline-longest-outing-duration-minutes"
+					label="Duración de la salida más larga"
+					value={value.longest_outing_duration_minutes}
+					min={0}
+					step={1}
+					suffix="min"
+					error={fieldErrorMessage(
+						errors[
+							"profile.baseline_4_weeks.longest_outing_duration_minutes"
+						],
+						"Duración de la salida más larga",
+					)}
+					onChange={(next) => onChange({ longest_outing_duration_minutes: next })}
+				/>
+				<NumberField
+					id="baseline-longest-outing-positive-elevation-m"
+					label="Desnivel positivo de la salida más larga"
+					value={value.longest_outing_positive_elevation_m}
+					min={0}
+					step={1}
+					suffix="m"
+					error={fieldErrorMessage(
+						errors[
+							"profile.baseline_4_weeks.longest_outing_positive_elevation_m"
+						],
+						"Desnivel positivo de la salida más larga",
+					)}
+					onChange={(next) =>
+						onChange({ longest_outing_positive_elevation_m: next })
+					}
+				/>
 			</div>
 
 			<fieldset

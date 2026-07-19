@@ -132,18 +132,21 @@ describe("validateStep(prior_history)", () => {
 });
 
 describe("validateStep(baseline)", () => {
-	test("requires four preceding-four-week totals and recent consistency", () => {
+	test("requires all preceding-four-week totals and recent consistency", () => {
 		const errors = validateStep("baseline", draft());
 		assert.deepEqual(errors, {
 			"profile.baseline_4_weeks.sessions": "required",
 			"profile.baseline_4_weeks.distance_km": "required",
 			"profile.baseline_4_weeks.positive_elevation_m": "required",
 			"profile.baseline_4_weeks.longest_outing_km": "required",
+			"profile.baseline_4_weeks.total_running_minutes": "required",
+			"profile.baseline_4_weeks.longest_outing_duration_minutes": "required",
+			"profile.baseline_4_weeks.longest_outing_positive_elevation_m": "required",
 			"profile.baseline_4_weeks.recent_consistency": "required",
 		});
 	});
 
-	test("accepts an all-zero baseline without training hours", () => {
+	test("accepts an all-zero baseline without defaulting blank answers", () => {
 		const errors = validateStep(
 			"baseline",
 			draft({
@@ -153,12 +156,81 @@ describe("validateStep(baseline)", () => {
 						distance_km: 0,
 						positive_elevation_m: 0,
 						longest_outing_km: 0,
+						total_running_minutes: 0,
+						longest_outing_duration_minutes: 0,
+						longest_outing_positive_elevation_m: 0,
 						recent_consistency: "irregular",
 					},
 				},
 			}),
 		);
 		assert.deepEqual(errors, {});
+	});
+
+	test("requires strict non-negative integers for the new baseline fields", () => {
+		const fields = [
+			"total_running_minutes",
+			"longest_outing_duration_minutes",
+			"longest_outing_positive_elevation_m",
+		] as const;
+		for (const field of fields) {
+			for (const invalid of [
+				true,
+				1.5,
+				-1,
+				Number.NaN,
+				Number.POSITIVE_INFINITY,
+				"1",
+			]) {
+				const baseline = {
+					sessions: 1,
+					distance_km: 10,
+					positive_elevation_m: 100,
+					longest_outing_km: 5,
+					total_running_minutes: 60,
+					longest_outing_duration_minutes: 30,
+					longest_outing_positive_elevation_m: 50,
+					recent_consistency: "irregular" as const,
+				};
+				baseline[field] = invalid as number;
+				const errors = validateStep(
+					"baseline",
+					draft({ profile: { baseline_4_weeks: baseline } }),
+				);
+				assert.equal(
+					errors[`profile.baseline_4_weeks.${field}`],
+					"out_of_range",
+				);
+			}
+		}
+	});
+
+	test("attaches longest-outing relationship errors to the offending fields", () => {
+		const errors = validateStep(
+			"baseline",
+			draft({
+				profile: {
+					baseline_4_weeks: {
+						sessions: 2,
+						distance_km: 12,
+						positive_elevation_m: 100,
+						longest_outing_km: 8,
+						total_running_minutes: 60,
+						longest_outing_duration_minutes: 61,
+						longest_outing_positive_elevation_m: 101,
+						recent_consistency: "fairly_consistent",
+					},
+				},
+			}),
+		);
+		assert.equal(
+			errors["profile.baseline_4_weeks.longest_outing_duration_minutes"],
+			"out_of_range",
+		);
+		assert.equal(
+			errors["profile.baseline_4_weeks.longest_outing_positive_elevation_m"],
+			"out_of_range",
+		);
 	});
 
 	test("rejects invalid consistency and negative retained numeric values", () => {

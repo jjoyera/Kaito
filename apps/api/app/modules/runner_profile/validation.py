@@ -156,11 +156,17 @@ def _validate_profile_numbers(profile: dict[str, Any]) -> None:
         for value, positive, half in checks
     ):
         raise ValueError("malformed_snapshot")
-    sessions = baseline.get("sessions")
-    if sessions is not None and (
-        isinstance(sessions, bool) or not isinstance(sessions, int)
+    for field in (
+        "sessions",
+        "total_running_minutes",
+        "longest_outing_duration_minutes",
+        "longest_outing_positive_elevation_m",
     ):
-        raise ValueError("malformed_snapshot")
+        value = baseline.get(field)
+        if value is not None and (
+            isinstance(value, bool) or not isinstance(value, int) or value < 0
+        ):
+            raise ValueError("malformed_snapshot")
 
 
 def _validate_prior_history(profile: dict[str, Any]) -> None:
@@ -310,6 +316,9 @@ def _add_required_diagnostics(
                 "distance_km",
                 "positive_elevation_m",
                 "longest_outing_km",
+                "total_running_minutes",
+                "longest_outing_duration_minutes",
+                "longest_outing_positive_elevation_m",
             ),
             "profile.baseline_4_weeks",
         ),
@@ -419,6 +428,34 @@ def _add_baseline_diagnostics(
     elif consistency not in _RECENT_CONSISTENCIES:
         diagnostics.append(
             _diagnostic("out_of_range", "profile.baseline_4_weeks.recent_consistency")
+        )
+
+    total_minutes = baseline.get("total_running_minutes")
+    longest_duration = baseline.get("longest_outing_duration_minutes")
+    if (
+        total_minutes is not None
+        and longest_duration is not None
+        and longest_duration > total_minutes
+    ):
+        diagnostics.append(
+            _diagnostic(
+                "out_of_range",
+                "profile.baseline_4_weeks.longest_outing_duration_minutes",
+            )
+        )
+
+    total_elevation = baseline.get("positive_elevation_m")
+    longest_elevation = baseline.get("longest_outing_positive_elevation_m")
+    if (
+        total_elevation is not None
+        and longest_elevation is not None
+        and longest_elevation > total_elevation
+    ):
+        diagnostics.append(
+            _diagnostic(
+                "out_of_range",
+                "profile.baseline_4_weeks.longest_outing_positive_elevation_m",
+            )
         )
 
 

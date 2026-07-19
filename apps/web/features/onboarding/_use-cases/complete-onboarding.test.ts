@@ -24,6 +24,9 @@ const completeSnapshot = {
 			distance_km: 40,
 			positive_elevation_m: 800,
 			longest_outing_km: 15,
+			total_running_minutes: 240,
+			longest_outing_duration_minutes: 90,
+			longest_outing_positive_elevation_m: 400,
 			recent_consistency: "fairly_consistent" as const,
 		},
 		availability: {

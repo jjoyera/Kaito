@@ -27,6 +27,9 @@ def eligible_snapshot(
                 "distance_km": distance * 2.4,
                 "positive_elevation_m": 2000,
                 "longest_outing_km": distance * 0.35,
+                "total_running_minutes": 300,
+                "longest_outing_duration_minutes": 120,
+                "longest_outing_positive_elevation_m": 1000,
                 "recent_consistency": "very_consistent",
             },
             "availability": {
