@@ -17,6 +17,12 @@ _READ_ONBOARDING = text(
 _READ_ONBOARDING_FOR_DRAFT = text(
     "SELECT snapshot FROM onboarding_snapshots WHERE owner_id = :owner_id FOR UPDATE"
 )
+_READ_GENERATION_SOURCE = text("""
+    SELECT tp.plan_approach, os.snapshot
+    FROM training_plans AS tp
+    JOIN onboarding_snapshots AS os ON os.owner_id = tp.owner_id
+    WHERE tp.owner_id = :owner_id AND tp.status = 'draft'
+""")
 _BACKEND_ROLE = text("RESET ROLE")
 _LOCK_OWNER = text("SELECT pg_advisory_xact_lock(hashtextextended(:owner_id, 0))")
 _READ_PLAN = text("""
@@ -53,6 +59,11 @@ class SqlAlchemyTrainingPlanRepository:
             _READ_ONBOARDING_FOR_DRAFT if lock_for_draft else _READ_ONBOARDING,
             values,
         ).scalar_one_or_none()
+
+    def read_generation_source(self, owner_id: UserId) -> Mapping[str, Any] | None:
+        return self._connection.execute(
+            _READ_GENERATION_SOURCE, {"owner_id": owner_id.value}
+        ).mappings().one_or_none()
 
     def save_draft(self, owner_id: UserId, approach: Approach) -> Mapping[str, Any]:
         values = {"owner_id": owner_id.value, "plan_approach": approach}

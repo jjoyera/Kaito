@@ -38,10 +38,15 @@ _RECOVERY_FACTOR = Decimal("0.80")
 _PENULTIMATE_TAPER_FACTOR = Decimal("0.75")
 _FINAL_TAPER_FACTOR = Decimal("0.50")
 _KILOMETER_QUANTUM = Decimal("0.01")
+_ZERO_WEEKLY_BASELINE_BOOTSTRAP_KILOMETERS = Decimal("9.00")
 
 
 class WeeklyDistanceProjector:
     """Project authorized training volume without making eligibility decisions.
+
+    A four-week weekly-distance baseline of exactly zero bootstraps from 9.00 km
+    before applying the selected approach. This weekly-volume policy is separate
+    from the 3.00 km / 30 minute bootstrap for the longest outing.
 
     Loading volume compounds from the latest loading peak, while recovery weeks
     leave that peak unchanged. Taper weeks use that latest pre-taper loading peak
@@ -109,8 +114,10 @@ def _validated_baseline(value: Decimal | int | float | str) -> Decimal:
         baseline = Decimal(str(value))
     except (InvalidOperation, ValueError):
         raise ValueError("invalid_baseline_average_weekly_kilometers") from None
-    if not baseline.is_finite() or baseline <= 0:
+    if not baseline.is_finite() or baseline < 0:
         raise ValueError("invalid_baseline_average_weekly_kilometers")
+    if baseline == 0:
+        return _ZERO_WEEKLY_BASELINE_BOOTSTRAP_KILOMETERS
     return baseline
 
 
