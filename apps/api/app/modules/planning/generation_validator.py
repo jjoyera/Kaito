@@ -5,10 +5,14 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import Decimal
 
-from app.modules.planning.domain import Approach, ProjectedWeek
+from app.modules.planning.domain import Approach, ProjectedWeek, ProjectionPhase
 from app.modules.planning.generation_contract import (
     GeneratedTrainingBlock,
     GeneratedTrainingWeek,
+)
+from app.modules.planning.session_trajectory import (
+    SessionTrajectory,
+    SessionTrajectoryWeek,
 )
 from app.modules.runner_profile.domain import WeeklyAvailability
 
@@ -37,6 +41,8 @@ class GenerationViolation:
     weekday: str | None = None
     actual_minutes: int | None = None
     expected_minutes: int | None = None
+    phase: ProjectionPhase | None = None
+    expected_phase: ProjectionPhase | None = None
 
 
 def validate_generated_training_block(
@@ -46,18 +52,25 @@ def validate_generated_training_block(
     goal_date: date,
     expected_projected_weeks: Sequence[ProjectedWeek],
     weekly_availability: WeeklyAvailability,
+    expected_session_trajectory: SessionTrajectory,
 ) -> tuple[GenerationViolation, ...]:
     """Return all independently observable contextual integrity violations.
 
     The caller is responsible for validating provider payload structure and for
-    authorizing the approach. ``weekly_availability`` is mandatory safety context;
-    this function compares all trusted context with the generated block.
+    authorizing the approach. Availability and the backend-computed session
+    trajectory are mandatory safety context; this function compares all trusted
+    context with the generated block.
     """
     violations: list[GenerationViolation] = []
     expected_weeks = tuple(expected_projected_weeks)
+    trajectory_weeks = expected_session_trajectory.weeks
 
     _validate_context(
-        generation_window_start, goal_date, expected_weeks, violations
+        generation_window_start,
+        goal_date,
+        expected_weeks,
+        trajectory_weeks,
+        violations,
     )
     _validate_approach_and_count(
         block, authorized_approach, expected_weeks, violations
@@ -67,6 +80,9 @@ def validate_generated_training_block(
         projected_week = (
             expected_weeks[position] if position < len(expected_weeks) else None
         )
+        trajectory_week = (
+            trajectory_weeks[position] if position < len(trajectory_weeks) else None
+        )
         _validate_week_correspondence(generated_week, projected_week, violations)
         _validate_session_date_windows(
             generated_week,
@@ -75,6 +91,7 @@ def validate_generated_training_block(
             goal_date,
             violations,
         )
+        _validate_session_trajectory(generated_week, trajectory_week, violations)
         _validate_weekly_running_distance(
             generated_week, projected_week, violations
         )
@@ -88,6 +105,7 @@ def _validate_context(
     generation_window_start: date,
     goal_date: date,
     expected_weeks: tuple[ProjectedWeek, ...],
+    trajectory_weeks: tuple[SessionTrajectoryWeek, ...],
     violations: list[GenerationViolation],
 ) -> None:
     if goal_date < generation_window_start:
@@ -106,6 +124,32 @@ def _validate_context(
         for previous, current in zip(expected_numbers, expected_numbers[1:])
     ):
         violations.append(GenerationViolation("out_of_order_projected_weeks"))
+
+    if len(trajectory_weeks) != len(expected_weeks):
+        violations.append(GenerationViolation("trajectory_projection_count_mismatch"))
+
+    for position, projected_week in enumerate(expected_weeks):
+        if position >= len(trajectory_weeks):
+            break
+        trajectory_week = trajectory_weeks[position]
+        if trajectory_week.week_number != projected_week.week_number:
+            violations.append(
+                GenerationViolation(
+                    "trajectory_week_number_mismatch",
+                    week_number=trajectory_week.week_number,
+                    expected_week_number=projected_week.week_number,
+                )
+            )
+        if trajectory_week.phase != projected_week.phase:
+            violations.append(
+                GenerationViolation(
+                    "trajectory_phase_mismatch",
+                    week_number=trajectory_week.week_number,
+                    expected_week_number=projected_week.week_number,
+                    phase=trajectory_week.phase,
+                    expected_phase=projected_week.phase,
+                )
+            )
 
 
 def _validate_approach_and_count(
@@ -210,6 +254,57 @@ def _validate_daily_availability(
                     weekday=weekday,
                     actual_minutes=actual_minutes,
                     expected_minutes=expected_minutes,
+                )
+            )
+
+
+def _validate_session_trajectory(
+    generated_week: GeneratedTrainingWeek,
+    trajectory_week: SessionTrajectoryWeek | None,
+    violations: list[GenerationViolation],
+) -> None:
+    if trajectory_week is None:
+        violations.append(
+            GenerationViolation(
+                "missing_session_trajectory_limit",
+                week_number=generated_week.week_number,
+            )
+        )
+        return
+
+    for session_index, session in enumerate(generated_week.sessions):
+        if session.session_category != "run":
+            continue
+        if (
+            session.planned_distance_kilometers
+            > trajectory_week.maximum_longest_outing_kilometers
+        ):
+            violations.append(
+                GenerationViolation(
+                    "session_trajectory_distance_exceeded",
+                    week_number=generated_week.week_number,
+                    expected_week_number=trajectory_week.week_number,
+                    session_index=session_index,
+                    actual_kilometers=session.planned_distance_kilometers,
+                    expected_kilometers=(
+                        trajectory_week.maximum_longest_outing_kilometers
+                    ),
+                )
+            )
+        if (
+            session.planned_duration_minutes
+            > trajectory_week.maximum_longest_outing_duration_minutes
+        ):
+            violations.append(
+                GenerationViolation(
+                    "session_trajectory_duration_exceeded",
+                    week_number=generated_week.week_number,
+                    expected_week_number=trajectory_week.week_number,
+                    session_index=session_index,
+                    actual_minutes=session.planned_duration_minutes,
+                    expected_minutes=(
+                        trajectory_week.maximum_longest_outing_duration_minutes
+                    ),
                 )
             )
 

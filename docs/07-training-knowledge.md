@@ -120,6 +120,15 @@ La base implementada prepara y valida el contexto de una futura generación, per
 | Autoridad | El enfoque se contrasta con el autorizado por backend. Readiness, elegibilidad y proyección no son valores generados por IA. |
 | Distancia | La suma exacta de kilómetros de las sesiones `run` coincide con la proyección de cada semana. |
 | Fechas | Cada sesión cae en la ventana de siete días de su semana y nunca después del objetivo. |
+| Trayectoria de sesión | Cada sesión `run` respeta simultáneamente el máximo independiente de distancia y el de duración de su semana; alcanzar cualquiera de ellos limita la salida, sin inferir ritmo ni convertir entre magnitudes. |
+
+#### Trayectoria de salida más larga
+
+El backend calcula la trayectoria sobre el horizonte completo de `WeeklyDistanceProjector` y solo después entrega al validador el tramo autorizado de las próximas 1–4 semanas. La IA distribuye sesiones dentro de esos límites; no los calcula ni los modifica. Una advertencia aceptada o la aceptación del riesgo de no alcanzar el objetivo nunca desactiva estos límites de sesión.
+
+La progresión usa un bootstrap run-walk de **3 km y 30 min** cuando la línea base es cero, y tasas por enfoque de **3 % (`kaio_path`), 5 % (`mode_z`) y 7 % (`kaioken`)**. Recuperación y taper reducen los máximos, y la distancia se acota además por el volumen semanal proyectado. Distancia y duración siguen siendo topes independientes: no se deduce ritmo para relajar uno a partir del otro.
+
+> **Política de producto revisable:** el bootstrap 3 km/30 min y las tasas 3/5/7 % son decisiones deterministas de Kaito, no garantías científicas universales ni promesas individuales de prevención de lesiones.
 
 #### Demanda del objetivo
 
@@ -161,7 +170,7 @@ Los motivos se exponen con códigos estables y acumulables:
 - `constrained`: `current_load_below_target`, `irregular_recent_consistency`, `current_safety_restrictions_limit_load_or_intensity`.
 - `on_track`: sin códigos de motivo.
 
-La brecha y los minutos adicionales por semana de construcción son información de capacidad inicial. **No prueban que esa progresión sea segura**: la trayectoria sesión a sesión, ACWR y el control conjunto de distancia/desnivel quedan fuera de esta base.
+La brecha y los minutos adicionales por semana de construcción son información de capacidad inicial. **No prueban que esa progresión sea segura**: Kaito aplica aparte los topes deterministas de distancia y duración de la salida más larga; ACWR y el control conjunto de distancia/desnivel quedan fuera de esta base.
 
 ### 6.2 Frontera de evidencia y política
 
@@ -201,7 +210,8 @@ Checklist mínimo de validación:
 6. **Backyard/OCR específicos**: Backyard por vueltas/horas; OCR con componente de obstáculos/agarre.
 7. **Carga semanal actual (MVP)**: usar sRPE con `sessionLoad = actualDurationMin × rpe` y `weeklyLoad` como suma semanal de `sessionLoad`; mantener `feeling` como señal cualitativa complementaria.
 8. **Envolvente y fechas del bloque**: igualdad exacta de kilómetros de carrera por semana, sesiones dentro de su ventana y ninguna posterior al objetivo.
-9. **Autoridad de readiness**: la salida generada no contiene valores de readiness calculados por el proveedor.
+9. **Trayectoria de sesión**: cada sesión `run` cumple a la vez los topes independientes de distancia y duración suministrados por backend; las categorías no running no heredan esos topes.
+10. **Autoridad de readiness**: la salida generada no contiene valores de readiness calculados por el proveedor.
 
 Si falla cualquier punto, el bloque debe rechazarse. La regeneración automática forma parte de la futura integración IA del issue #24 y no está implementada en esta base.
 
