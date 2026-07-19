@@ -22,8 +22,9 @@ Se centra en **cómo se organiza el sistema** (fronteras, responsabilidades, flu
 | Contrato de validación | Zod en frontend + Pydantic en backend | Validación temprana de UX y validación autoritativa en frontera API. |
 | Persistencia de onboarding | API protegida + SQLAlchemy runtime + JSONB/RLS de Supabase | El propietario se deriva del JWT; Supabase CLI es la única autoridad de esquema y RLS. |
 | Elegibilidad de enfoque | Política pura determinista en `planning` | Mantiene umbrales, precedencia de seguridad y códigos estables fuera del endpoint, la UI, persistencia y prompts. |
-| Núcleo IA | FastAPI (`apps/api`) | El backend controla contexto, reglas, validaciones y ownership de casos de uso de Kaito. |
-| Observabilidad IA | Langfuse | Trazabilidad de prompts, respuestas, costes y calidad de ejecución IA. |
+| Base de generación | Contratos y políticas puras en `planning` | Separa proyección, demanda, calendario, capacidad y validación del bloque respecto del futuro proveedor IA. |
+| Núcleo IA objetivo | FastAPI (`apps/api`) | El backend controlará contexto, reglas, validaciones y ownership cuando se implemente la integración del issue #24. |
+| Observabilidad IA objetivo | Langfuse | Trazabilidad futura de prompts, respuestas, costes y calidad de ejecución IA. |
 | Error monitoring | Sentry | Detección temprana y diagnóstico en frontend/backend. |
 
 ---
@@ -194,7 +195,7 @@ En módulos simples/CRUD, se permite simplificación sin imponer todas las capas
 
 - SQLAlchemy como capa ORM/repositorio en backend.
 - Para onboarding, Supabase CLI es la autoridad de esquema, migraciones y RLS; esta entrega no añade migración ni Alembic.
-- Los snapshots de onboarding permanecen como JSONB por propietario: `profile.availability.minutes_by_day` guarda únicamente minutos exactos dispersos; `profile.prior_history` conserva sus tres enums canónicos; y `profile.physical_status` guarda el estado, presencia de dolor/limitación, impacto condicional al correr y detalle opcional normalizado. La API protegida valida al guardar y al leer; no existe migración SQL y la prueba local verifica CRUD propio y denegación entre dos usuarios.
+- Los snapshots de onboarding permanecen como JSONB por propietario: `profile.availability.minutes_by_day` guarda únicamente minutos exactos dispersos; `profile.prior_history` conserva sus tres enums canónicos; `profile.baseline_4_weeks` añade minutos totales de carrera, duración de la salida más larga y D+ de esa salida como enteros estrictos no negativos; y `profile.physical_status` guarda el estado, presencia de dolor/limitación, impacto condicional al correr y detalle opcional normalizado. La salida más larga no puede superar los totales de minutos ni D+ del periodo. La API protegida valida al guardar y al leer. Kaito está en pre-lanzamiento y sin usuarios de producción, por lo que no existe migración SQL ni versionado de datos para este cambio limpio; la prueba local verifica CRUD propio y denegación entre dos usuarios.
 
 ### Invariantes de persistencia (MVP)
 
@@ -236,9 +237,24 @@ En módulos simples/CRUD, se permite simplificación sin imponer todas las capas
 
 ## 9) Arquitectura de IA: generación, validación, conocimiento y trazabilidad
 
-### Ubicación del núcleo IA
+### Estado implementado: base neutral de generación (#82)
 
-El motor de planificación IA reside en `apps/api` para controlar:
+`apps/api/app/modules/planning/` contiene una base determinista, todavía sin proveedor IA:
+
+| Componente | Responsabilidad |
+| --- | --- |
+| Proyección semanal | Calcula la envolvente de kilómetros autorizada por enfoque, con carga, recuperación y taper. |
+| Demanda del objetivo | Normaliza Trail/Ultra mediante km-effort y aplica suelo de producto, anclas expertas e interpolación explícitamente etiquetados. |
+| Calendario de readiness | Preserva patrón 3+1, taper y semanas pico; informa el déficit temporal exacto. |
+| Capacidad inicial | Devuelve `on_track`, `constrained` o `not_feasible` con motivos estables, sin afirmar progresión segura. |
+| Contrato generado | Define bloques de 1–4 semanas, categorías, segmentos de intensidad y RPE sin campos de readiness del proveedor. |
+| Validador contextual | Exige enfoque autorizado, envolvente semanal exacta, ventanas de fecha y truncado por fecha objetivo. |
+
+La trayectoria segura sesión a sesión no se deduce de esta evaluación inicial.
+
+### Ubicación objetivo del núcleo IA
+
+El futuro motor de planificación IA residirá en `apps/api` para controlar:
 
 - contexto permitido,
 - reglas de negocio,
@@ -256,14 +272,15 @@ La IA solo usa contexto trazable del dominio MVP y reglas de:
 
 ### Structured outputs y guardrails
 
-- Respuesta IA en formato estructurado (schema definido por backend).
-- Validación de estructura y coherencia (Pydantic) antes de persistir.
-- Validadores programáticos adicionales (p. ej., no catch-up agresivo, consistencia modal, límites de seguridad).
-- Si falla validación, la salida se rechaza/regenera; no se publica al usuario.
+- Ya existe un schema Pydantic neutral para el contenido de un bloque de 1–4 semanas.
+- Las sesiones usan categorías tipadas, segmentos temporizados de intensidad para carrera y rango RPE 1–10.
+- La suma de distancia de carrera debe igualar exactamente la proyección autorizada de cada semana; las fechas deben pertenecer a su ventana y no superar el objetivo.
+- Elegibilidad, demanda, calendario y capacidad son valores calculados por backend y quedan fuera de la salida del proveedor.
+- Rechazo, regeneración, reintentos y publicación pertenecen a la futura orquestación IA.
 
-### Observabilidad IA
+### Observabilidad IA objetivo
 
-- Langfuse para trazas de prompts, respuestas, latencia, coste y calidad operativa.
+- Langfuse para futuras trazas de prompts, respuestas, latencia, coste y calidad operativa.
 
 ---
 
@@ -298,13 +315,20 @@ planning/
 
 OCR y Backyard continúan admitidos por onboarding, pero la frontera de elegibilidad los rechaza explícitamente hasta que existan reglas propias.
 
-### 10.3 Generación de plan
+### 10.3 Base actual y flujo futuro de generación
 
-1. `api` toma contexto validado (`RunnerProfile`, `TrainingGoal`, elegibilidad, enfoque elegido).
-2. Construye prompt/control de contexto según `06` + `07`.
-3. Ejecuta llamada IA con salida estructurada.
-4. Ejecuta validadores de seguridad y coherencia modal.
-5. Persiste `TrainingPlan` + `TrainingSession` como plan activo.
+Base entregada en #82:
+
+1. `api` puede proyectar la envolvente semanal autorizada y calcular demanda, calendario y capacidad inicial.
+2. El contrato neutral acepta solo contenido de un bloque de 1–4 semanas; no acepta readiness calculado por proveedor.
+3. El validador contrasta enfoque, número/orden de semanas, distancia exacta y ventanas de fecha, truncando el horizonte en el objetivo.
+
+Flujo futuro del issue #24:
+
+1. Construir prompt y contexto controlado según `06` + `07`.
+2. Invocar proveedor IA y aplicar reintentos/orquestación.
+3. Validar y, si corresponde, regenerar el bloque.
+4. Persistir con RLS `TrainingPlan` + `TrainingSession` y activar el plan.
 
 ### 10.4 Registro de entrenamiento + KPIs
 
@@ -400,6 +424,10 @@ Estas extensiones deben respetar las invariantes actuales y no romper la trazabi
 
 ## 16) No-objetivos explícitos de la fase actual
 
+- No implementar proveedor IA, prompt, orquestación ni reintentos (issue #24 abierto).
+- No persistir ni aplicar RLS a planes o sesiones generados.
+- No implementar dashboard ni recálculo de `TrainingLog`.
+- No demostrar seguridad de trayectoria a nivel de sesión.
 - No crear microservicios.
 - No ampliar estructura ni código fuera de capacidades reales del MVP.
 - No definir integración completa con Strava en MVP.

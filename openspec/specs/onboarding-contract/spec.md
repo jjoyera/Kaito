@@ -30,6 +30,9 @@ The contract MUST use the following stable identifiers, answer types, requiredne
 | profile | `profile.baseline_4_weeks.distance_km` | non-negative number | completion-required; kilometres in preceding 4 calendar weeks |
 | profile | `profile.baseline_4_weeks.positive_elevation_m` | non-negative number | completion-required; metres in preceding 4 calendar weeks |
 | profile | `profile.baseline_4_weeks.longest_outing_km` | non-negative number | completion-required; kilometres in preceding 4 calendar weeks |
+| profile | `profile.baseline_4_weeks.total_running_minutes` | non-negative integer | completion-required; total running minutes in preceding 4 calendar weeks |
+| profile | `profile.baseline_4_weeks.longest_outing_duration_minutes` | non-negative integer | completion-required; duration of the longest outing in preceding 4 calendar weeks |
+| profile | `profile.baseline_4_weeks.longest_outing_positive_elevation_m` | non-negative integer | completion-required; positive elevation of the longest outing in preceding 4 calendar weeks |
 | profile | `profile.baseline_4_weeks.recent_consistency` | enum: `irregular`, `fairly_consistent`, `very_consistent` | completion-required; perceived consistency across the preceding 4 calendar weeks |
 | profile | `profile.availability.minutes_by_day` | sparse object; only `monday`, `tuesday`, `wednesday`, `thursday`, `friday`, `saturday`, and `sunday` keys are allowed; present values are integers 15–300 | completion-required for at least 3 present days and 150 total weekly minutes; omitted day means unavailable; null values and unknown keys are invalid |
 | profile | `profile.training_preferences.mountain_trail_access` | enum: `easy_access`, `weekends_only`, `very_limited` | completion-required |
@@ -48,7 +51,7 @@ The contract MUST use the following stable identifiers, answer types, requiredne
 | goal | `goal.obstacle_difficulty` | enum `low`, `medium`, `high` | optional for `ocr` |
 | goal | `goal.target_loops` | positive integer, >=1 | conditional-required for `backyard`; loops |
 
-The active version 1 contract is a coordinated clean-state replacement: it MUST NOT define, require, accept as canonical answers, emit, translate, sanitize, migrate, or preserve `profile.prior_history.training_years`, `profile.prior_history.completed_race_count_range`, `profile.prior_history.practiced_modalities`, `profile.prior_history.practiced_terrain`, or `goal.technicality`. API and web MUST deploy together against a state without those keys; a stale stored shape fails safely rather than being rewritten.
+The active version 1 contract is a coordinated clean-state replacement: it MUST NOT define, require, accept as canonical answers, emit, translate, sanitize, migrate, or preserve `profile.prior_history.training_years`, `profile.prior_history.completed_race_count_range`, `profile.prior_history.practiced_modalities`, `profile.prior_history.practiced_terrain`, or `goal.technicality`. API and web MUST deploy together against a state without those keys; a stale stored shape fails safely rather than being rewritten. Because Kaito is pre-launch and has no production users, this clean-state update requires no production data migration or compatibility/version translator.
 
 The contract MUST NOT include `experience_level`, plan approach, Backyard target hours, cycle duration, rest margin, box/transition notes, or a habitual/base availability duration. The fixed Backyard cycle is 60 minutes, so downstream derived target hours equal `target_loops` and are not user inputs. Estimated maximum altitude remains optional to avoid blocking runners who do not know it.
 
@@ -67,17 +70,29 @@ The value describes the target event's obstacles rather than the runner's percei
 - THEN it rejects the noncanonical shape without a compatibility branch
 - AND a prior valid snapshot is not rewritten.
 
-#### Scenario: Baseline requires recent consistency rather than training hours
+#### Scenario: Baseline requires running-time and longest-outing load
 
-- GIVEN a runner supplies the four baseline numeric answers for the preceding four calendar weeks and `recent_consistency=fairly_consistent`
+- GIVEN a runner supplies all seven baseline numeric answers for the preceding four calendar weeks and `recent_consistency=fairly_consistent`
 - WHEN the previous-four-week baseline is validated
-- THEN completion succeeds without `training_hours`, while an absent or noncanonical `recent_consistency` blocks completion.
+- THEN completion requires `total_running_minutes`, `longest_outing_duration_minutes`, and `longest_outing_positive_elevation_m` in addition to sessions, distance, total positive elevation, and longest-outing distance.
 
-#### Scenario: Removed training hours do not satisfy completion
+#### Scenario: New baseline fields use strict non-negative integers
 
-- GIVEN a payload has the four retained baseline metrics and a stray `training_hours` key but omits `recent_consistency`
+- GIVEN any of `total_running_minutes`, `longest_outing_duration_minutes`, or `longest_outing_positive_elevation_m` is negative, fractional, boolean, or otherwise not an integer
 - WHEN the baseline is validated
-- THEN completion remains blocked because `recent_consistency` is required and no legacy compatibility shape is recognized.
+- THEN completion is blocked with a stable field diagnostic.
+
+#### Scenario: Longest outing cannot exceed four-week totals
+
+- GIVEN `longest_outing_duration_minutes` exceeds `total_running_minutes` or `longest_outing_positive_elevation_m` exceeds `positive_elevation_m`
+- WHEN the baseline is validated
+- THEN completion is blocked on the inconsistent longest-outing field.
+
+#### Scenario: Removed generic training hours do not satisfy completion
+
+- GIVEN a payload has the retained baseline metrics and a stray `training_hours` key but omits `total_running_minutes`
+- WHEN the baseline is validated
+- THEN completion remains blocked because the canonical running-minute field is required and no legacy compatibility shape is recognized.
 
 #### Scenario: OCR obstacle difficulty is event-based
 
