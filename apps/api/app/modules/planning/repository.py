@@ -8,7 +8,11 @@ from sqlalchemy.engine import Connection, Engine
 from app.core.database import owner_connection
 from app.modules.auth.context import UserContext
 from app.modules.planning.domain import Approach
-from app.modules.planning.use_cases import DraftPlanConflict
+from app.modules.planning.use_cases import (
+    DraftPlanConflict,
+    GeneratedPlanValues,
+    GeneratedSessionValues,
+)
 from app.modules.shared.domain.value_objects import UserId
 
 _READ_ONBOARDING = text(
@@ -42,6 +46,45 @@ _UPDATE_DRAFT = text("""
     SET plan_approach = :plan_approach
     WHERE id = :plan_id AND status = 'draft'
     RETURNING id AS plan_id, status, plan_approach
+""")
+_INSERT_CANDIDATE = text("""
+    INSERT INTO training_plans
+      (owner_id, status, plan_approach, start_date, end_date, block_focus)
+    VALUES
+      (:owner_id, 'archived', :plan_approach, :start_date, :end_date, :block_focus)
+    RETURNING id
+""")
+_INSERT_SESSION = text("""
+    INSERT INTO training_sessions
+      (plan_id, week_number, scheduled_date, session_type, session_category,
+       planned_duration_minutes, planned_distance_kilometers,
+       planned_elevation_meters, intensity_description, target_rpe_min,
+       target_rpe_max, instructions, purpose, session_order)
+    VALUES
+      (:plan_id, :week_number, :scheduled_date, :session_type, :session_category,
+       :planned_duration_minutes, :planned_distance_kilometers,
+       :planned_elevation_meters, :intensity_description, :target_rpe_min,
+       :target_rpe_max, :instructions, :purpose, :session_order)
+""")
+_ARCHIVE_ACTIVE = text("""
+    UPDATE training_plans SET status = 'archived'
+    WHERE owner_id = :owner_id AND status = 'active'
+""")
+_ACTIVATE_CANDIDATE = text("""
+    UPDATE training_plans SET status = 'active'
+    WHERE id = :plan_id AND status = 'archived'
+""")
+_READ_ACTIVE_PLAN = text("""
+    SELECT tp.id AS plan_id, tp.plan_approach, tp.start_date, tp.end_date,
+           tp.block_focus, ts.week_number, ts.session_order, ts.scheduled_date,
+           ts.session_type, ts.session_category, ts.planned_duration_minutes,
+           ts.planned_distance_kilometers, ts.planned_elevation_meters,
+           ts.intensity_description, ts.target_rpe_min, ts.target_rpe_max,
+           ts.instructions, ts.purpose
+    FROM training_plans AS tp
+    JOIN training_sessions AS ts ON ts.plan_id = tp.id
+    WHERE tp.owner_id = :owner_id AND tp.status = 'active'
+    ORDER BY ts.week_number, ts.session_order
 """)
 
 
@@ -85,6 +128,44 @@ class SqlAlchemyTrainingPlanRepository:
                 raise DraftPlanConflict()
             return saved
         return self._connection.execute(_INSERT_DRAFT, values).mappings().one()
+
+    def insert_candidate(self, owner_id: UserId, plan: GeneratedPlanValues) -> str:
+        self._connection.execute(_BACKEND_ROLE)
+        self._connection.execute(_LOCK_OWNER, {"owner_id": owner_id.value})
+        values = {
+            "owner_id": owner_id.value,
+            **{
+                field: getattr(plan, field)
+                for field in GeneratedPlanValues.__dataclass_fields__
+            },
+        }
+        return str(self._connection.execute(_INSERT_CANDIDATE, values).scalar_one())
+
+    def insert_session(self, plan_id: str, session: GeneratedSessionValues) -> None:
+        values = {
+            "plan_id": plan_id,
+            **{
+                field: getattr(session, field)
+                for field in GeneratedSessionValues.__dataclass_fields__
+            },
+        }
+        self._connection.execute(_INSERT_SESSION, values)
+
+    def archive_active(self, owner_id: UserId) -> None:
+        self._connection.execute(_ARCHIVE_ACTIVE, {"owner_id": owner_id.value})
+
+    def activate_candidate(self, plan_id: str) -> None:
+        result = self._connection.execute(_ACTIVATE_CANDIDATE, {"plan_id": plan_id})
+        if result.rowcount != 1:
+            raise RuntimeError("candidate_plan_not_found")
+
+    def read_active_plan(self, owner_id: UserId) -> list[Mapping[str, Any]]:
+        self._connection.execute(_BACKEND_ROLE)
+        return list(
+            self._connection.execute(
+                _READ_ACTIVE_PLAN, {"owner_id": owner_id.value}
+            ).mappings()
+        )
 
 
 class SqlAlchemyTrainingPlanTransactionFactory:
