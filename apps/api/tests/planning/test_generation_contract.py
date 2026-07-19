@@ -19,10 +19,16 @@ def valid_block() -> dict:
                     {
                         "scheduled_date": "2026-07-06",
                         "session_type": "Easy trail run",
+                        "session_category": "run",
                         "planned_duration_minutes": 50,
                         "planned_distance_kilometers": "7.50",
                         "planned_elevation_meters": 180,
                         "intensity_description": "Conversational aerobic effort",
+                        "intensity_segments": [
+                            {"duration_minutes": 50, "intensity_band": "low"}
+                        ],
+                        "target_rpe_min": 3,
+                        "target_rpe_max": 4,
                         "is_key_session": False,
                         "purpose": "Develop aerobic durability",
                         "instructions": "Keep the effort relaxed on every climb.",
@@ -30,10 +36,19 @@ def valid_block() -> dict:
                     {
                         "scheduled_date": "2026-07-09",
                         "session_type": "Hill repetitions",
+                        "session_category": "run",
                         "planned_duration_minutes": 65,
                         "planned_distance_kilometers": "8.25",
                         "planned_elevation_meters": 420,
                         "intensity_description": "Controlled hard uphill efforts",
+                        "intensity_segments": [
+                            {"duration_minutes": 15, "intensity_band": "low"},
+                            {"duration_minutes": 30, "intensity_band": "high"},
+                            {"duration_minutes": 10, "intensity_band": "low"},
+                            {"duration_minutes": 10, "intensity_band": "low"},
+                        ],
+                        "target_rpe_min": 7,
+                        "target_rpe_max": 9,
                         "is_key_session": True,
                         "purpose": "Improve uphill running economy",
                         "instructions": "Run six climbs with full easy recoveries.",
@@ -137,11 +152,13 @@ def test_rejects_negative_distance_and_elevation(field, value):
         GeneratedTrainingBlock.model_validate(payload)
 
 
-def test_allows_zero_distance_and_elevation_for_strength_or_rest_sessions():
+def test_allows_zero_distance_and_elevation_for_non_running_sessions():
     payload = valid_block()
     session = payload["weeks"][0]["sessions"][0]
+    session["session_category"] = "strength"
     session["planned_distance_kilometers"] = "0"
     session["planned_elevation_meters"] = 0
+    session["intensity_segments"] = []
 
     GeneratedTrainingBlock.model_validate(payload)
 
@@ -215,6 +232,174 @@ def test_forbids_unknown_fields_at_every_contract_level(path):
 def test_forbids_model_provided_full_horizon_estimate():
     payload = valid_block()
     payload["full_horizon_estimated_kilometers"] = "350.00"
+
+    with pytest.raises(ValidationError):
+        GeneratedTrainingBlock.model_validate(payload)
+
+
+@pytest.mark.parametrize(
+    "category", ["run", "strength", "recovery", "cross_training"]
+)
+def test_accepts_every_canonical_session_category(category):
+    payload = valid_block()
+    session = payload["weeks"][0]["sessions"][0]
+    session["session_category"] = category
+    if category != "run":
+        session["intensity_segments"] = []
+
+    block = GeneratedTrainingBlock.model_validate(payload)
+
+    assert block.weeks[0].sessions[0].session_category == category
+
+
+@pytest.mark.parametrize(
+    "category", ["running", "cross-training", "rest", "RUN", ""]
+)
+def test_rejects_non_canonical_session_categories(category):
+    payload = valid_block()
+    payload["weeks"][0]["sessions"][0]["session_category"] = category
+
+    with pytest.raises(ValidationError):
+        GeneratedTrainingBlock.model_validate(payload)
+
+
+def test_accepts_mixed_run_segments_that_sum_to_planned_duration():
+    block = GeneratedTrainingBlock.model_validate(valid_block())
+
+    segments = block.weeks[0].sessions[1].intensity_segments
+    assert [segment.intensity_band for segment in segments] == [
+        "low",
+        "high",
+        "low",
+        "low",
+    ]
+    assert sum(segment.duration_minutes for segment in segments) == 65
+
+
+@pytest.mark.parametrize("segments", [None, []])
+def test_rejects_missing_or_empty_run_segments(segments):
+    payload = valid_block()
+    session = payload["weeks"][0]["sessions"][0]
+    if segments is None:
+        session.pop("intensity_segments")
+    else:
+        session["intensity_segments"] = segments
+
+    with pytest.raises(ValidationError):
+        GeneratedTrainingBlock.model_validate(payload)
+
+
+def test_rejects_run_segments_that_do_not_sum_to_planned_duration():
+    payload = valid_block()
+    payload["weeks"][0]["sessions"][0]["intensity_segments"][0][
+        "duration_minutes"
+    ] = 49
+
+    with pytest.raises(ValidationError):
+        GeneratedTrainingBlock.model_validate(payload)
+
+
+@pytest.mark.parametrize("category", ["strength", "recovery", "cross_training"])
+def test_rejects_running_intensity_segments_for_non_running_categories(category):
+    payload = valid_block()
+    payload["weeks"][0]["sessions"][0]["session_category"] = category
+
+    with pytest.raises(ValidationError):
+        GeneratedTrainingBlock.model_validate(payload)
+
+
+@pytest.mark.parametrize("band", ["low", "threshold", "high"])
+def test_accepts_every_canonical_intensity_band(band):
+    payload = valid_block()
+    payload["weeks"][0]["sessions"][0]["intensity_segments"][0][
+        "intensity_band"
+    ] = band
+
+    block = GeneratedTrainingBlock.model_validate(payload)
+
+    assert block.weeks[0].sessions[0].intensity_segments[0].intensity_band == band
+
+
+@pytest.mark.parametrize("band", ["medium", "tempo", "HIGH", ""])
+def test_rejects_non_canonical_intensity_bands(band):
+    payload = valid_block()
+    payload["weeks"][0]["sessions"][0]["intensity_segments"][0][
+        "intensity_band"
+    ] = band
+
+    with pytest.raises(ValidationError):
+        GeneratedTrainingBlock.model_validate(payload)
+
+
+@pytest.mark.parametrize("duration", [0, -1, True, 12.5])
+def test_rejects_non_positive_or_ambiguous_segment_durations(duration):
+    payload = valid_block()
+    payload["weeks"][0]["sessions"][0]["intensity_segments"] = [
+        {"duration_minutes": duration, "intensity_band": "low"}
+    ]
+
+    with pytest.raises(ValidationError):
+        GeneratedTrainingBlock.model_validate(payload)
+
+
+@pytest.mark.parametrize(("minimum", "maximum"), [(1, 1), (1, 10), (10, 10)])
+def test_accepts_target_rpe_boundaries(minimum, maximum):
+    payload = valid_block()
+    session = payload["weeks"][0]["sessions"][0]
+    session["target_rpe_min"] = minimum
+    session["target_rpe_max"] = maximum
+
+    block = GeneratedTrainingBlock.model_validate(payload)
+
+    assert block.weeks[0].sessions[0].target_rpe_min == minimum
+    assert block.weeks[0].sessions[0].target_rpe_max == maximum
+
+
+@pytest.mark.parametrize(("minimum", "maximum"), [(0, 5), (5, 11), (8, 7)])
+def test_rejects_out_of_range_or_reversed_target_rpe(minimum, maximum):
+    payload = valid_block()
+    session = payload["weeks"][0]["sessions"][0]
+    session["target_rpe_min"] = minimum
+    session["target_rpe_max"] = maximum
+
+    with pytest.raises(ValidationError):
+        GeneratedTrainingBlock.model_validate(payload)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("target_rpe_min", True),
+        ("target_rpe_min", 3.0),
+        ("target_rpe_max", False),
+        ("target_rpe_max", 8.5),
+    ],
+)
+def test_rejects_ambiguous_target_rpe_numeric_types(field, value):
+    payload = valid_block()
+    payload["weeks"][0]["sessions"][0][field] = value
+
+    with pytest.raises(ValidationError):
+        GeneratedTrainingBlock.model_validate(payload)
+
+
+@pytest.mark.parametrize(
+    "field",
+    ["session_category", "intensity_segments", "target_rpe_min", "target_rpe_max"],
+)
+def test_rejects_missing_structured_session_fields(field):
+    payload = valid_block()
+    payload["weeks"][0]["sessions"][0].pop(field)
+
+    with pytest.raises(ValidationError):
+        GeneratedTrainingBlock.model_validate(payload)
+
+
+def test_forbids_unknown_fields_in_intensity_segments():
+    payload = valid_block()
+    payload["weeks"][0]["sessions"][0]["intensity_segments"][0][
+        "unexpected"
+    ] = "not allowed"
 
     with pytest.raises(ValidationError):
         GeneratedTrainingBlock.model_validate(payload)
