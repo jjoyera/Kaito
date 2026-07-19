@@ -4,8 +4,14 @@ from decimal import Decimal
 import pytest
 
 from app.modules.planning.domain import ProjectedWeek
+from app.modules.planning.generated_block_policy import (
+    GeneratedBlockPolicyContext,
+    GeneratedBlockPolicyWeekContext,
+)
 from app.modules.planning.generation_contract import GeneratedTrainingBlock
-from app.modules.planning.generation_validator import validate_generated_training_block
+from app.modules.planning.generation_validator import (
+    validate_generated_training_block as _validate_generated_training_block,
+)
 from app.modules.planning.session_trajectory import (
     SessionTrajectory,
     SessionTrajectoryWeek,
@@ -96,6 +102,31 @@ def codes(result) -> tuple[str, ...]:
     return tuple(violation.code for violation in result)
 
 
+def validate_generated_training_block(*args, **kwargs):
+    """Keep established tests focused on their original contextual contracts."""
+    if "policy_context" not in kwargs:
+        expected_weeks = args[4]
+        kwargs["policy_context"] = GeneratedBlockPolicyContext(
+            weeks=tuple(
+                GeneratedBlockPolicyWeekContext(
+                    week_number=week.week_number,
+                    projection_phase=week.phase,
+                    readiness_role=(
+                        "recovery"
+                        if week.phase == "recovery"
+                        else "taper"
+                        if week.phase == "taper"
+                        else "build"
+                    ),
+                )
+                for week in expected_weeks
+            ),
+            readiness_status="on_track",
+            safety_restriction_codes=("no_demanding_sessions",),
+        )
+    return _validate_generated_training_block(*args, **kwargs)
+
+
 FULL_WEEK_AVAILABILITY = WeeklyAvailability(
     {
         "monday": 300,
@@ -148,11 +179,13 @@ def test_aggregates_same_date_duration_across_unexpected_extra_weeks():
         "session_before_week_window",
         "missing_session_trajectory_limit",
         "daily_availability_exceeded",
+        "policy_context_week_count_mismatch",
     )
-    assert result[-1].scheduled_date == date(2026, 8, 3)
-    assert result[-1].weekday == "monday"
-    assert result[-1].actual_minutes == 50
-    assert result[-1].expected_minutes == 45
+    availability_violation = result[-2]
+    assert availability_violation.scheduled_date == date(2026, 8, 3)
+    assert availability_violation.weekday == "monday"
+    assert availability_violation.actual_minutes == 50
+    assert availability_violation.expected_minutes == 45
 
 
 @pytest.mark.parametrize(
@@ -290,9 +323,11 @@ def test_reports_approach_count_and_week_correspondence_mismatches():
         "applied_approach_mismatch",
         "generated_week_count_mismatch",
         "generated_week_number_mismatch",
+        "policy_context_week_count_mismatch",
+        "policy_context_week_number_mismatch",
     )
-    assert result[-1].week_number == 7
-    assert result[-1].expected_week_number == 6
+    assert result[2].week_number == 7
+    assert result[2].expected_week_number == 6
 
 
 def test_extra_generated_week_still_reports_independent_date_violations():
@@ -315,6 +350,7 @@ def test_extra_generated_week_still_reports_independent_date_violations():
         "generated_week_count_mismatch",
         "session_after_goal_date",
         "missing_session_trajectory_limit",
+        "policy_context_week_count_mismatch",
     )
     assert result[1].week_number == 2
     assert result[1].session_index == 0
@@ -599,6 +635,7 @@ def test_uses_positional_trajectory_limit_for_malformed_generated_week_number():
     assert codes(result) == (
         "generated_week_number_mismatch",
         "session_trajectory_distance_exceeded",
+        "policy_context_week_number_mismatch",
     )
     assert result[1].week_number == 99
     assert result[1].expected_week_number == 5
@@ -623,9 +660,10 @@ def test_extra_generated_week_fails_closed_without_an_authorized_trajectory_limi
     assert codes(result) == (
         "generated_week_count_mismatch",
         "missing_session_trajectory_limit",
+        "policy_context_week_count_mismatch",
     )
-    assert result[-1].week_number == 2
-    assert result[-1].session_index is None
+    assert result[-2].week_number == 2
+    assert result[-2].session_index is None
 
 
 @pytest.mark.parametrize(
@@ -683,6 +721,7 @@ def test_trajectory_violations_follow_week_context_and_dates_before_weekly_dista
         "session_trajectory_duration_exceeded",
         "weekly_running_distance_mismatch",
         "daily_availability_exceeded",
+        "policy_context_week_number_mismatch",
     )
 
 
@@ -706,6 +745,7 @@ def test_collects_independent_violations_in_stable_machine_readable_order():
         "generated_week_number_mismatch",
         "session_after_goal_date",
         "weekly_running_distance_mismatch",
+        "policy_context_week_number_mismatch",
     )
     assert result == validate_generated_training_block(
         block(
@@ -718,4 +758,119 @@ def test_collects_independent_violations_in_stable_machine_readable_order():
         projected((7, "10.00")),
         FULL_WEEK_AVAILABILITY,
         trajectory((7, "loading", "9.99", 30)),
+    )
+
+
+def test_daily_availability_remains_authoritative_with_required_strength():
+    result = _validate_generated_training_block(
+        block(
+            [
+                (
+                    1,
+                    [
+                        session("2026-08-03", "10.00", duration=30),
+                        session(
+                            "2026-08-03",
+                            "0",
+                            category="strength",
+                            duration=20,
+                        ),
+                    ],
+                )
+            ]
+        ),
+        "mode_z",
+        date(2026, 8, 3),
+        date(2026, 8, 9),
+        projected((1, "10.00")),
+        WeeklyAvailability({"monday": 49}),
+        trajectory((1, "loading", "10.00", 30)),
+        GeneratedBlockPolicyContext(
+            weeks=(GeneratedBlockPolicyWeekContext(1, "loading", "build"),),
+            readiness_status="on_track",
+            safety_restriction_codes=(),
+        ),
+    )
+
+    assert codes(result) == ("daily_availability_exceeded",)
+
+
+def test_rejects_policy_context_week_number_incoherent_with_projection():
+    result = _validate_generated_training_block(
+        block(
+            [
+                (
+                    2,
+                    [
+                        session("2026-08-03", "10.00"),
+                        session(
+                            "2026-08-04",
+                            "0",
+                            category="strength",
+                            duration=20,
+                        ),
+                    ],
+                )
+            ]
+        ),
+        "mode_z",
+        date(2026, 8, 3),
+        date(2026, 8, 9),
+        projected((1, "10.00")),
+        FULL_WEEK_AVAILABILITY,
+        trajectory((1, "loading", "10.00", 30)),
+        GeneratedBlockPolicyContext(
+            weeks=(GeneratedBlockPolicyWeekContext(2, "loading", "build"),),
+            readiness_status="on_track",
+            safety_restriction_codes=(),
+        ),
+    )
+
+    assert codes(result) == (
+        "generated_week_number_mismatch",
+        "policy_context_projected_week_number_mismatch",
+    )
+
+
+def test_rejects_policy_context_projection_phase_mismatch():
+    result = _validate_generated_training_block(
+        block([(1, [session("2026-08-03", "10.00")])]),
+        "mode_z",
+        date(2026, 8, 3),
+        date(2026, 8, 9),
+        projected((1, "10.00")),
+        FULL_WEEK_AVAILABILITY,
+        trajectory((1, "loading", "10.00", 30)),
+        GeneratedBlockPolicyContext(
+            weeks=(GeneratedBlockPolicyWeekContext(1, "recovery", "recovery"),),
+            readiness_status="on_track",
+            safety_restriction_codes=(),
+        ),
+    )
+
+    assert codes(result) == ("policy_context_projection_phase_mismatch",)
+
+
+def test_appends_sports_policy_after_existing_validator_order_without_bypass():
+    result = _validate_generated_training_block(
+        block([(2, [session("2026-08-03", "9.99")])]),
+        "mode_z",
+        date(2026, 8, 3),
+        date(2026, 8, 9),
+        projected((1, "10.00")),
+        FULL_WEEK_AVAILABILITY,
+        trajectory((1, "loading", "9.99", 30)),
+        GeneratedBlockPolicyContext(
+            weeks=(
+                GeneratedBlockPolicyWeekContext(1, "loading", "build"),
+            ),
+            readiness_status="on_track",
+            safety_restriction_codes=(),
+        ),
+    )
+
+    assert codes(result) == (
+        "generated_week_number_mismatch",
+        "weekly_running_distance_mismatch",
+        "policy_context_week_number_mismatch",
     )

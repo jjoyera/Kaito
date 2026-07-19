@@ -1,11 +1,15 @@
 """Contextual integrity checks for provider-generated training blocks."""
 
 from collections.abc import Sequence
-from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import Decimal
 
-from app.modules.planning.domain import Approach, ProjectedWeek, ProjectionPhase
+from app.modules.planning.domain import Approach, ProjectedWeek
+from app.modules.planning.generated_block_policy import (
+    GeneratedBlockPolicyContext,
+    GenerationViolation,
+    validate_generated_block_policy,
+)
 from app.modules.planning.generation_contract import (
     GeneratedTrainingBlock,
     GeneratedTrainingWeek,
@@ -27,24 +31,6 @@ _WEEKDAYS = (
 )
 
 
-@dataclass(frozen=True, slots=True)
-class GenerationViolation:
-    """A deterministic, machine-readable generation contract violation."""
-
-    code: str
-    week_number: int | None = None
-    expected_week_number: int | None = None
-    session_index: int | None = None
-    actual_kilometers: Decimal | None = None
-    expected_kilometers: Decimal | None = None
-    scheduled_date: date | None = None
-    weekday: str | None = None
-    actual_minutes: int | None = None
-    expected_minutes: int | None = None
-    phase: ProjectionPhase | None = None
-    expected_phase: ProjectionPhase | None = None
-
-
 def validate_generated_training_block(
     block: GeneratedTrainingBlock,
     authorized_approach: Approach,
@@ -53,6 +39,7 @@ def validate_generated_training_block(
     expected_projected_weeks: Sequence[ProjectedWeek],
     weekly_availability: WeeklyAvailability,
     expected_session_trajectory: SessionTrajectory,
+    policy_context: GeneratedBlockPolicyContext,
 ) -> tuple[GenerationViolation, ...]:
     """Return all independently observable contextual integrity violations.
 
@@ -97,8 +84,46 @@ def validate_generated_training_block(
         )
 
     _validate_daily_availability(block, weekly_availability, violations)
+    _validate_policy_projection_context(policy_context, expected_weeks, violations)
+
+    # Sports-policy violations are appended after the established contextual order.
+    # The pure policy owns its own canonical intensity/strength/demanding ordering.
+    violations.extend(validate_generated_block_policy(block, policy_context).violations)
 
     return tuple(violations)
+
+
+def _validate_policy_projection_context(
+    policy_context: GeneratedBlockPolicyContext,
+    expected_weeks: tuple[ProjectedWeek, ...],
+    violations: list[GenerationViolation],
+) -> None:
+    if len(policy_context.weeks) != len(expected_weeks):
+        violations.append(
+            GenerationViolation(
+                "policy_context_projection_count_mismatch",
+                actual_count=len(policy_context.weeks),
+                expected_count=len(expected_weeks),
+            )
+        )
+    for policy_week, projected_week in zip(policy_context.weeks, expected_weeks):
+        if policy_week.week_number != projected_week.week_number:
+            violations.append(
+                GenerationViolation(
+                    "policy_context_projected_week_number_mismatch",
+                    week_number=policy_week.week_number,
+                    expected_week_number=projected_week.week_number,
+                )
+            )
+        if policy_week.projection_phase != projected_week.phase:
+            violations.append(
+                GenerationViolation(
+                    "policy_context_projection_phase_mismatch",
+                    week_number=policy_week.week_number,
+                    phase=policy_week.projection_phase,
+                    expected_phase=projected_week.phase,
+                )
+            )
 
 
 def _validate_context(
