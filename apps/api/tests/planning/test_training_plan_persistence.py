@@ -107,8 +107,9 @@ def test_generation_persists_exact_trusted_mapping_and_verified_owner(monkeypatc
     )
 
     assert plan_id == "candidate-id"
-    assert repository.calls[0][0:2] == ("candidate", "verified-owner")
-    plan = repository.calls[0][2]
+    candidate_call, *_ = repository.calls
+    call_type, owner_id, plan = candidate_call
+    assert (call_type, owner_id) == ("candidate", "verified-owner")
     assert (plan.plan_approach, plan.start_date, plan.end_date, plan.block_focus) == (
         "kaio_path",
         date(2026, 7, 6),
