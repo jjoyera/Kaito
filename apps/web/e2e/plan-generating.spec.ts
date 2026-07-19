@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 const route = "/plan/generating?plan_id=9dd180d0-058d-4ee5-b8cf-3e93867a4041";
 
@@ -20,6 +20,14 @@ async function expectNoHorizontalOverflow(page: Page) {
 			),
 		)
 		.toBe(true);
+}
+
+async function getVisibleBoundingBox(locator: Locator) {
+	await expect(locator).toBeVisible();
+	const box = await locator.boundingBox();
+	expect(box).not.toBeNull();
+	if (!box) throw new Error("Expected a visible element to have a bounding box");
+	return box;
 }
 
 test.describe("plan generation loading screen", () => {
@@ -83,9 +91,32 @@ test.describe("plan generation loading screen", () => {
 
 		await page.setViewportSize({ width: 375, height: 667 });
 		await expectNoHorizontalOverflow(page);
-		await expect(
-			page.getByRole("heading", { name: "Kaito está trazando tu ruta" }),
-		).toBeVisible();
+
+		const loadingScreen = page.locator('[data-loading-screen="plan-generation"]');
+		const loader = page.locator('[data-animation="continuous"]');
+		const status = page.getByRole("status");
+		const progress = page.getByRole("list", { name: "Preparación del plan" });
+		const finalStep = progress.getByRole("listitem").last();
+		const [screenBox, loaderBox, statusBox, progressBox, finalStepBox] = await Promise.all([
+			getVisibleBoundingBox(loadingScreen),
+			getVisibleBoundingBox(loader),
+			getVisibleBoundingBox(status),
+			getVisibleBoundingBox(progress),
+			getVisibleBoundingBox(finalStep),
+		]);
+		const layoutTolerance = 2;
+
+		expect(statusBox.y).toBeGreaterThanOrEqual(loaderBox.y + loaderBox.height - layoutTolerance);
+		expect(progressBox.y).toBeGreaterThanOrEqual(statusBox.y + statusBox.height - layoutTolerance);
+		expect(finalStepBox.y + finalStepBox.height).toBeLessThanOrEqual(
+			screenBox.y + screenBox.height + layoutTolerance,
+		);
+		const renderedPageBottom = await page.evaluate(() =>
+			Math.max(window.innerHeight, document.documentElement.scrollHeight),
+		);
+		expect(finalStepBox.y + finalStepBox.height).toBeLessThanOrEqual(
+			renderedPageBottom + layoutTolerance,
+		);
 
 		await page.emulateMedia({ reducedMotion: "reduce" });
 		await expect(page.locator(".plan-generating-loader-ring")).toHaveCSS("animation-name", "none");
