@@ -10,6 +10,17 @@ from app.modules.planning.generation_contract import (
     GeneratedTrainingBlock,
     GeneratedTrainingWeek,
 )
+from app.modules.runner_profile.domain import WeeklyAvailability
+
+_WEEKDAYS = (
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,6 +33,10 @@ class GenerationViolation:
     session_index: int | None = None
     actual_kilometers: Decimal | None = None
     expected_kilometers: Decimal | None = None
+    scheduled_date: date | None = None
+    weekday: str | None = None
+    actual_minutes: int | None = None
+    expected_minutes: int | None = None
 
 
 def validate_generated_training_block(
@@ -30,12 +45,13 @@ def validate_generated_training_block(
     generation_window_start: date,
     goal_date: date,
     expected_projected_weeks: Sequence[ProjectedWeek],
+    weekly_availability: WeeklyAvailability,
 ) -> tuple[GenerationViolation, ...]:
     """Return all independently observable contextual integrity violations.
 
     The caller is responsible for validating provider payload structure and for
-    authorizing the approach. This function only compares that trusted context with
-    the generated block.
+    authorizing the approach. ``weekly_availability`` is mandatory safety context;
+    this function compares all trusted context with the generated block.
     """
     violations: list[GenerationViolation] = []
     expected_weeks = tuple(expected_projected_weeks)
@@ -62,6 +78,8 @@ def validate_generated_training_block(
         _validate_weekly_running_distance(
             generated_week, projected_week, violations
         )
+
+    _validate_daily_availability(block, weekly_availability, violations)
 
     return tuple(violations)
 
@@ -153,6 +171,45 @@ def _validate_session_date_windows(
                     "session_after_goal_date",
                     week_number=generated_week.week_number,
                     session_index=session_index,
+                )
+            )
+
+
+def _validate_daily_availability(
+    block: GeneratedTrainingBlock,
+    weekly_availability: WeeklyAvailability,
+    violations: list[GenerationViolation],
+) -> None:
+    duration_by_date: dict[date, int] = {}
+    for generated_week in block.weeks:
+        for generated_session in generated_week.sessions:
+            scheduled_date = generated_session.scheduled_date
+            duration_by_date[scheduled_date] = (
+                duration_by_date.get(scheduled_date, 0)
+                + generated_session.planned_duration_minutes
+            )
+
+    for scheduled_date, actual_minutes in sorted(duration_by_date.items()):
+        weekday = _WEEKDAYS[scheduled_date.weekday()]
+        expected_minutes = weekly_availability.minutes_by_day.get(weekday, 0)
+        if expected_minutes == 0:
+            violations.append(
+                GenerationViolation(
+                    "training_on_unavailable_weekday",
+                    scheduled_date=scheduled_date,
+                    weekday=weekday,
+                    actual_minutes=actual_minutes,
+                    expected_minutes=expected_minutes,
+                )
+            )
+        elif actual_minutes > expected_minutes:
+            violations.append(
+                GenerationViolation(
+                    "daily_availability_exceeded",
+                    scheduled_date=scheduled_date,
+                    weekday=weekday,
+                    actual_minutes=actual_minutes,
+                    expected_minutes=expected_minutes,
                 )
             )
 
