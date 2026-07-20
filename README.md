@@ -4,252 +4,201 @@
   <img src="apps/web/public/assets/brand/Kaito_logo.png" alt="Kaito" width="160">
 </p>
 
-Kaito es una aplicación web para actuar como coach de IA para corredores de
-ultradistancia. El producto ya permite crear una cuenta, iniciar sesión y comenzar
-un onboarding privado conectado al API; el resto de la experiencia se incorpora de
-forma incremental.
+Kaito es una aplicación web de planificación para corredores de Trail y Ultra Trail. El MVP entregado permite registrar e iniciar sesión con Supabase, completar un onboarding persistente de siete pasos, elegir un enfoque elegible, generar de forma síncrona un bloque de entrenamiento con OpenAI y consultar el plan activo en un dashboard y dos vistas de calendario.
 
-## Estado actual
+> **Estado del proyecto:** MVP funcional para desarrollo y evaluación técnica. No está preparado para producción y no sustituye el criterio de profesionales del entrenamiento o de la salud.
 
-El estado implementado entrega autenticación, onboarding completo, selección explícita de enfoque y una API autenticada para generar y consultar el plan activo. La generación compone el adaptador OpenAI configurado en el entorno, valida y, si corresponde, repite una vez antes de persistir y activar el resultado atómicamente. La web todavía no consume esta capacidad.
+## Inicio rápido
 
-| Área | Estado |
-| --- | --- |
-| Web | Next.js App Router con signup/login/sesión, onboarding privado, elección accesible de enfoque y destino estático `/plan/generating`. |
-| API | FastAPI con verificación JWT, onboarding, elegibilidad determinista, `POST /planning/generate` y `GET /planning/active` owner-bound. |
-| Auth | Signup/login con Supabase, handoff de confirmación a login, backend protegido con `GET /auth/me` y `/onboarding` privado. |
-| Marca | Paleta y assets iniciales bajo `docs/` y `apps/web/public/`. |
-| SDD | Cambios guiados por OpenSpec en `openspec/changes/`. |
+### Requisitos previos
 
-## Stack tecnológico
+- Node.js `>=24.18 <25` (consulta `.nvmrc`).
+- pnpm `11.0.0`.
+- Python `>=3.12` y [uv](https://docs.astral.sh/uv/).
+- Un proyecto Supabase y una base de datos compatible con las migraciones de `supabase/migrations/`.
+- Una clave de OpenAI para ejecutar la generación real.
 
-| Área | Tecnología |
-| --- | --- |
-| Frontend | Next.js App Router con TypeScript |
-| Backend | FastAPI con Python 3.12 |
-| Paquetes JS/TS | pnpm 11 workspaces |
-| Entorno Python | uv |
-| Autenticación | Supabase Auth tokens verificados en backend por JWKS |
-| Contenedores locales | Docker Compose solo para desarrollo local |
-
-## Instalación
-
-Requisitos recomendados:
-
-- Node.js 24.18.
-- pnpm 11.
-- Python 3.12.
-- uv.
-
-Instala las dependencias JavaScript/TypeScript desde la raíz:
+### 1. Instalar dependencias
 
 ```bash
 pnpm install
+cd apps/api && uv sync && cd ../..
 ```
 
-Esto también instala el hook versionado de pre-commit, que comprueba si el
-contenido preparado contiene rutas no portables. Solo para diagnóstico local
-excepcional, puede omitirse con `HUSKY=0 git commit`; CI mantiene la misma
-comprobación como protección autoritativa.
+### 2. Configurar el entorno
 
-Instala las dependencias de la API desde `apps/api`:
+Usa únicamente los archivos de ejemplo como inventario de variables; no copies valores sensibles a la documentación ni los confirmes en Git:
+
+- Web: [`apps/web/.env.example`](apps/web/.env.example) → archivo local `apps/web/.env.local`.
+- API: [`apps/api/.env.example`](apps/api/.env.example) → variables del proceso o archivo local cargado explícitamente con `--env-file`.
+
+Configuración mínima por responsabilidad:
+
+| Componente | Variables principales | Finalidad |
+| --- | --- | --- |
+| Web | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Registro, login y sesión Supabase. |
+| Web | `NEXT_PUBLIC_KAITO_API_URL` | URL pública de la API, por ejemplo `http://localhost:8000`. |
+| API | `DATABASE_URL`, `DATABASE_EXPECTED_ROLE` | Conexión runtime; el rol esperado es `kaito_api_login`. |
+| API | `KAITO_WEB_ORIGIN` | Origen autorizado para CORS, por ejemplo `http://localhost:3000`. |
+| API | `SUPABASE_JWKS_URL` y variables JWT relacionadas | Verificación de tokens emitidos por Supabase. |
+| API | `OPENAI_API_KEY` | Generación real del bloque de entrenamiento. |
+| Opcional | Variables Sentry de cada aplicación | Observabilidad; si no se configuran, Sentry permanece desactivado. |
+
+No expongas `SUPABASE_SERVICE_ROLE_KEY`, secretos JWT, tokens ni claves de OpenAI en la web.
+
+### 3. Arrancar la API y la web
+
+Terminal 1:
 
 ```bash
 cd apps/api
-uv sync
+uv run uvicorn app.main:app --reload --env-file .env
 ```
 
-## Ejecución local
-
-Ejecuta la web desde la raíz:
+Terminal 2, desde la raíz:
 
 ```bash
 pnpm dev:web
 ```
 
-La app web queda disponible en `http://localhost:3000`.
+- Web: `http://localhost:3000`
+- API: `http://localhost:8000`
+- OpenAPI: `http://localhost:8000/docs`
+- Salud: `curl http://localhost:8000/health`
 
-Para arrancar la API necesitas una base de datos accesible y configurar
-`DATABASE_URL` y `DATABASE_EXPECTED_ROLE=kaito_api_login`, además de la
-configuración de autenticación y CORS aplicable. Consulta valores y comportamiento
-en [`apps/api/README.md`](apps/api/README.md); nunca guardes credenciales reales en
-el repositorio.
+## Estado funcional entregado
 
-```bash
-cd apps/api
-uv run uvicorn app.main:app --reload
-```
+| Área | Entregado | Límites actuales |
+| --- | --- | --- |
+| Identidad | Registro, login, resolución de sesión y rutas privadas con Supabase. | Sin recuperación de contraseña, magic links como flujo de acceso, login social ni cuenta demo pública. |
+| Onboarding | Wizard persistente de siete pasos, validación backend y disponibilidad semanal detallada. | La UI del MVP admite objetivos Trail y Ultra Trail; OCR y Backyard no tienen soporte UI/elegibilidad operativo. |
+| Enfoque | Elegibilidad determinista y elección explícita entre Camino Kaio, Modo Z y Kaioken. | Los enfoques bloqueados no se pueden seleccionar y sus reglas siguen siendo políticas revisables del producto. |
+| Generación | Borrador owner-bound, generación OpenAI síncrona, validación determinista, un segundo intento solo tras rechazo de validación y activación atómica. | Sin workers, colas, reintentos durables ni smoke test documentado con proveedor real. |
+| Plan activo | Dashboard responsive, próxima sesión, métricas planificadas, calendario semanal y calendario completo de sesiones. | Las métricas describen lo **planificado**, no telemetría de entrenamientos completados. |
+| Persistencia | `onboarding_snapshots`, `training_plans` y `training_sessions`, con ownership y RLS definidos por migraciones Supabase. | Sin `training_log`, historial de planes/reajustes ni módulos de insights persistentes. |
 
-La API queda disponible en `http://localhost:8000`. FastAPI publica la interfaz
-OpenAPI en `/docs`, `/redoc` y `/openapi.json`. Comprueba el endpoint de salud con:
+### Usuario y contraseña de prueba
 
-```bash
-curl http://localhost:8000/health
-# → {"status":"ok"}
-```
+**No existe una cuenta demo pública funcional ni credenciales públicas de prueba.** Para evaluar el flujo real hay que crear una cuenta en el proyecto Supabase configurado o preparar datos en un entorno controlado por el evaluador.
 
-También puedes levantar ambos servicios con Docker Compose para desarrollo local:
+Cadenas presentes en fixtures automatizados, como `runner@example.com` o `trail-password`, son datos inertes de prueba y **no son credenciales válidas**. No se deben publicar, reutilizar ni interpretar como secretos.
 
-```bash
-docker compose up --build
-```
+## Flujo principal
 
-Compose solo define `web` y `api`; no es configuración de despliegue ni CD.
+1. El usuario se registra o inicia sesión mediante Supabase.
+2. El enrutamiento protegido lo dirige según su estado entre onboarding, generación y plan activo.
+3. El onboarding guarda un snapshot por usuario durante siete pasos.
+4. El backend calcula la elegibilidad y el usuario selecciona un enfoque permitido.
+5. La web guarda el borrador y abre `/plan/generating`.
+6. La petición síncrona genera, valida y activa el plan; al terminar redirige a `/plan`.
+7. El dashboard consume `GET /planning/active` y presenta exclusivamente semanas y sesiones planificadas.
 
-## Autenticación
+## Stack tecnológico verificado
 
-El backend tiene un límite de autenticación independiente del proveedor. El código
-de dominio consume `UserContext` y `AuthVerifier`; los detalles de Supabase quedan
-aislados en el adaptador de infraestructura.
+Versiones tomadas de `package.json`, `apps/web/package.json` y `apps/api/pyproject.toml`:
 
-La web requiere `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
-para el inicio de sesión y las rutas privadas. Son configuración pública de Supabase,
-no secretos: no añadas `SUPABASE_SERVICE_ROLE_KEY`, tokens ni secretos JWT a la web.
-En producción, despliega detrás de HTTPS: el proxy de sesión fuerza cookies `Secure`.
-
-El onboarding autenticado (`/onboarding`) llama al API directamente desde el
-navegador, así que además necesitás `NEXT_PUBLIC_KAITO_API_URL` en la web
-(`http://localhost:8000` en local) y `KAITO_WEB_ORIGIN` en el API
-(`http://localhost:3000` en local). `KAITO_WEB_ORIGIN` está vacía por defecto
-(fail-closed): sin configurarla, el API no habilita CORS y el navegador no
-puede llamarlo entre orígenes distintos.
-
-La verificación JWT usa las Signing Keys/JWKS de Supabase mediante una URL
-explícita:
-
-| Variable | Uso |
+| Capa | Tecnología |
 | --- | --- |
-| `SUPABASE_JWKS_URL` | Requerida para activar rutas protegidas. |
-| `SUPABASE_URL` | Opcional/informativa; no se usa para derivar JWKS. |
-| `SUPABASE_JWT_AUDIENCE` | Audiencia esperada; por defecto `authenticated`. |
-| `SUPABASE_JWT_ISSUER` | Emisor esperado; vacío desactiva esta verificación. |
-| `SUPABASE_JWKS_CACHE_TTL_SECONDS` | TTL de caché JWKS; por defecto `600`. |
+| Monorepo JS/TS | pnpm `11.0.0`, Node.js `>=24.18 <25` |
+| Frontend | Next.js `16.2.10`, React/React DOM `19.2.0`, TypeScript `5.9.3` |
+| Auth web | `@supabase/ssr` `^0.12.0`, `@supabase/supabase-js` `^2.110.0` |
+| E2E web | Playwright `1.55.1` |
+| Backend | Python `>=3.12`, FastAPI `0.115.6`, Uvicorn `0.34.0` |
+| Datos | SQLAlchemy `>=2.0,<2.1`, psycopg `>=3.2.10,<3.3`, PostgreSQL gestionado por Supabase |
+| IA | OpenAI SDK `2.46.0`, Responses API y Structured Outputs |
+| Observabilidad | Sentry para Next.js y `sentry-sdk` `2.64.0` para la API |
+| Calidad API | pytest `8.3.5`, Ruff `0.8.4` |
 
-Si `SUPABASE_JWKS_URL` no está configurada, el backend arranca normalmente,
-`GET /health` sigue funcionando y las rutas protegidas devuelven `503` con
-`{"detail":"Authentication is not configured"}`.
+No se documentan versiones de Docker o PostgreSQL porque el repositorio no fija una versión verificable para esas herramientas.
 
-Verifica el usuario autenticado con:
+## Comandos verificados en los manifiestos
 
-```bash
-curl -H "Authorization: Bearer <token>" http://localhost:8000/auth/me
-# → 200 {"user_id":"...","email":"..."}
-```
+### Web
 
-Más detalle en `apps/api/README.md`.
+Desde la raíz:
 
-## Validación
+| Objetivo | Comando |
+| --- | --- |
+| Desarrollo | `pnpm dev:web` |
+| Lint | `pnpm lint:web` |
+| Build | `pnpm build:web` |
+| Auth rápido | `pnpm test:web-auth` |
+| Onboarding/planificación rápida | `pnpm test:web-onboarding` |
+| E2E Playwright | `pnpm test:web-e2e` |
+| Instalar Chromium | `pnpm --filter web exec playwright install chromium` |
 
-Instala una vez Chromium para los tests de navegador:
+Los tests rápidos de auth y onboarding usan adaptadores/dobles locales. El adaptador de autenticación E2E está limitado al entorno de pruebas; no crea una cuenta Supabase utilizable ni constituye un modo demo de la aplicación.
 
-```bash
-pnpm --filter web exec playwright install chromium
-```
+### API: tests rápidos
 
-Comandos principales desde la raíz:
-
-```bash
-pnpm lint:web
-pnpm build:web
-pnpm test:web-e2e
-pnpm test:web-auth
-pnpm test:web-onboarding
-# Si el puerto 3000 está ocupado:
-KAITO_PLAYWRIGHT_PORT=3001 pnpm test:web-e2e
-```
-
-Comandos principales de API desde `apps/api`:
+Desde `apps/api`:
 
 ```bash
 uv run ruff check .
 uv run python -c "from app.main import app"
-uv run pytest
+uv run pytest --ignore=tests/integration
 ```
 
-`pnpm test:web-auth` cubre los contratos frontend de login y registro: validación local,
-normalización de resultados de auth, cooldown, bridge de confirmación y handoff
-autenticado. No requiere cuentas reales de Supabase.
+Estos tests usan dobles deterministas para OpenAI y no acreditan una llamada real al proveedor.
 
-`pnpm test:web-onboarding` cubre el wizard, sus validaciones, la carga y guardado,
-y el contrato puro de elección de enfoque y borrador. No requiere cuentas reales
-de Supabase ni el API corriendo.
+### API: tests de integración
 
-La verificación automatizada de la API de planes de entrenamiento usa dobles deterministas: no realiza llamadas a OpenAI. En esta rama todavía no se ha demostrado un plan generado con el proveedor real; el smoke test autenticado contra OpenAI permanece pendiente. Esto no acredita preparación para producción. La migración incluye RLS owner-bound y se valida con Supabase local cuando ese entorno está disponible.
+Los tests de `tests/integration/` requieren Supabase local en ejecución, Supabase CLI accesible mediante `npx`, Docker para el entorno local y permisos para crear/configurar el rol efímero `kaito_api_login`:
 
-## Arquitectura frontend
+```bash
+# Desde la raíz, preparar Supabase local según la CLI del proyecto.
+# Después, desde apps/api:
+uv run pytest tests/integration
+```
 
-La web sigue Screaming Architecture: `app/` solo orquesta Next.js y cada capacidad real vive en `features/`. El código solo pasa a `shared/` cuando lo consumen dos features reales distintas. Consulta las reglas y el árbol vigente en [`docs/08-architecture.md`](docs/08-architecture.md) y la guía de contribución en [`apps/web/README.md`](apps/web/README.md).
+No deben ejecutarse contra una base de datos compartida o de producción.
 
-## Estructura del proyecto
+## Docker Compose: limitación actual
+
+`compose.yaml` solo construye y publica `web` y `api`. **No define PostgreSQL/Supabase ni inyecta la configuración runtime requerida**, por lo que `docker compose up --build` por sí solo no constituye un entorno local completo. Es una conveniencia de desarrollo, no una configuración de despliegue, CD o producción.
+
+## Arquitectura resumida
+
+- **Monorepo modular:** separa `apps/web` y `apps/api` y mantiene los contratos de producto dentro de cada capacidad.
+- **Frontend por features:** `app/` orquesta rutas de Next.js; `features/auth`, `features/onboarding`, `features/planning` y `features/product-routing` contienen comportamiento de producto.
+- **Backend modular:** `auth`, `runner_profile` y `planning` concentran dominio y casos de uso; `core/` contiene adaptadores de infraestructura como base de datos, Supabase JWT y OpenAI.
+- **Seguridad de datos:** la API deriva el propietario del JWT y las migraciones Supabase son la autoridad física de esquema y RLS.
+- **Generación controlada:** OpenAI propone un bloque estructurado; Kaito conserva la autoridad sobre elegibilidad, contexto, proyección, validación y persistencia.
+
+## Estructura real del proyecto
 
 ```text
 apps/
-  web/                  App Next.js, assets de marca y features frontend.
-  api/                  API FastAPI con auth, planificación determinista y adaptador OpenAI.
+  web/
+    app/                    Rutas Next.js de auth, onboarding, generación y plan.
+    features/               Auth, onboarding, planning y product-routing.
+    e2e/                    Pruebas Playwright.
+  api/
+    app/core/               Configuración y adaptadores de infraestructura.
+    app/modules/            auth, runner_profile, planning y shared.
+    tests/                  Tests rápidos e integración local Supabase.
 packages/
-  api-client/           Paquete reservado; todavía no exporta un cliente real.
-docker/                 Dockerfiles locales para web y API.
-.github/workflows/     Validación básica de CI.
-docs/                  Documentación de producto, arquitectura y marca.
-openspec/              Artefactos SDD/OpenSpec.
+  api-client/               Paquete reservado; todavía sin cliente generado funcional.
+supabase/
+  migrations/               Autoridad del esquema físico y RLS.
+docs/                       Documentación de producto, políticas y arquitectura.
+openspec/                   Especificaciones y artefactos de cambios.
+docker/                     Dockerfiles de desarrollo local.
+compose.yaml                Servicios web/api incompletos sin base de datos/configuración.
 ```
 
-## Funcionalidades actuales
+## Documentación relacionada
 
-- Acceso, registro y resolución de sesión con Supabase, con entrega autenticada
-  hacia una ruta privada.
-- Assets iniciales de marca en `apps/web/public/assets/brand/`.
-- Paleta visual inicial en `docs/09-brand-palette.md`.
-- API FastAPI con `GET /health`.
-- Backend auth con `GET /auth/me`, verificación JWKS, cache de claves y errores
-  seguros para configuración ausente.
-- Pantalla `/login` auth-aware para usuarios existentes, con validación local,
-  estados de carga y errores seguros; el handoff autenticado usa una URL local
-  validada o `/onboarding`.
-- Registro Supabase en `/register` con validación local, procesamiento accesible,
-  cooldown ante límites de frecuencia y resultados propios de Kaito. Una sesión
-  inmediata continúa a onboarding; un resultado sin sesión continúa a login con
-  orientación neutral de confirmación y sin exponer el email.
-- `/onboarding` privado presenta primero la propuesta de valor y el CTA
-  `Crear mi plan`. Su Paso 1 rediseñado muestra `Paso 1 de 7` y `14%`, permite
-  elegir solo Trail o Ultra y solicita distancia, desnivel positivo y fecha
-  objetivo; no muestra tecnicidad, altitud máxima ni botón de retroceso.
-- Los Pasos 1–6 usan el diseño visual lineal de siete pasos. El Paso 4 recoge disponibilidad con días compactos, atajos 45/60/120 y ajustes exactos de 15–300 minutos; requiere tres días y 150 minutos semanales. `Varía por día` es solo estado de UI.
-- Continuar guarda el mapa disperso `profile.availability.minutes_by_day` antes de avanzar; Atrás conserva el estado local, y los fallos permiten reintentar sin perder respuestas. No hay autosave ni duración base persistida.
-- El Paso 5 recoge las tres preferencias obligatorias y el Paso 6 exige estado físico y presencia de dolor o limitación. Si existe, pregunta de forma accesible si afecta al correr y admite un detalle opcional de hasta 500 caracteres; al responder que no existe dolor, impacto y detalle se eliminan de forma determinista.
-- Persistencia de onboarding por usuario mediante API protegida, JSONB con ownership y RLS de Supabase; el backend valida los enums del historial previo y el estado físico estructurado sin confiar en la web.
-- Elegibilidad protegida en `GET /planning/training-approach-eligibility`: una política pura devuelve Camino Kaio, Modo Z y Kaioken con disponibilidad, códigos estables de bloqueo, recomendación y restricciones de seguridad para Trail y Ultra Trail. OCR y Backyard permanecen disponibles en onboarding, pero todavía no son modalidades elegibles.
-- El Paso 7 presenta los enfoques elegibles, conserva la selección al reintentar fallos de conexión y guarda un único borrador owner-bound antes de navegar a `/plan/generating`; los bloqueos o datos desactualizados vuelven a comprobar la elegibilidad y los estados incompletos regresan al onboarding.
-- La planificación determinista construye contexto vinculado al propietario en `Europe/Madrid`, empieza estrictamente el lunes siguiente, calcula el horizonte completo antes de recortar las primeras 1–4 semanas y trunca las fechas en el objetivo.
-- La política deportiva valida distribución de intensidad, fuerza y separación determinista de sesiones demandantes; los valores canónicos están en [`docs/07-training-knowledge.md`](docs/07-training-knowledge.md).
-- `POST /planning/generate` requiere autenticación y ejecuta contexto owner-bound → adaptador OpenAI configurado en el entorno → validación determinista con una única repetición condicionada → persistencia y activación atómicas → respuesta pública del plan.
-- `GET /planning/active` requiere autenticación y devuelve el plan activo propio, con semanas y sesiones en orden estable y sin IDs ni metadata interna.
-- La API de planificación limita sus respuestas públicas a las familias seguras `401`, `404`, `409`, `422` y `503` según autenticación, estado, validez y disponibilidad.
-- Planes y sesiones aplican restricciones canónicas y RLS owner-scoped. La configuración IA permanece en el backend (`OPENAI_API_KEY` requerida, `OPENAI_MODEL=gpt-5.5-2026-04-23` y `OPENAI_TIMEOUT_SECONDS=60` por defecto; se acepta cualquier timeout positivo y finito) y el esquema evoluciona mediante migraciones aditivas de Supabase; consulta los documentos canónicos enlazados abajo.
-- La validación incluye lint, build, unitarios y E2E web, Ruff y pruebas API, además de prueba RLS local de dos usuarios.
-- Paquete `@kaito/api-client` reservado para un futuro cliente generado; hoy no
-  exporta código ni contratos de producto.
+El mapa de fuentes está en [`docs/README.md`](docs/README.md). Referencias principales:
 
-Todavía no hay password reset, magic links, social auth, demo access, dashboard,
-Strava/RAG ni generación de planes de extremo a extremo accesible al usuario. La API
-autenticada ya expone generación y lectura del plan activo, pero siguen pendientes la
-conexión de `/plan/generating`, el consumo del dashboard y el E2E completo. Tras el Paso
-7, la selección crea o actualiza el borrador y `/plan/generating` muestra por ahora un
-destino estático. La API síncrona no añadió workers, colas, migraciones ni
-infraestructura durable de reintentos.
-Los detalles canónicos están en [`docs/05-data-model.md`](docs/05-data-model.md),
-[`docs/06-ai-behavior.md`](docs/06-ai-behavior.md) y
-[`docs/08-architecture.md`](docs/08-architecture.md).
-
-## Flujo SDD/OpenSpec
-
-Los cambios no triviales se planifican en `openspec/changes/<change-name>/` con
-proposal, spec, design, tasks, apply, verify y sync. Si un cambio supera el
-presupuesto de revisión, se divide en PRs encadenadas para mantener diffs chicos
-y revisables.
+- [`docs/02-user-journeys.md`](docs/02-user-journeys.md): recorridos entregados y recorridos objetivo.
+- [`docs/04-functional-requirements.md`](docs/04-functional-requirements.md): requisitos y matriz de estado.
+- [`docs/05-data-model.md`](docs/05-data-model.md): modelo conceptual y persistencia física actual.
+- [`docs/06-ai-behavior.md`](docs/06-ai-behavior.md): límites del proveedor y comportamiento de IA.
+- [`docs/07-training-knowledge.md`](docs/07-training-knowledge.md): políticas deportivas y guardrails.
+- [`docs/08-architecture.md`](docs/08-architecture.md): fronteras técnicas y estructura real.
+- [`apps/web/README.md`](apps/web/README.md) y [`apps/api/README.md`](apps/api/README.md): guías específicas de cada aplicación.
 
 ## Regla de actualización
 
-Cualquier cambio que modifique estructura, comandos, capacidades disponibles,
-variables de entorno, arquitectura o flujo de verificación debe actualizar este
-`README.md` en español dentro del mismo cambio.
+Este README es la fuente canónica del estado operativo entregado. Cualquier cambio que altere capacidades, estructura, comandos, variables de entorno, arquitectura o validación debe actualizarlo en el mismo cambio; los documentos de dominio deben evitar duplicar ese estado salvo cuando sea necesario para explicar su política.
