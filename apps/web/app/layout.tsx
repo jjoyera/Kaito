@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./styles.css";
 
 export const metadata: Metadata = {
-	title: "Kaito Scaffold",
-	description: "Minimal runnable frontend boundary for Kaito.",
+	title: "KAITO",
+	description: "Trail and ultra-trail training planning.",
 };
 
 export default function RootLayout({
