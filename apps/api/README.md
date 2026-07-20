@@ -24,8 +24,9 @@ uv run uvicorn app.main:app --reload
 La API quedará disponible en `http://localhost:8000` cuando pueda conectar con la
 base de datos usando el rol esperado. FastAPI publica el contrato OpenAPI en `/docs`,
 `/redoc` y `/openapi.json`. Usa siempre credenciales de runtime con mínimo privilegio
-y no las guardes en el repositorio. La guía operativa del Session Pooler cloud y del
-rol de runtime queda pendiente de documentación específica; no copies referencias,
+y no las guardes en el repositorio. Para producción, sigue la
+[guía de Railway y Supabase Cloud](../../docs/deployment-railway.md), incluida la
+provisión segura del rol y la comprobación de `session_user`; no copies referencias,
 hosts, contraseñas ni URLs con credenciales en este documento.
 
 ### Verificar el health check

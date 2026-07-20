@@ -2,7 +2,9 @@
 .next
 **/.next
 .env
+.env.*
 **/.env
+**/.env.*
 node_modules
 **/node_modules
 apps/api/.venv

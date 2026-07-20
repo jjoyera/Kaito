@@ -96,6 +96,14 @@ docker compose up --build
 
 Compose solo define `web` y `api`; no es configuración de despliegue ni CD.
 
+## Despliegue en Railway
+
+El despliegue de producción mantiene Supabase Cloud como autoridad de Auth y
+PostgreSQL, y publica únicamente dos servicios Railway: Web y API. Seguí el orden,
+las variables y las verificaciones de la
+[guía de despliegue en Railway](docs/deployment-railway.md). Los Dockerfiles locales
+y `compose.yaml` siguen reservados para desarrollo.
+
 ## Autenticación
 
 El backend tiene un límite de autenticación independiente del proveedor. El código
@@ -188,7 +196,8 @@ apps/
   api/                  API FastAPI con auth, planificación determinista y adaptador OpenAI.
 packages/
   api-client/           Paquete reservado; todavía no exporta un cliente real.
-docker/                 Dockerfiles locales para web y API.
+docker/                 Dockerfiles locales y de producción Railway para web y API.
+railway.*.toml          Configuración Railway independiente por servicio.
 .github/workflows/     Validación básica de CI.
 docs/                  Documentación de producto, arquitectura y marca.
 openspec/              Artefactos SDD/OpenSpec.
