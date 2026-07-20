@@ -8,15 +8,17 @@ La IA debe ayudar al usuario a mantener claridad y continuidad, dentro de límit
 
 ### Estado implementado
 
-El backend ya implementa el recorrido interno T2.1–T3.3: construye contexto vinculado
-al propietario, obtiene de OpenAI un bloque estructurado, aplica validación determinista,
-permite como máximo un segundo intento solo si falla esa validación y persiste/activa el
-resultado de forma atómica. La lectura owner-bound del plan activo también existe.
+El backend implementa la generación autenticada de planes: `POST /planning/generate`
+construye contexto vinculado al propietario, compone el adaptador OpenAI configurado en el
+entorno, aplica validación determinista, permite como máximo un segundo intento solo si
+falla esa validación y persiste/activa el resultado de forma atómica. `GET
+/planning/active` devuelve el plan activo propio con orden estable y sin IDs ni metadata
+interna.
 
-Este recorrido vive en las capas de aplicación y repositorio. Hasta T3.4 no existen
-`POST /planning/generate` ni `GET /planning/active`; la UI de generación, el dashboard
-y el E2E permanecen pendientes. Las secciones siguientes distinguen este estado del
-comportamiento objetivo posterior del MVP.
+Ambas rutas requieren autenticación y exponen outcomes seguros de las familias `401`,
+`404`, `409`, `422` y `503`. La UI de generación, el dashboard y el E2E permanecen
+pendientes. Las pruebas usan dobles deterministas: no se ha realizado una llamada real a
+OpenAI ni demostrado un plan real generado en esta rama.
 
 ## 2) Responsabilidades de la IA
 
@@ -105,9 +107,11 @@ el reintento de validación. Ningún bloque inválido llega al repositorio. Si f
 inserción o cambio de estado, la transacción revierte también el archivado del plan
 anterior.
 
-La configuración de OpenAI es backend-only y se obtiene de variables de entorno; nunca
-se entrega al dominio, al frontend ni a la documentación con valores secretos. Esta
-capacidad no es una API hasta completar T3.4.
+La configuración de OpenAI es backend-only y se obtiene de variables de entorno:
+`OPENAI_API_KEY` es requerida, `OPENAI_MODEL` está fijada a
+`gpt-5.5-2026-04-23` y `OPENAI_TIMEOUT_SECONDS` vale `60` por defecto. Nunca se entrega
+al dominio ni al frontend. FastAPI publica el contrato en `/docs`, `/redoc` y
+`/openapi.json`.
 
 ## 7) Reglas de comportamiento
 
@@ -168,7 +172,7 @@ Este comportamiento se considera correctamente definido para MVP si:
 - No se observan invenciones de datos en outputs de IA.
 - El flujo interno valida antes de persistir y solo repite por un primer fallo de validación.
 - Un fallo de persistencia no deja un plan parcial ni sustituye el activo anterior.
-- No se afirma disponibilidad HTTP o UI antes de T3.4 y PR D.
+- La API de planes de entrenamiento está implementada, pero no se afirma disponibilidad UI, éxito E2E real con OpenAI ni preparación para producción antes de completar la experiencia web y el smoke test pendiente.
 
 ## 12) Referencias
 

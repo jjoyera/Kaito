@@ -22,10 +22,11 @@ uv run uvicorn app.main:app --reload
 ```
 
 La API quedará disponible en `http://localhost:8000` cuando pueda conectar con la
-base de datos usando el rol esperado. Usa siempre credenciales de runtime con
-mínimo privilegio y no las guardes en el repositorio. La guía operativa del Session
-Pooler cloud y del rol de runtime queda pendiente de documentación específica;
-no copies referencias, hosts, contraseñas ni URLs con credenciales en este documento.
+base de datos usando el rol esperado. FastAPI publica el contrato OpenAPI en `/docs`,
+`/redoc` y `/openapi.json`. Usa siempre credenciales de runtime con mínimo privilegio
+y no las guardes en el repositorio. La guía operativa del Session Pooler cloud y del
+rol de runtime queda pendiente de documentación específica; no copies referencias,
+hosts, contraseñas ni URLs con credenciales en este documento.
 
 ### Verificar el health check
 
@@ -147,24 +148,30 @@ El cliente desactiva los reintentos automáticos del SDK (`max_retries=0`). El
 adaptador usa Responses API y Structured Outputs con el prompt versionado
 `training-block-v1`. Su contrato es deliberadamente estrecho:
 
-| Frontera M1 | Contrato |
+| Frontera del adaptador OpenAI | Contrato |
 | --- | --- |
 | Entrada exclusiva | `ProviderGenerationContext`, construido por Kaito y vinculado al propietario. |
 | Salida | `GeneratedTrainingBlock`, el contrato Pydantic existente de planificación. |
 | Errores | Fallos neutrales que no filtran detalles del proveedor. |
 
-El flujo interno ya ensambla contexto owner-bound, invoca este adaptador, aplica
-validación determinista y permite como máximo un segundo intento exclusivamente cuando
-el primer bloque incumple esa validación. Un resultado válido se persiste y activa junto
-con todas sus sesiones en una transacción; cualquier fallo revierte la sustitución
-completa. La lectura de repositorio devuelve el plan activo y sus sesiones ordenadas por
-semana y posición.
+La API expone dos rutas autenticadas:
 
-Esta capacidad existe en las capas de aplicación y repositorio, pero todavía no está
-expuesta por HTTP: `POST /planning/generate` y `GET /planning/active` pertenecen a T3.4,
-y la pantalla de generación, el dashboard y el E2E siguen pendientes. La configuración
-de OpenAI permanece exclusivamente en variables de entorno del backend; no debe
-trasladarse a la web ni documentarse con valores secretos.
+| Ruta | Comportamiento |
+| --- | --- |
+| `POST /planning/generate` | Compone el adaptador configurado en el entorno y ejecuta contexto owner-bound → generación → validación determinista con un segundo intento solo tras rechazo de validación → persistencia/activación atómicas → respuesta pública del plan. |
+| `GET /planning/active` | Devuelve únicamente el plan activo del propietario autenticado, con semanas y sesiones ordenadas de forma estable y sin IDs ni metadata interna. |
+
+Las respuestas públicas usan las familias seguras `401`, `404`, `409`, `422` y `503`
+para autenticación, fuentes ausentes, conflictos de estado, entradas o salidas inválidas
+y falta de disponibilidad. No exponen errores internos ni payloads del proveedor.
+
+La configuración de OpenAI permanece exclusivamente en variables de entorno del
+backend; no debe trasladarse a la web ni documentarse con valores secretos. Las pruebas
+usan dobles deterministas y no llaman a OpenAI. En esta rama todavía no se ha demostrado
+un plan generado con el proveedor real: el smoke test autenticado permanece pendiente y
+no se afirma preparación para producción. Aún quedan por conectar `/plan/generating`, el
+dashboard y el E2E completo. La API síncrona no añadió workers, colas, migraciones ni
+reintentos durables.
 
 ---
 

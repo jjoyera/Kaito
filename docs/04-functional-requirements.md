@@ -193,7 +193,7 @@ El sistema debe evaluar la elegibilidad de enfoques de plan, permitir la selecci
 - El sistema debe persistir la evaluación de disponibilidad y bloqueos usando el concepto `PlanApproachEligibility`.
 - El sistema debe persistir el enfoque elegido en `TrainingPlan.planApproach`.
 - El sistema debe persistir un único borrador de `TrainingPlan` por usuario con el enfoque elegido antes de entrar en generación.
-- La base determinista T1.1–T1.3 define un bloque estructurado de 1–4 semanas con categorías tipadas (`run`, `strength`, `recovery`, `cross_training`), segmentos de intensidad para carrera, rango RPE y contenido accionable.
+- La base de planificación determinista define un bloque estructurado de 1–4 semanas con categorías tipadas (`run`, `strength`, `recovery`, `cross_training`), segmentos de intensidad para carrera, rango RPE y contenido accionable.
 - El contexto de generación debe estar vinculado al propietario, usar `Europe/Madrid`, comenzar estrictamente el lunes siguiente y calcular el horizonte completo antes de entregar el tramo inicial de 1–4 semanas.
 - Cuando el promedio semanal reciente es cero, la proyección semanal debe arrancar en 9 km. Este bootstrap es distinto de los topes iniciales de la salida más larga definidos en [`07-training-knowledge.md`](07-training-knowledge.md).
 - El backend debe conservar la autoridad sobre elegibilidad, enfoque, proyección y readiness: una salida generada no puede aportar ni sobrescribir valores de readiness calculados por Kaito.
@@ -203,8 +203,9 @@ El sistema debe evaluar la elegibilidad de enfoques de plan, permitir la selecci
 - El flujo interno implementado construye contexto owner-bound, obtiene de OpenAI un bloque estructurado, lo valida de forma determinista y permite como máximo un segundo intento solo por fallo de validación; después persiste y activa plan y sesiones de forma atómica.
 - La sustitución debe archivar el plan activo anterior solo dentro de la misma transacción; cualquier fallo revierte plan, sesiones y activación completos.
 - Los usuarios autenticados pueden leer sus propias filas de plan, con independencia del estado, y solo las sesiones de su plan activo; las filas ajenas y las escrituras directas quedan denegadas. El backend mantiene lecturas y escrituras owner-bound con `kaito_api_login` bajo claims verificados, mientras `anon` y `PUBLIC` quedan denegados.
-- Este flujo existe en aplicación y repositorio, pero no está expuesto por HTTP hasta T3.4. La pantalla intermedia actual no debe simular progreso y el dashboard/E2E siguen pendientes.
-- Cuando T3.4 y PR D expongan la generación al usuario, la interfaz debe comunicar que usa objetivo, disponibilidad, experiencia y enfoque elegido.
+- `POST /planning/generate` expone este flujo con autenticación y devuelve el plan público activado; `GET /planning/active` devuelve el activo propio con orden estable, sin IDs ni metadata interna.
+- Los outcomes públicos se limitan a las familias seguras `401`, `404`, `409`, `422` y `503`.
+- La pantalla intermedia, el dashboard y el E2E aún deben conectarse; la interfaz deberá comunicar que usa objetivo, disponibilidad, experiencia y enfoque elegido.
 - El sistema debe usar explícitamente los datos de objetivo específicos de la modalidad al generar la planificación.
 - El sistema debe generar una planificación inicial asociada al usuario.
 - El sistema debe generar la planificación respetando `TrainingPlan.planApproach`.
@@ -216,20 +217,21 @@ El sistema debe evaluar la elegibilidad de enfoques de plan, permitir la selecci
 
 | Hito | Estado actual |
 | --- | --- |
-| T1.1–T1.3 | Entregados: contexto owner-bound, calendario/proyección determinista, contrato del bloque y guardrails deportivos. |
-| T2.1–T2.3 | Entregados: puerto neutral, prompt `training-block-v1`, adaptador OpenAI, orquestación y una repetición solo por fallo de validación. |
-| T3.1 | Entregado y aplicado: esquema canónico de `training_plans` y `training_sessions`. |
-| T3.2 | Entregado: persistencia/activación atómica y lectura owner-bound ordenada. |
-| T3.3 | Entregado: lectura autenticada propia y CRUD backend owner-scoped mediante RLS. |
-| T3.4 | Pendiente: `POST /planning/generate` y `GET /planning/active`. |
-| PR D | Pendiente: pantalla de generación conectada, dashboard y E2E. |
+| Base de planificación determinista | Entregada: contexto owner-bound, calendario/proyección determinista, contrato del bloque y guardrails deportivos. |
+| Generación mediante OpenAI | Entregada: puerto neutral, prompt `training-block-v1`, adaptador OpenAI, orquestación y una repetición solo por fallo de validación. |
+| Esquema de planes | Entregado y aplicado: esquema canónico de `training_plans` y `training_sessions`. |
+| Persistencia del plan activo | Entregada: persistencia/activación atómica y lectura owner-bound ordenada. |
+| Aislamiento por propietario | Entregado: lectura autenticada propia y CRUD backend owner-scoped mediante RLS. |
+| API de planes de entrenamiento | Implementada sin aprobación formal de Gentle: generación y lectura autenticadas con respuestas públicas acotadas. |
+| Experiencia web del plan | Pendiente: pantalla de generación conectada, dashboard y E2E. |
 
-Este estado no implica aprobación de Gentle ni disponibilidad del recorrido para el
-usuario: sin T3.4 no existe una frontera HTTP para invocar o consultar la capacidad.
+Las pruebas de la API de planes de entrenamiento usan dobles deterministas y no llaman a
+OpenAI. El smoke test con el proveedor real permanece pendiente; no se afirma éxito E2E
+real ni preparación para producción.
 
 ### Resultado esperado
 
-Cuando T3.4 y PR D completen la exposición y experiencia, el usuario recibirá un plan inicial vinculado a su cuenta, con enfoque explícito y trazabilidad de opciones elegibles/bloqueadas.
+Cuando se completen la pantalla de generación, el dashboard y el E2E, el usuario recibirá un plan inicial vinculado a su cuenta, con enfoque explícito y trazabilidad de opciones elegibles/bloqueadas.
 
 ## RF-08 Dashboard del plan activo
 
@@ -403,8 +405,8 @@ El MVP estará correctamente cubierto si:
 - Kaito recoge y valida campos de objetivo específicos por modalidad, incluyendo `targetDate` en todas y Backyard Ultra por vueltas/horas/ritmo-margen/estrategia.
 - Kaito muestra los tres enfoques sin recomendación visual, exige una elección explícita entre opciones elegibles y muestra las bloqueadas con todos sus motivos.
 - Kaito persiste elegibilidad/bloqueos y enfoque elegido para usarlo en la generación del plan.
-- T1.1–T1.3 validan un bloque estructurado de 1–4 semanas contra enfoque, proyección semanal, ventanas de fecha, fecha objetivo y guardrails deportivos, sin atribuir readiness al proveedor.
-- T2.1–T3.3 aportan internamente generación validada, persistencia/activación atómica, lectura ordenada y aislamiento owner-bound; T3.4 y la UI/E2E siguen pendientes.
+- La base de planificación determinista valida un bloque estructurado de 1–4 semanas contra enfoque, proyección semanal, ventanas de fecha, fecha objetivo y guardrails deportivos, sin atribuir readiness al proveedor.
+- La generación autenticada aporta validación, persistencia/activación atómica, lectura pública ordenada y aislamiento owner-bound; la UI y el E2E siguen pendientes.
 - El usuario puede consultar un dashboard con estado general, KPIs básicos y próximo entrenamiento.
 - El usuario puede abrir un entrenamiento y entender su propósito.
 - El usuario puede registrar cumplimiento y métricas simples.

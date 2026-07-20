@@ -120,9 +120,10 @@ El usuario necesita confianza durante la espera y una transición clara hacia el
 
 ### Estado actual
 
-La base determinista T1.1–T1.3 y la infraestructura interna M1 del proveedor ya
-existen. La generación de extremo a extremo, la persistencia del resultado, los
-endpoints, el dashboard y la experiencia UI/E2E siguen pendientes; por ahora
+La API autenticada ya genera, valida, persiste y activa el plan mediante `POST
+/planning/generate`, y permite leer el activo propio mediante `GET /planning/active`.
+Las pruebas usan dobles deterministas; la generación real con OpenAI aún no se ha
+verificado. El dashboard y la experiencia UI/E2E siguen pendientes; por ahora
 `/plan/generating` es un destino estático y este recorrido describe el objetivo MVP.
 
 ### Recorrido principal

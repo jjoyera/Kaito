@@ -23,7 +23,7 @@ Se centra en **cómo se organiza el sistema** (fronteras, responsabilidades, flu
 | Persistencia de onboarding | API protegida + SQLAlchemy runtime + JSONB/RLS de Supabase | El propietario se deriva del JWT; Supabase CLI es la única autoridad de esquema y RLS. |
 | Elegibilidad de enfoque | Política pura determinista en `planning` | Mantiene umbrales, precedencia de seguridad y códigos estables fuera del endpoint, la UI, persistencia y prompts. |
 | Base de generación | Contratos y políticas puras en `planning` | Separa contexto, proyección, demanda, calendario, capacidad y validación del bloque respecto del proveedor IA. |
-| Generación T2.1–T3.3 | Puerto neutral + adaptador OpenAI + aplicación/repositorio owner-bound | Limita la entrada a `ProviderGenerationContext`, valida de forma determinista y persiste/activa atómicamente sin acoplar el dominio al SDK. |
+| Generación autenticada de planes | Puerto neutral + adaptador OpenAI + aplicación/repositorio + API owner-bound | Limita la entrada a `ProviderGenerationContext`, valida de forma determinista, persiste/activa atómicamente y expone respuestas públicas sin acoplar el dominio al SDK. |
 | Error monitoring | Sentry | Detección temprana y diagnóstico en frontend/backend. |
 
 ---
@@ -241,7 +241,7 @@ En módulos simples/CRUD, se permite simplificación sin imponer todas las capas
 
 ## 9) Arquitectura de IA: generación, validación, conocimiento y trazabilidad
 
-### Estado implementado: T1.1–T3.3
+### Estado implementado: generación autenticada y persistencia atómica
 
 La generación está dividida en fronteras explícitas dentro de `apps/api`:
 
@@ -255,6 +255,7 @@ La generación está dividida en fronteras explícitas dentro de `apps/api`:
 | Operación del proveedor | Timeout por defecto de 60 segundos, reintentos del SDK desactivados y errores neutrales sin filtraciones del proveedor. |
 | Orquestación | Ensambla el contexto una vez, valida de forma determinista y permite como máximo un segundo intento solo tras fallo de validación. |
 | Persistencia y lectura | Sustitución atómica del plan activo y lectura owner-bound ordenada por semana y sesión. |
+| API de planes de entrenamiento | `POST /planning/generate` compone el adaptador desde el entorno y devuelve el plan público; `GET /planning/active` devuelve el activo propio, ambos autenticados y sin IDs ni metadata interna. |
 | Seguridad de datos | `authenticated` lee sus propias filas de plan y solo las sesiones del activo propio; filas ajenas y escritura directa denegadas, con CRUD backend owner-bound mediante RLS. |
 
 La política semanal parte de 9 km cuando la base es cero; el bootstrap separado de
@@ -264,8 +265,10 @@ de política de producto revisable se mantienen en
 
 El flujo implementado continúa tras la respuesta tipada: aplica validación determinista,
 repite como máximo una vez solo por ese tipo de rechazo y persiste/activa el resultado
-en una transacción. También existe la lectura owner-bound en repositorio. T3.4 aún debe
-exponer `POST /planning/generate` y `GET /planning/active`; PR D conectará la UI y E2E.
+en una transacción. La API lo expone mediante `POST /planning/generate` y ofrece la
+lectura owner-bound ordenada en `GET /planning/active`. Los outcomes públicos se acotan a
+`401`, `404`, `409`, `422` y `503`; FastAPI publica `/docs`, `/redoc` y `/openapi.json`.
+La conexión de la UI y el E2E sigue pendiente.
 
 ### Contexto controlado y fuentes
 
@@ -282,7 +285,7 @@ La IA solo usa contexto trazable del dominio MVP y reglas de:
 - La suma de distancia de carrera debe igualar exactamente la proyección autorizada de cada semana; las fechas deben pertenecer a su ventana y no superar el objetivo.
 - Cada sesión `run` debe respetar simultáneamente los máximos independientes de distancia y duración de su semana; esos máximos no se aplican a categorías no running.
 - Elegibilidad, demanda, calendario, capacidad y trayectoria son valores calculados por backend y quedan fuera de la salida del proveedor.
-- El rechazo posterior al proveedor, el segundo intento condicionado y la persistencia atómica ya están implementados; la exposición HTTP y publicación en UI siguen pendientes.
+- El rechazo posterior al proveedor, el segundo intento condicionado, la persistencia atómica y la exposición HTTP autenticada ya están implementados; la publicación en UI sigue pendiente.
 
 ---
 
@@ -317,25 +320,28 @@ planning/
 
 OCR y Backyard continúan admitidos por onboarding, pero la frontera de elegibilidad los rechaza explícitamente hasta que existan reglas propias.
 
-### 10.3 Generación interna implementada y frontera HTTP pendiente
+### 10.3 Generación y lectura autenticadas
 
-Entregado en T1.1–T3.3:
+Capacidades entregadas:
 
 1. `api` construye contexto owner-bound, proyecta la envolvente semanal y calcula la trayectoria sobre todo el horizonte antes de recortar las próximas 1–4 semanas.
 2. El puerto entrega únicamente `ProviderGenerationContext` al adaptador OpenAI.
 3. Responses API aplica `training-block-v1` y Structured Outputs para devolver `GeneratedTrainingBlock`.
 4. El backend valida el bloque contra contexto y guardrails; permite un segundo intento solo si el primero falla esa validación.
 5. El repositorio inserta candidato y sesiones, archiva el activo anterior y activa el nuevo plan en una transacción; después puede leer el activo propio con orden estable.
-6. RLS limita lectura y escritura según propietario y rol, sin acceso para `anon`/`PUBLIC`.
+6. `POST /planning/generate` compone el adaptador OpenAI configurado en el entorno y ejecuta el flujo completo dentro de la petición síncrona; `GET /planning/active` devuelve semanas y sesiones ordenadas sin IDs ni metadata interna.
+7. RLS limita lectura y escritura según propietario y rol, sin acceso para `anon`/`PUBLIC`.
 
 Pendiente:
 
-1. T3.4 expone `POST /planning/generate` y `GET /planning/active` con autenticación y errores seguros.
-2. PR D conecta `/plan/generating`, dashboard y pruebas E2E en la web.
+1. Conectar `/plan/generating`, el dashboard y las pruebas E2E en la web.
+2. Un smoke test autenticado debe demostrar una generación real con OpenAI; las pruebas actuales usan dobles deterministas y no realizan llamadas al proveedor.
 
-Por tanto, el adaptador OpenAI real está cableado al caso de uso interno, pero no a un
-handler HTTP. La configuración del proveedor permanece en variables de entorno del
-backend y no se expone al frontend.
+La configuración backend requiere `OPENAI_API_KEY`, fija
+`OPENAI_MODEL=gpt-5.5-2026-04-23` y usa `OPENAI_TIMEOUT_SECONDS=60` por defecto; acepta
+cualquier timeout positivo y finito. La API síncrona no añade workers, colas, migraciones
+ni infraestructura durable de reintentos, y su estado actual no acredita preparación
+para producción.
 
 ### 10.4 Registro de entrenamiento + KPIs
 
@@ -418,14 +424,13 @@ En cada cambio relevante:
 ## 15) Evolución fuera del MVP del TFM
 
 RAG, integración Strava y métricas avanzadas quedan fuera del alcance actual. No
-forman parte de la arquitectura implementada ni de T1.1–T3.3.
+forman parte de la arquitectura implementada ni de la generación autenticada de planes.
 
 ---
 
 ## 16) No-objetivos explícitos de la fase actual
 
-- No exponer todavía `POST /planning/generate` ni `GET /planning/active` (T3.4).
-- No implementar todavía la pantalla de generación conectada, dashboard ni E2E (PR D).
+- No conectar todavía `/plan/generating`, el consumo del dashboard ni el E2E completo.
 - No introducir workers, colas, ejecución durable ni reintentos persistentes.
 - No añadir edición/versionado manual de planes, recálculo por `TrainingLog` ni reajuste automático.
 - No ampliar las validaciones deterministas hasta presentarlas como garantías deportivas avanzadas.

@@ -11,12 +11,12 @@ forma incremental.
 
 ## Estado actual
 
-El estado implementado entrega autenticación, onboarding completo, selección explícita de enfoque y, en backend, generación validada con persistencia/activación atómica y lectura owner-bound del plan activo. Esta capacidad existe en las capas de aplicación y repositorio, pero todavía no está expuesta por HTTP ni conectada a la web.
+El estado implementado entrega autenticación, onboarding completo, selección explícita de enfoque y una API autenticada para generar y consultar el plan activo. La generación compone el adaptador OpenAI configurado en el entorno, valida y, si corresponde, repite una vez antes de persistir y activar el resultado atómicamente. La web todavía no consume esta capacidad.
 
 | Área | Estado |
 | --- | --- |
 | Web | Next.js App Router con signup/login/sesión, onboarding privado, elección accesible de enfoque y destino estático `/plan/generating`. |
-| API | FastAPI con verificación JWT, onboarding, elegibilidad determinista y flujo interno de generación, validación, persistencia/activación y lectura owner-bound. Los endpoints de generación y plan activo siguen pendientes. |
+| API | FastAPI con verificación JWT, onboarding, elegibilidad determinista, `POST /planning/generate` y `GET /planning/active` owner-bound. |
 | Auth | Signup/login con Supabase, handoff de confirmación a login, backend protegido con `GET /auth/me` y `/onboarding` privado. |
 | Marca | Paleta y assets iniciales bajo `docs/` y `apps/web/public/`. |
 | SDD | Cambios guiados por OpenSpec en `openspec/changes/`. |
@@ -80,8 +80,8 @@ cd apps/api
 uv run uvicorn app.main:app --reload
 ```
 
-La API queda disponible en `http://localhost:8000`. Comprueba el endpoint de
-salud con:
+La API queda disponible en `http://localhost:8000`. FastAPI publica la interfaz
+OpenAPI en `/docs`, `/redoc` y `/openapi.json`. Comprueba el endpoint de salud con:
 
 ```bash
 curl http://localhost:8000/health
@@ -174,7 +174,7 @@ autenticado. No requiere cuentas reales de Supabase.
 y el contrato puro de elección de enfoque y borrador. No requiere cuentas reales
 de Supabase ni el API corriendo.
 
-La verificación de esta capacidad cubre `pnpm test:web-onboarding`, lint, build y el E2E enfocado de onboarding; Ruff y 241 pruebas API no integradas. La migración incluye RLS owner-bound y se valida con Supabase local cuando ese entorno está disponible.
+La verificación automatizada de la API de planes de entrenamiento usa dobles deterministas: no realiza llamadas a OpenAI. En esta rama todavía no se ha demostrado un plan generado con el proveedor real; el smoke test autenticado contra OpenAI permanece pendiente. Esto no acredita preparación para producción. La migración incluye RLS owner-bound y se valida con Supabase local cuando ese entorno está disponible.
 
 ## Arquitectura frontend
 
@@ -185,7 +185,7 @@ La web sigue Screaming Architecture: `app/` solo orquesta Next.js y cada capacid
 ```text
 apps/
   web/                  App Next.js, assets de marca y features frontend.
-  api/                  API FastAPI con auth, planificación determinista y adaptador IA M1.
+  api/                  API FastAPI con auth, planificación determinista y adaptador OpenAI.
 packages/
   api-client/           Paquete reservado; todavía no exporta un cliente real.
 docker/                 Dockerfiles locales para web y API.
@@ -222,18 +222,21 @@ openspec/              Artefactos SDD/OpenSpec.
 - El Paso 7 presenta los enfoques elegibles, conserva la selección al reintentar fallos de conexión y guarda un único borrador owner-bound antes de navegar a `/plan/generating`; los bloqueos o datos desactualizados vuelven a comprobar la elegibilidad y los estados incompletos regresan al onboarding.
 - La planificación determinista construye contexto vinculado al propietario en `Europe/Madrid`, empieza estrictamente el lunes siguiente, calcula el horizonte completo antes de recortar las primeras 1–4 semanas y trunca las fechas en el objetivo.
 - La política deportiva valida distribución de intensidad, fuerza y separación determinista de sesiones demandantes; los valores canónicos están en [`docs/07-training-knowledge.md`](docs/07-training-knowledge.md).
-- El flujo interno de generación ya cubre contexto owner-bound, salida estructurada de OpenAI, validación con una única repetición condicionada y sustitución atómica del plan activo; T3.4 todavía debe exponerlo por HTTP.
-- Planes y sesiones aplican restricciones canónicas y RLS owner-scoped. La configuración IA permanece en el backend y el esquema evoluciona mediante migraciones aditivas de Supabase; consulta los documentos canónicos enlazados abajo.
+- `POST /planning/generate` requiere autenticación y ejecuta contexto owner-bound → adaptador OpenAI configurado en el entorno → validación determinista con una única repetición condicionada → persistencia y activación atómicas → respuesta pública del plan.
+- `GET /planning/active` requiere autenticación y devuelve el plan activo propio, con semanas y sesiones en orden estable y sin IDs ni metadata interna.
+- La API de planificación limita sus respuestas públicas a las familias seguras `401`, `404`, `409`, `422` y `503` según autenticación, estado, validez y disponibilidad.
+- Planes y sesiones aplican restricciones canónicas y RLS owner-scoped. La configuración IA permanece en el backend (`OPENAI_API_KEY` requerida, `OPENAI_MODEL=gpt-5.5-2026-04-23` y `OPENAI_TIMEOUT_SECONDS=60` por defecto; se acepta cualquier timeout positivo y finito) y el esquema evoluciona mediante migraciones aditivas de Supabase; consulta los documentos canónicos enlazados abajo.
 - La validación incluye lint, build, unitarios y E2E web, Ruff y pruebas API, además de prueba RLS local de dos usuarios.
 - Paquete `@kaito/api-client` reservado para un futuro cliente generado; hoy no
   exporta código ni contratos de producto.
 
 Todavía no hay password reset, magic links, social auth, demo access, dashboard,
-Strava/RAG ni generación de planes de extremo a extremo accesible al usuario. El flujo
-interno ya cubre orquestación, una repetición solo por fallo de validación,
-persistencia/activación y lectura owner-bound; quedan pendientes `POST
-/planning/generate`, `GET /planning/active` y la UI/E2E. Tras el Paso 7, la selección
-crea o actualiza el borrador y `/plan/generating` muestra por ahora un destino estático.
+Strava/RAG ni generación de planes de extremo a extremo accesible al usuario. La API
+autenticada ya expone generación y lectura del plan activo, pero siguen pendientes la
+conexión de `/plan/generating`, el consumo del dashboard y el E2E completo. Tras el Paso
+7, la selección crea o actualiza el borrador y `/plan/generating` muestra por ahora un
+destino estático. La API síncrona no añadió workers, colas, migraciones ni
+infraestructura durable de reintentos.
 Los detalles canónicos están en [`docs/05-data-model.md`](docs/05-data-model.md),
 [`docs/06-ai-behavior.md`](docs/06-ai-behavior.md) y
 [`docs/08-architecture.md`](docs/08-architecture.md).
