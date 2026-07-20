@@ -17,6 +17,12 @@ PROMPT_INSTRUCTIONS = (
     "by rules.sports_policy; it does not permit inventing a harder alternative.\n"
     "Do not diagnose medical conditions.\n"
     "Do not invent missing data.\n"
+    "Write every user-visible generated free-text value in Spanish from Spain: "
+    "block_focus, coach_advice, week_goal, session_type, "
+    "intensity_description, purpose, and instructions.\n"
+    "Keep machine-readable enum and contract values exactly as defined by the "
+    "schema; do not translate applied_approach, session_category, or "
+    "intensity_band.\n"
     "Return only the structured GeneratedTrainingBlock schema."
 )
 
