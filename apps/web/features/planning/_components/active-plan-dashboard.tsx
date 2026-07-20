@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -9,12 +10,13 @@ import { createSessionRecoveryController } from "../../auth/_use-cases/session-r
 import { PrivateApiError } from "../../../shared/adapters/private-fetch";
 import { isTestAuthAdapterEnabledInBrowser } from "../../../shared/testing/test-auth-adapter";
 import {
+	activeBlockMetrics,
+	currentPlanWeek,
 	fetchActiveTrainingPlan,
+	nextPlanSession,
 	planCalendarDate,
-	remainingBlockDays,
 	type ActiveTrainingPlan,
 	type ActiveTrainingSession,
-	type ActiveTrainingWeek,
 } from "../_adapters/active-plan-api";
 
 type DashboardState =
@@ -140,36 +142,23 @@ function DashboardStatus({
 }
 
 function Plan({ plan }: { plan: ActiveTrainingPlan }) {
-	const sessions = plan.weeks
-		.flatMap((week) => week.sessions)
-		.sort((left, right) =>
-			left.scheduled_date.localeCompare(right.scheduled_date),
-		);
+	const sessions = plan.weeks.flatMap((week) => week.sessions);
 	const today = planCalendarDate();
-	const nextSession = sessions.find(
-		(session) => session.scheduled_date >= today,
-	);
-	const totalDistance = sessions.reduce(
-		(sum, session) => sum + Number(session.planned_distance_kilometers),
-		0,
-	);
-	const totalElevation = sessions.reduce(
-		(sum, session) => sum + session.planned_elevation_meters,
-		0,
-	);
-	const remainingDays = remainingBlockDays(
+	const nextSession = nextPlanSession(today, sessions);
+	const metrics = activeBlockMetrics(
 		today,
 		plan.start_date,
 		plan.end_date,
+		sessions,
 	);
 
 	return (
 		<main className="plan-dashboard">
 			<DashboardSidebar approach={approachNames[plan.plan_approach]} />
-			<div className="plan-content" id="resumen">
+			<div className="plan-content">
 				<header className="plan-header">
-					<p>Tu plan de entrenamiento</p>
-					<h1>{plan.block_focus}</h1>
+					<p>Plan activo</p>
+					<h1>Tu plan de entrenamiento personalizado</h1>
 					<span>
 						{formatDate(plan.start_date)} – {formatDate(plan.end_date)}
 					</span>
@@ -177,20 +166,20 @@ function Plan({ plan }: { plan: ActiveTrainingPlan }) {
 
 				<section className="plan-metrics" aria-label="Resumen del bloque">
 					<Metric
-						label="Días de bloque restantes"
-						value={String(remainingDays)}
+						label="Kilómetros planificados esta semana"
+						value={`${formatNumber(metrics.plannedKilometers)} km`}
 					/>
 					<Metric
-						label="Sesiones planificadas"
-						value={String(sessions.length)}
+						label="Sesiones planificadas esta semana"
+						value={String(metrics.plannedSessionCount)}
 					/>
 					<Metric
-						label="Distancia total"
-						value={`${formatNumber(totalDistance)} km`}
+						label="Días restantes del bloque activo"
+						value={String(metrics.remainingDays)}
 					/>
 					<Metric
-						label="Desnivel total"
-						value={`${formatNumber(totalElevation)} m`}
+						label="Progreso temporal del bloque"
+						value={`${metrics.temporalProgress} %`}
 					/>
 				</section>
 
@@ -200,7 +189,7 @@ function Plan({ plan }: { plan: ActiveTrainingPlan }) {
 					<FinishedBlock />
 				)}
 
-				<WeeklySchedule weeks={plan.weeks} />
+				<WeeklyCalendar today={today} sessions={sessions} />
 			</div>
 		</main>
 	);
@@ -213,7 +202,10 @@ function DashboardSidebar({ approach }: { approach: string }) {
 				<span aria-hidden="true">▲</span> Kaito
 			</strong>
 			<nav aria-label="Plan de entrenamiento">
-				<a href="#resumen">Resumen</a>
+				<Link href="/plan" aria-current="page">
+					<DashboardIcon />
+					<span>Dashboard</span>
+				</Link>
 				<a href="#calendario">Calendario</a>
 			</nav>
 			<small>
@@ -222,6 +214,17 @@ function DashboardSidebar({ approach }: { approach: string }) {
 				{approach}
 			</small>
 		</aside>
+	);
+}
+
+function DashboardIcon() {
+	return (
+		<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+			<rect x="3" y="3" width="7" height="7" rx="1" />
+			<rect x="14" y="3" width="7" height="7" rx="1" />
+			<rect x="3" y="14" width="7" height="7" rx="1" />
+			<rect x="14" y="14" width="7" height="7" rx="1" />
+		</svg>
 	);
 }
 
@@ -276,75 +279,68 @@ function FinishedBlock() {
 	);
 }
 
-function WeeklySchedule({ weeks }: { weeks: ActiveTrainingWeek[] }) {
+function WeeklyCalendar({
+	today,
+	sessions,
+}: {
+	today: string;
+	sessions: ActiveTrainingSession[];
+}) {
+	const days = currentPlanWeek(today, sessions);
 	return (
 		<section
 			id="calendario"
 			className="plan-schedule"
 			aria-labelledby="schedule-title"
 		>
-			<div>
-				<p className="plan-kicker">CALENDARIO</p>
-				<h2 id="schedule-title">Semanas del bloque</h2>
+			<p className="plan-kicker">CALENDARIO</p>
+			<h2 id="schedule-title">Esta semana</h2>
+			<div className="plan-week-grid">
+				{days.map((day) => (
+					<article
+						key={day.date}
+						className="plan-day-card"
+						data-today={day.date === today ? "true" : undefined}
+						aria-label={`${dayName(day.date)} ${formatDate(day.date)}${day.date === today ? ", hoy" : ""}`}
+					>
+						<header>
+							<span>{dayName(day.date)}</span>
+							<strong>{Number(day.date.slice(-2))}</strong>
+							{day.date === today && <small>Hoy</small>}
+						</header>
+						{day.sessions.length ? (
+							<ul>
+								{day.sessions.map((session, index) => (
+									<CalendarSession key={`${session.session_type}-${index}`} session={session} />
+								))}
+							</ul>
+						) : (
+							<p>Sin sesión planificada</p>
+						)}
+					</article>
+				))}
 			</div>
-			{weeks.map((week) => (
-				<TrainingWeek key={week.week_number} week={week} />
-			))}
 		</section>
 	);
 }
 
-function TrainingWeek({ week }: { week: ActiveTrainingWeek }) {
-	const distance = week.sessions.reduce(
-		(sum, session) => sum + Number(session.planned_distance_kilometers),
-		0,
-	);
-	const elevation = week.sessions.reduce(
-		(sum, session) => sum + session.planned_elevation_meters,
-		0,
-	);
-
+function CalendarSession({ session }: { session: ActiveTrainingSession }) {
+	const distance = Number(session.planned_distance_kilometers);
 	return (
-		<article>
-			<h3>Semana {week.week_number}</h3>
-			<p>
-				{formatNumber(distance)} km · {formatNumber(elevation)} m de desnivel
-			</p>
-			<ul>
-				{week.sessions.map((session) => (
-					<Session
-						key={`${session.scheduled_date}-${session.session_type}`}
-						session={session}
-					/>
-				))}
-			</ul>
-		</article>
+		<li>
+			<strong>{session.session_type}</strong>
+			<small>
+				{session.planned_duration_minutes} min · {formatNumber(distance)} km
+			</small>
+		</li>
 	);
 }
 
-function Session({ session }: { session: ActiveTrainingSession }) {
-	return (
-		<li>
-			<time dateTime={session.scheduled_date}>
-				{formatDate(session.scheduled_date)}
-			</time>
-			<div>
-				<strong>{session.session_type}</strong>
-				<p>{session.purpose}</p>
-				<small>
-					{session.planned_duration_minutes} min ·{" "}
-					{formatNumber(Number(session.planned_distance_kilometers))} km ·{" "}
-					{formatNumber(session.planned_elevation_meters)} m ·{" "}
-					{session.intensity_description} · RPE {session.target_rpe_min}–
-					{session.target_rpe_max}
-				</small>
-				<details>
-					<summary>Ver indicaciones</summary>
-					<p>{session.instructions}</p>
-				</details>
-			</div>
-		</li>
-	);
+function dayName(date: string) {
+	return new Intl.DateTimeFormat("es-ES", {
+		weekday: "long",
+		timeZone: "UTC",
+	}).format(new Date(`${date}T00:00:00Z`));
 }
 
 function Stat({ label, value }: { label: string; value: string }) {

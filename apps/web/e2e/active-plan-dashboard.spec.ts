@@ -2,15 +2,15 @@ import { expect, test, type Page } from "@playwright/test";
 
 const plan = {
 	plan_approach: "mode_z",
-	start_date: "2099-07-06",
-	end_date: "2099-07-19",
+	start_date: "2026-07-06",
+	end_date: "2026-07-19",
 	block_focus: "Durabilidad en montaña",
 	weeks: [
 		{
 			week_number: 1,
 			sessions: [
 				{
-					scheduled_date: "2099-07-06",
+					scheduled_date: "2026-07-06",
 					session_type: "Rodaje suave",
 					planned_duration_minutes: 30,
 					planned_distance_kilometers: "5.00",
@@ -21,13 +21,49 @@ const plan = {
 					instructions: "Mantén un ritmo cómodo.",
 					purpose: "Construir constancia.",
 				},
+				{
+					scheduled_date: "2026-07-06",
+					session_type: "Técnica de carrera",
+					planned_duration_minutes: 20,
+					planned_distance_kilometers: "2.50",
+					planned_elevation_meters: 0,
+					intensity_description: "Suave",
+					target_rpe_min: 2,
+					target_rpe_max: 3,
+					instructions: "Prioriza una pisada estable.",
+					purpose: "Mejorar la técnica.",
+				},
+				{
+					scheduled_date: "2026-07-08",
+					session_type: "Recuperación activa",
+					planned_duration_minutes: 30,
+					planned_distance_kilometers: "0.00",
+					planned_elevation_meters: 0,
+					intensity_description: "Muy suave",
+					target_rpe_min: 1,
+					target_rpe_max: 2,
+					instructions: "Muévete sin buscar carga.",
+					purpose: "Facilitar la recuperación.",
+				},
+				{
+					scheduled_date: "2026-07-12",
+					session_type: "Tirada larga",
+					planned_duration_minutes: 70,
+					planned_distance_kilometers: "10.00",
+					planned_elevation_meters: 500,
+					intensity_description: "Moderada",
+					target_rpe_min: 4,
+					target_rpe_max: 5,
+					instructions: "Mantén esfuerzo sostenible.",
+					purpose: "Sumar tiempo en montaña.",
+				},
 			],
 		},
 		{
 			week_number: 2,
 			sessions: [
 				{
-					scheduled_date: "2099-07-13",
+					scheduled_date: "2026-07-13",
 					session_type: "Tirada larga",
 					planned_duration_minutes: 75,
 					planned_distance_kilometers: "12.50",
@@ -99,41 +135,49 @@ test.describe("active plan dashboard", () => {
 		});
 	}
 
-	test("shows only derived plan metrics, next session, and weekly details", async ({
-		page,
-	}) => {
+	test("shows truthful weekly metrics, navigation, and seven-day calendar", async ({ page }) => {
+		await page.clock.setFixedTime(new Date("2026-07-08T10:00:00Z"));
 		await setSession(page);
-		await interceptActivePlan(page, 200, plan, 250);
+		const outOfOrderPlan = {
+			...plan,
+			weeks: [
+				{ ...plan.weeks[0], sessions: [plan.weeks[0].sessions[3], ...plan.weeks[0].sessions.slice(0, 3)] },
+				plan.weeks[1],
+			],
+		};
+		await interceptActivePlan(page, 200, outOfOrderPlan, 250);
 		await page.goto("/plan");
 
+		await expect(page.getByRole("heading", { name: "Cargando tu bloque activo" })).toBeVisible();
 		await expect(
-			page.getByRole("heading", { name: "Cargando tu bloque activo" }),
+			page.getByRole("heading", { name: "Tu plan de entrenamiento personalizado" }),
 		).toBeVisible();
-		await expect(
-			page.getByRole("heading", { name: "Durabilidad en montaña" }),
-		).toBeVisible();
+
+		const dashboardLink = page.getByRole("link", { name: "Dashboard" });
+		await expect(dashboardLink).toHaveAttribute("href", "/plan");
+		await expect(dashboardLink).toHaveAttribute("aria-current", "page");
+		await expect(dashboardLink.locator("svg")).toHaveCount(1);
 
 		const summary = page.getByRole("region", { name: "Resumen del bloque" });
-		await expect(summary).toContainText("2");
-		await expect(summary).toContainText("17,5 km");
-		await expect(summary).toContainText("675 m");
+		await expect(summary).toContainText("Kilómetros planificados esta semana17,5 km");
+		await expect(summary).toContainText("Sesiones planificadas esta semana4");
+		await expect(summary).toContainText("Días restantes del bloque activo12");
+		await expect(summary).toContainText("Progreso temporal del bloque21 %");
 
-		const nextSession = page.getByRole("region", { name: "Rodaje suave" });
-		await expect(
-			nextSession.getByRole("heading", { name: "Rodaje suave" }),
-		).toBeVisible();
-		await expect(
-			nextSession.getByText("Mantén un ritmo cómodo."),
-		).toBeVisible();
+		const nextSession = page.getByRole("region", { name: "Recuperación activa" });
+		await expect(nextSession.getByText("Muévete sin buscar carga.")).toBeVisible();
 
-		const secondWeek = page
-			.getByRole("article")
-			.filter({ hasText: "Semana 2" });
-		await expect(secondWeek).toContainText("12,5 km · 650 m de desnivel");
-		await expect(secondWeek.getByRole("listitem")).toContainText("Moderada");
-		await expect(
-			page.getByText(/completad|cumplimiento|carga real|coach dice/i),
-		).toHaveCount(0);
+		const calendar = page.getByRole("region", { name: "Esta semana" });
+		const dayCards = calendar.locator(".plan-day-card");
+		await expect(dayCards).toHaveCount(7);
+		await expect(calendar.locator('.plan-day-card[data-today="true"]')).toHaveCount(1);
+		await expect(calendar.getByRole("article", { name: /miércoles.*hoy/i })).toContainText("Recuperación activa30 min · 0 km");
+		await expect(calendar.getByRole("article", { name: /lunes/i }).getByRole("listitem")).toHaveText([
+			"Rodaje suave30 min · 5 km",
+			"Técnica de carrera20 min · 2,5 km",
+		]);
+		await expect(calendar.getByRole("article", { name: /martes/i })).toContainText("Sin sesión planificada");
+		await expect(page.getByText(/completad|pendiente|descanso|cumplimiento|carga real/i)).toHaveCount(0);
 	});
 
 	test("renders empty and safe malformed/service errors", async ({ page }) => {
@@ -166,6 +210,16 @@ test.describe("active plan dashboard", () => {
 		await expect(page.getByText("private provider detail")).toHaveCount(0);
 	});
 
+	test("preserves the finished-block state when no future session remains", async ({ page }) => {
+		await page.clock.setFixedTime(new Date("2026-07-20T10:00:00Z"));
+		await setSession(page);
+		await interceptActivePlan(page, 200, plan);
+		await page.goto("/plan");
+
+		await expect(page.getByRole("heading", { name: "No quedan sesiones programadas" })).toBeVisible();
+		await expect(page.getByText("BLOQUE FINALIZADO")).toBeVisible();
+	});
+
 	test("recovers an API-rejected session", async ({ page }) => {
 		await setSession(page);
 		await interceptActivePlan(page, 401);
@@ -174,9 +228,10 @@ test.describe("active plan dashboard", () => {
 		await expect(page).toHaveURL(/\/login\?returnTo=%2Fplan$/);
 	});
 
-	test("is responsive and exposes keyboard-operable navigation and details", async ({
+	test("is responsive and exposes keyboard-operable navigation", async ({
 		page,
 	}) => {
+		await page.clock.setFixedTime(new Date("2026-07-08T10:00:00Z"));
 		await setSession(page);
 		await interceptActivePlan(page, 200, plan);
 		await page.goto("/plan");
@@ -206,11 +261,8 @@ test.describe("active plan dashboard", () => {
 		await calendarLink.focus();
 		await expect(calendarLink).toBeFocused();
 
-		const details = page.getByRole("group").first();
-		await details.getByText("Ver indicaciones").focus();
-		await page.keyboard.press("Enter");
-		await expect(
-			details.getByText("Mantén un ritmo cómodo."),
-		).toBeVisible();
+		const dashboardLink = page.getByRole("link", { name: "Dashboard" });
+		await dashboardLink.focus();
+		await expect(dashboardLink).toBeFocused();
 	});
 });

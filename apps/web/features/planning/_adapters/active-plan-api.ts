@@ -94,10 +94,80 @@ export function remainingBlockDays(
 	}
 
 	const firstRemainingDate = today < startDate ? startDate : today;
-	const remainingMilliseconds =
-		Date.parse(`${endDate}T00:00:00Z`) -
-		Date.parse(`${firstRemainingDate}T00:00:00Z`);
-	return Math.floor(remainingMilliseconds / 86_400_000) + 1;
+	return calendarDayDifference(firstRemainingDate, endDate) + 1;
+}
+
+export function temporalBlockProgress(
+	today: string,
+	startDate: string,
+	endDate: string,
+): number {
+	if (today < startDate) return 0;
+	if (today > endDate) return 100;
+
+	const totalDays = calendarDayDifference(startDate, endDate) + 1;
+	const elapsedDays = calendarDayDifference(startDate, today) + 1;
+	return Math.round((elapsedDays / totalDays) * 100);
+}
+
+export function nextPlanSession(
+	today: string,
+	sessions: readonly ActiveTrainingSession[],
+): ActiveTrainingSession | undefined {
+	return sessions.reduce<ActiveTrainingSession | undefined>((next, session) => {
+		if (session.scheduled_date < today) return next;
+		if (!next || session.scheduled_date < next.scheduled_date) return session;
+		return next;
+	}, undefined);
+}
+
+export function currentPlanWeek(
+	today: string,
+	sessions: readonly ActiveTrainingSession[],
+) {
+	const weekday = new Date(`${today}T00:00:00Z`).getUTCDay();
+	const monday = addCalendarDays(today, -((weekday + 6) % 7));
+
+	return Array.from({ length: 7 }, (_, index) => {
+		const date = addCalendarDays(monday, index);
+		return {
+			date,
+			sessions: sessions.filter((session) => session.scheduled_date === date),
+		};
+	});
+}
+
+export function activeBlockMetrics(
+	today: string,
+	startDate: string,
+	endDate: string,
+	sessions: readonly ActiveTrainingSession[],
+) {
+	const currentWeekSessions = currentPlanWeek(today, sessions).flatMap(
+		(day) => day.sessions,
+	);
+	return {
+		plannedKilometers: currentWeekSessions.reduce(
+			(sum, session) => sum + Number(session.planned_distance_kilometers),
+			0,
+		),
+		plannedSessionCount: currentWeekSessions.length,
+		remainingDays: remainingBlockDays(today, startDate, endDate),
+		temporalProgress: temporalBlockProgress(today, startDate, endDate),
+	};
+}
+
+function addCalendarDays(date: string, days: number): string {
+	const value = new Date(`${date}T00:00:00Z`);
+	value.setUTCDate(value.getUTCDate() + days);
+	return value.toISOString().slice(0, 10);
+}
+
+function calendarDayDifference(startDate: string, endDate: string): number {
+	return Math.floor(
+		(Date.parse(`${endDate}T00:00:00Z`) - Date.parse(`${startDate}T00:00:00Z`)) /
+			86_400_000,
+	);
 }
 
 export function parseActiveTrainingPlan(value: unknown): ActiveTrainingPlan {
