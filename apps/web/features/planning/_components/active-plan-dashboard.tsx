@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 
 import { getAccessToken } from "../../auth/_adapters/get-access-token";
@@ -11,6 +10,7 @@ import { PrivateApiError } from "../../../shared/adapters/private-fetch";
 import { isTestAuthAdapterEnabledInBrowser } from "../../../shared/testing/test-auth-adapter";
 import {
 	activeBlockMetrics,
+	chronologicalPlanSessions,
 	currentPlanWeek,
 	fetchActiveTrainingPlan,
 	nextPlanSession,
@@ -141,7 +141,10 @@ function DashboardStatus({
 	);
 }
 
+type PlanView = "dashboard" | "calendar";
+
 function Plan({ plan }: { plan: ActiveTrainingPlan }) {
+	const [view, setView] = useState<PlanView>("dashboard");
 	const sessions = plan.weeks.flatMap((week) => week.sessions);
 	const today = planCalendarDate();
 	const nextSession = nextPlanSession(today, sessions);
@@ -154,59 +157,111 @@ function Plan({ plan }: { plan: ActiveTrainingPlan }) {
 
 	return (
 		<main className="plan-dashboard">
-			<DashboardSidebar approach={approachNames[plan.plan_approach]} />
+			<DashboardSidebar
+				approach={approachNames[plan.plan_approach]}
+				view={view}
+				onViewChange={setView}
+			/>
 			<div className="plan-content">
-				<header className="plan-header">
-					<p>Plan activo</p>
-					<h1>Tu plan de entrenamiento personalizado</h1>
-					<span>
-						{formatDate(plan.start_date)} – {formatDate(plan.end_date)}
-					</span>
-				</header>
+				{view === "dashboard" ? (
+					<div
+						id="dashboard-panel"
+						role="tabpanel"
+						aria-labelledby="dashboard-tab"
+					>
+						<header className="plan-header">
+							<p>Plan activo</p>
+							<h1>Tu plan de entrenamiento personalizado</h1>
+							<span>
+								{formatDate(plan.start_date)} – {formatDate(plan.end_date)}
+							</span>
+						</header>
 
-				<section className="plan-metrics" aria-label="Resumen del bloque">
-					<Metric
-						label="Kilómetros planificados esta semana"
-						value={`${formatNumber(metrics.plannedKilometers)} km`}
-					/>
-					<Metric
-						label="Sesiones planificadas esta semana"
-						value={String(metrics.plannedSessionCount)}
-					/>
-					<Metric
-						label="Días restantes del bloque activo"
-						value={String(metrics.remainingDays)}
-					/>
-					<Metric
-						label="Progreso temporal del bloque"
-						value={`${metrics.temporalProgress} %`}
-					/>
-				</section>
+						<section className="plan-metrics" aria-label="Resumen del bloque">
+							<Metric
+								label="Kilómetros planificados esta semana"
+								value={`${formatNumber(metrics.plannedKilometers)} km`}
+							/>
+							<Metric
+								label="Sesiones planificadas esta semana"
+								value={String(metrics.plannedSessionCount)}
+							/>
+							<Metric
+								label="Días restantes del bloque activo"
+								value={String(metrics.remainingDays)}
+							/>
+							<Metric
+								label="Progreso temporal del bloque"
+								value={`${metrics.temporalProgress} %`}
+							/>
+						</section>
 
-				{nextSession ? (
-					<NextSession session={nextSession} />
+						{nextSession ? (
+							<NextSession session={nextSession} />
+						) : (
+							<FinishedBlock />
+						)}
+
+						<WeeklyCalendar today={today} sessions={sessions} />
+					</div>
 				) : (
-					<FinishedBlock />
+					<PlanCalendar sessions={sessions} />
 				)}
-
-				<WeeklyCalendar today={today} sessions={sessions} />
 			</div>
 		</main>
 	);
 }
 
-function DashboardSidebar({ approach }: { approach: string }) {
+function DashboardSidebar({
+	approach,
+	view,
+	onViewChange,
+}: {
+	approach: string;
+	view: PlanView;
+	onViewChange: (view: PlanView) => void;
+}) {
+	function selectWithKeyboard(event: KeyboardEvent<HTMLButtonElement>) {
+		if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+		event.preventDefault();
+		const nextView = view === "dashboard" ? "calendar" : "dashboard";
+		onViewChange(nextView);
+		document.getElementById(`${nextView}-tab`)?.focus();
+	}
+
 	return (
 		<aside className="plan-sidebar">
 			<strong>
 				<span aria-hidden="true">▲</span> Kaito
 			</strong>
 			<nav aria-label="Plan de entrenamiento">
-				<Link href="/plan" aria-current="page">
-					<DashboardIcon />
-					<span>Dashboard</span>
-				</Link>
-				<a href="#calendario">Calendario</a>
+				<div role="tablist" aria-label="Vista del plan">
+					<button
+						id="dashboard-tab"
+						type="button"
+						role="tab"
+						aria-selected={view === "dashboard"}
+						aria-controls="dashboard-panel"
+						tabIndex={view === "dashboard" ? 0 : -1}
+						onClick={() => onViewChange("dashboard")}
+						onKeyDown={selectWithKeyboard}
+					>
+						<DashboardIcon />
+						<span>Dashboard</span>
+					</button>
+					<button
+						id="calendar-tab"
+						type="button"
+						role="tab"
+						aria-selected={view === "calendar"}
+						aria-controls="calendar-panel"
+						tabIndex={view === "calendar" ? 0 : -1}
+						onClick={() => onViewChange("calendar")}
+						onKeyDown={selectWithKeyboard}
+					>
+						Calendario
+					</button>
+				</div>
 			</nav>
 			<small>
 				Bloque activo
@@ -275,6 +330,54 @@ function FinishedBlock() {
 			<p className="plan-kicker">BLOQUE FINALIZADO</p>
 			<h2>No quedan sesiones programadas</h2>
 			<p>Puedes consultar el detalle de tu bloque debajo.</p>
+		</section>
+	);
+}
+
+function PlanCalendar({ sessions }: { sessions: ActiveTrainingSession[] }) {
+	const scheduledSessions = chronologicalPlanSessions(sessions);
+	const firstDate = scheduledSessions[0]?.scheduled_date;
+	const lastDate = scheduledSessions[scheduledSessions.length - 1]?.scheduled_date;
+
+	return (
+		<section
+			id="calendar-panel"
+			className="plan-calendar"
+			role="tabpanel"
+			aria-labelledby="calendar-tab"
+		>
+			<header className="plan-header">
+				<p>Plan activo</p>
+				<h1 id="calendar-title">Calendario de entrenamientos</h1>
+				{firstDate && lastDate && (
+					<span>
+						{formatDate(firstDate)} – {formatDate(lastDate)}
+					</span>
+				)}
+			</header>
+			<div className="plan-calendar-grid">
+				{scheduledSessions.map((session, index) => (
+					<article
+						key={`${session.scheduled_date}-${index}`}
+						className="plan-workout-card"
+					>
+						<time dateTime={session.scheduled_date}>
+							{dayName(session.scheduled_date)}, {formatDate(session.scheduled_date)}
+						</time>
+						<h2>{session.session_type}</h2>
+						<dl>
+							<Stat
+								label="Duración"
+								value={`${session.planned_duration_minutes} min`}
+							/>
+							<Stat
+								label="Distancia"
+								value={`${formatNumber(Number(session.planned_distance_kilometers))} km`}
+							/>
+						</dl>
+					</article>
+				))}
+			</div>
 		</section>
 	);
 }

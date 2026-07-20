@@ -135,7 +135,7 @@ test.describe("active plan dashboard", () => {
 		});
 	}
 
-	test("shows truthful weekly metrics, navigation, and seven-day calendar", async ({ page }) => {
+	test("shows the dashboard and chronological workout-only calendar tabs", async ({ page }) => {
 		await page.clock.setFixedTime(new Date("2026-07-08T10:00:00Z"));
 		await setSession(page);
 		const outOfOrderPlan = {
@@ -153,10 +153,11 @@ test.describe("active plan dashboard", () => {
 			page.getByRole("heading", { name: "Tu plan de entrenamiento personalizado" }),
 		).toBeVisible();
 
-		const dashboardLink = page.getByRole("link", { name: "Dashboard" });
-		await expect(dashboardLink).toHaveAttribute("href", "/plan");
-		await expect(dashboardLink).toHaveAttribute("aria-current", "page");
-		await expect(dashboardLink.locator("svg")).toHaveCount(1);
+		const dashboardTab = page.getByRole("tab", { name: "Dashboard" });
+		const calendarTab = page.getByRole("tab", { name: "Calendario" });
+		await expect(dashboardTab).toHaveAttribute("aria-selected", "true");
+		await expect(calendarTab).toHaveAttribute("aria-selected", "false");
+		await expect(dashboardTab.locator("svg")).toHaveCount(1);
 
 		const summary = page.getByRole("region", { name: "Resumen del bloque" });
 		await expect(summary).toContainText("Kilómetros planificados esta semana17,5 km");
@@ -178,6 +179,27 @@ test.describe("active plan dashboard", () => {
 		]);
 		await expect(calendar.getByRole("article", { name: /martes/i })).toContainText("Sin sesión planificada");
 		await expect(page.getByText(/completad|pendiente|descanso|cumplimiento|carga real/i)).toHaveCount(0);
+
+		await calendarTab.click();
+		await expect(calendarTab).toHaveAttribute("aria-selected", "true");
+		await expect(dashboardTab).toHaveAttribute("aria-selected", "false");
+		await expect(summary).toBeHidden();
+
+		const fullCalendar = page.getByRole("tabpanel", { name: "Calendario" });
+		await expect(fullCalendar).toContainText("6 jul 2026 – 13 jul 2026");
+		const workouts = fullCalendar.locator(".plan-workout-card");
+		await expect(workouts).toHaveCount(5);
+		await expect(workouts.locator("h2")).toHaveText([
+			"Rodaje suave",
+			"Técnica de carrera",
+			"Recuperación activa",
+			"Tirada larga",
+			"Tirada larga",
+		]);
+		await expect(workouts.nth(0)).toContainText("lunes, 6 jul 2026");
+		await expect(workouts.nth(0)).toContainText("Duración30 min");
+		await expect(workouts.nth(0)).toContainText("Distancia5 km");
+		await expect(fullCalendar.getByText("Sin sesión planificada")).toHaveCount(0);
 	});
 
 	test("renders empty and safe malformed/service errors", async ({ page }) => {
@@ -257,12 +279,16 @@ test.describe("active plan dashboard", () => {
 			)
 			.toBe(true);
 
-		const calendarLink = page.getByRole("link", { name: "Calendario" });
-		await calendarLink.focus();
-		await expect(calendarLink).toBeFocused();
+		const dashboardTab = page.getByRole("tab", { name: "Dashboard" });
+		await dashboardTab.focus();
+		await expect(dashboardTab).toBeFocused();
+		await dashboardTab.press("ArrowRight");
 
-		const dashboardLink = page.getByRole("link", { name: "Dashboard" });
-		await dashboardLink.focus();
-		await expect(dashboardLink).toBeFocused();
+		const calendarTab = page.getByRole("tab", { name: "Calendario" });
+		await expect(calendarTab).toBeFocused();
+		await expect(calendarTab).toHaveAttribute("aria-selected", "true");
+		await expect(
+			page.getByRole("heading", { name: "Calendario de entrenamientos" }),
+		).toBeVisible();
 	});
 });
