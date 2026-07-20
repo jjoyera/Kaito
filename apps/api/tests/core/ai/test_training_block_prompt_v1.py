@@ -145,6 +145,23 @@ def test_prompt_has_exact_versioned_instruction_structure() -> None:
     assert "Return only the structured GeneratedTrainingBlock schema." in rendered
 
 
+def test_prompt_requires_spanish_free_text_and_preserves_contract_values() -> None:
+    from app.core.ai.training_block_prompt_v1 import PROMPT_INSTRUCTIONS
+
+    assert (
+        "Write every user-visible generated free-text value in Spanish from Spain: "
+        "block_focus, coach_advice, week_goal, session_type, "
+        "intensity_description, purpose, and instructions."
+        in PROMPT_INSTRUCTIONS
+    )
+    assert (
+        "Keep machine-readable enum and contract values exactly as defined by the "
+        "schema; do not translate applied_approach, session_category, or "
+        "intensity_band."
+        in PROMPT_INSTRUCTIONS
+    )
+
+
 def test_prompt_serializes_rules_without_duplicating_numeric_policy_prose() -> None:
     from app.core.ai.training_block_prompt_v1 import (
         PROMPT_INSTRUCTIONS,
