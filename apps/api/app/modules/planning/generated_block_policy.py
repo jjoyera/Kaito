@@ -14,13 +14,36 @@ from app.modules.planning.readiness_calendar import ReadinessWeekRole
 from app.modules.planning.readiness_capacity import ReadinessCapacityStatus
 
 ELEVATION_POLICY_OUTSIDE_MVP = "outside_mvp_safety_guarantees"
-_MINIMUM_LOW_PERCENT = 75
-_MAXIMUM_HIGH_PERCENT = 10
-_MAXIMUM_THRESHOLD_AND_HIGH_PERCENT = 25
-_MINIMUM_STRENGTH_MINUTES = 20
-_STRENGTH_MINIMUM_REMOVING_RESTRICTIONS = frozenset(
-    {"no_demanding_sessions", "favor_recovery_rest_or_gentle_activity"}
-)
+
+
+@dataclass(frozen=True, slots=True)
+class GeneratedBlockSportsPolicy:
+    """Public source of truth shared by validation and provider constraints."""
+
+    minimum_low_percent: int = 75
+    maximum_high_percent: int = 10
+    maximum_threshold_and_high_percent: int = 25
+    minimum_strength_minutes: int = 20
+    minimum_strength_sessions_when_required: int = 1
+    maximum_strength_sessions_per_week: int = 1
+    strength_required_projection_phases: tuple[ProjectionPhase, ...] = ("loading",)
+    strength_required_readiness_roles: tuple[ReadinessWeekRole, ...] = (
+        "build",
+        "peak",
+    )
+    strength_minimum_removing_restrictions: frozenset[str] = frozenset(
+        {"no_demanding_sessions", "favor_recovery_rest_or_gentle_activity"}
+    )
+    demanding_target_rpe_max_at_least: int = 8
+    key_session_demanding_target_rpe_max_at_least: int = 7
+    maximum_demanding_sessions_across_taper_weeks: int = 1
+    no_demanding_sessions_restriction: str = "no_demanding_sessions"
+    reduced_demanding_restriction: str = (
+        "reduce_demanding_session_intensity_or_duration"
+    )
+
+
+GENERATED_BLOCK_SPORTS_POLICY = GeneratedBlockSportsPolicy()
 
 
 @dataclass(frozen=True, slots=True)
@@ -161,13 +184,20 @@ def _validate_intensity(
     total_minutes = low_minutes + threshold_minutes + high_minutes
     if total_minutes == 0:
         return
-    if low_minutes * 100 < total_minutes * _MINIMUM_LOW_PERCENT:
-        violations.append(GenerationViolation("intensity_low_share_below_minimum"))
-    if high_minutes * 100 > total_minutes * _MAXIMUM_HIGH_PERCENT:
-        violations.append(GenerationViolation("intensity_high_share_above_maximum"))
     if (
-        threshold_minutes + high_minutes
-    ) * 100 > total_minutes * _MAXIMUM_THRESHOLD_AND_HIGH_PERCENT:
+        low_minutes * 100
+        < total_minutes * GENERATED_BLOCK_SPORTS_POLICY.minimum_low_percent
+    ):
+        violations.append(GenerationViolation("intensity_low_share_below_minimum"))
+    if (
+        high_minutes * 100
+        > total_minutes * GENERATED_BLOCK_SPORTS_POLICY.maximum_high_percent
+    ):
+        violations.append(GenerationViolation("intensity_high_share_above_maximum"))
+    if (threshold_minutes + high_minutes) * 100 > (
+        total_minutes
+        * GENERATED_BLOCK_SPORTS_POLICY.maximum_threshold_and_high_percent
+    ):
         violations.append(
             GenerationViolation(
                 "intensity_threshold_and_high_share_above_maximum"
@@ -181,8 +211,9 @@ def _validate_strength(
     violations: list[GenerationViolation],
 ) -> None:
     restrictions = frozenset(context.safety_restriction_codes)
+    policy = GENERATED_BLOCK_SPORTS_POLICY
     minimum_removed = bool(
-        restrictions.intersection(_STRENGTH_MINIMUM_REMOVING_RESTRICTIONS)
+        restrictions.intersection(policy.strength_minimum_removing_restrictions)
     )
     for position, week in enumerate(block.weeks):
         week_context = (
@@ -194,37 +225,39 @@ def _validate_strength(
             if session.session_category == "strength"
         )
         for session_index, session in strength_sessions:
-            if session.planned_duration_minutes < _MINIMUM_STRENGTH_MINUTES:
+            if session.planned_duration_minutes < policy.minimum_strength_minutes:
                 violations.append(
                     GenerationViolation(
                         "strength_session_duration_below_minimum",
                         week_number=week.week_number,
                         session_index=session_index,
                         actual_minutes=session.planned_duration_minutes,
-                        expected_minutes=_MINIMUM_STRENGTH_MINUTES,
+                        expected_minutes=policy.minimum_strength_minutes,
                     )
                 )
 
-        if len(strength_sessions) > 1:
+        if len(strength_sessions) > policy.maximum_strength_sessions_per_week:
             violations.append(
                 GenerationViolation(
                     "strength_session_frequency_above_maximum",
                     week_number=week.week_number,
                     actual_count=len(strength_sessions),
-                    expected_count=1,
+                    expected_count=policy.maximum_strength_sessions_per_week,
                 )
             )
 
         requires_strength = (
             week_context is not None
             and (
-                week_context.projection_phase == "loading"
-                or week_context.readiness_role in {"build", "peak"}
+                week_context.projection_phase
+                in policy.strength_required_projection_phases
+                or week_context.readiness_role
+                in policy.strength_required_readiness_roles
             )
             and not minimum_removed
         )
         qualifying_count = sum(
-            session.planned_duration_minutes >= _MINIMUM_STRENGTH_MINUTES
+            session.planned_duration_minutes >= policy.minimum_strength_minutes
             for _, session in strength_sessions
         )
         if requires_strength and qualifying_count == 0:
@@ -233,7 +266,7 @@ def _validate_strength(
                     "strength_session_frequency_below_minimum",
                     week_number=week.week_number,
                     actual_count=qualifying_count,
-                    expected_count=1,
+                    expected_count=policy.minimum_strength_sessions_when_required,
                 )
             )
 
@@ -244,6 +277,7 @@ def _validate_demanding_sessions(
     violations: list[GenerationViolation],
 ) -> None:
     restrictions = frozenset(context.safety_restriction_codes)
+    policy = GENERATED_BLOCK_SPORTS_POLICY
     taper_demanding_seen = 0
     for position, week in enumerate(block.weeks):
         week_context = (
@@ -275,7 +309,10 @@ def _validate_demanding_sessions(
                         session_index,
                     )
                 )
-            if demanding and "no_demanding_sessions" in restrictions:
+            if (
+                demanding
+                and policy.no_demanding_sessions_restriction in restrictions
+            ):
                 violations.append(
                     _session_violation(
                         "demanding_session_forbidden_by_restriction",
@@ -284,7 +321,7 @@ def _validate_demanding_sessions(
                     )
                 )
             if (
-                "reduce_demanding_session_intensity_or_duration" in restrictions
+                policy.reduced_demanding_restriction in restrictions
                 and _exceeds_reduced_demanding_limit(session)
             ):
                 violations.append(
@@ -296,7 +333,10 @@ def _validate_demanding_sessions(
                 )
             if demanding and is_taper:
                 taper_demanding_seen += 1
-                if taper_demanding_seen > 1:
+                if (
+                    taper_demanding_seen
+                    > policy.maximum_demanding_sessions_across_taper_weeks
+                ):
                     violations.append(
                         _session_violation(
                             "taper_demanding_session_limit_exceeded",
@@ -317,8 +357,16 @@ def _is_demanding(session: GeneratedTrainingSession) -> bool:
     return (
         has_high
         or (has_threshold and session.is_key_session)
-        or session.target_rpe_max >= 8
-        or (session.is_key_session and session.target_rpe_max >= 7)
+        or session.target_rpe_max
+        >= GENERATED_BLOCK_SPORTS_POLICY.demanding_target_rpe_max_at_least
+        or (
+            session.is_key_session
+            and session.target_rpe_max
+            >= (
+                GENERATED_BLOCK_SPORTS_POLICY
+                .key_session_demanding_target_rpe_max_at_least
+            )
+        )
     )
 
 
@@ -329,7 +377,8 @@ def _exceeds_reduced_demanding_limit(session: GeneratedTrainingSession) -> bool:
             for segment in session.intensity_segments
         )
         or session.is_key_session
-        or session.target_rpe_max >= 8
+        or session.target_rpe_max
+        >= GENERATED_BLOCK_SPORTS_POLICY.demanding_target_rpe_max_at_least
     )
 
 

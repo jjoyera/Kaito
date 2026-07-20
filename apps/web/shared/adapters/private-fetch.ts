@@ -73,10 +73,13 @@ export async function privateFetch(
 	if (response.status === 401) {
 		throw new PrivateApiError("auth_rejected");
 	}
+	if (passthroughStatuses.includes(response.status)) {
+		return response;
+	}
 	if (response.status === 503) {
 		throw new PrivateApiError("auth_unavailable");
 	}
-	if (!response.ok && !passthroughStatuses.includes(response.status)) {
+	if (!response.ok) {
 		throw new PrivateApiError("request_failed");
 	}
 	return response;

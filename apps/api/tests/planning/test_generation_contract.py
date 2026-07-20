@@ -60,6 +60,21 @@ def valid_block() -> dict:
     }
 
 
+def test_json_schema_explicitly_documents_cross_field_generation_rules():
+    schema = GeneratedTrainingBlock.model_json_schema(mode="validation")
+    session_schema = schema["$defs"]["GeneratedTrainingSession"]
+    description = " ".join(session_schema["description"].split())
+    distance_schema = session_schema["properties"]["planned_distance_kilometers"]
+
+    assert "target_rpe_min <= target_rpe_max" in description
+    assert "Run sessions require at least one intensity segment" in description
+    assert "exactly equal planned_duration_minutes" in description
+    assert "Non-run sessions require intensity_segments to be empty" in description
+    assert "base-10 decimal string" in distance_schema["description"]
+    assert "floats and booleans are forbidden" in distance_schema["description"]
+    assert distance_schema["type"] == "string"
+
+
 def test_accepts_and_serializes_a_realistic_provider_neutral_block():
     block = GeneratedTrainingBlock.model_validate(valid_block())
 

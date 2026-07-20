@@ -1,4 +1,6 @@
 import json
+import logging
+import os
 import traceback
 from copy import deepcopy
 from datetime import date
@@ -138,6 +140,17 @@ def parsed_response(parsed: object, *, status: str = "completed") -> object:
             )
         ],
     )
+
+
+class DumpableResponse:
+    def __init__(self, parsed: GeneratedTrainingBlock) -> None:
+        self.status = "completed"
+        self.output_parsed = parsed
+        self.output = []
+
+    def model_dump(self, *, mode: str) -> dict[str, object]:
+        assert mode == "json"
+        return {"id": "response_fake", "status": self.status, "private": "raw-output"}
 
 
 def refusal_response(
@@ -355,6 +368,340 @@ def test_provider_rejects_non_provider_context_at_runtime(value: object) -> None
 
     with pytest.raises(TypeError, match="provider_generation_context_required"):
         OpenAITrainingBlockProvider(FakeClient()).generate(value)  # type: ignore[arg-type]
+
+
+def provider_record(
+    caplog: pytest.LogCaptureFixture, event_name: str
+) -> logging.LogRecord:
+    matches = [
+        record
+        for record in caplog.records
+        if getattr(record, "event_name", None) == event_name
+    ]
+    assert len(matches) == 1
+    return matches[0]
+
+
+def assert_safe_provider_record(
+    record: logging.LogRecord,
+    *,
+    event_name: str,
+    outcome: str,
+    secrets: tuple[str, ...],
+) -> None:
+    assert record.getMessage().startswith(event_name)
+    assert record.event_name == event_name  # type: ignore[attr-defined]
+    assert record.provider == "openai"  # type: ignore[attr-defined]
+    assert record.operation == "training_block.generate"  # type: ignore[attr-defined]
+    assert record.model == PINNED_OPENAI_MODEL  # type: ignore[attr-defined]
+    assert record.outcome == outcome  # type: ignore[attr-defined]
+    assert isinstance(record.elapsed_ms, int)  # type: ignore[attr-defined]
+    assert record.elapsed_ms >= 0  # type: ignore[attr-defined]
+    assert record.exc_info is None
+    standard_fields = set(vars(logging.LogRecord("", 0, "", 0, "", (), None)))
+    custom_fields = {
+        key: value
+        for key, value in vars(record).items()
+        if key not in standard_fields and key not in {"message", "asctime"}
+    }
+    assert set(custom_fields) <= {
+        "event_name",
+        "provider",
+        "operation",
+        "model",
+        "outcome",
+        "elapsed_ms",
+        "exception_class",
+        "http_status",
+        "provider_error_code",
+        "invalid_reason",
+    }
+    emitted = record.getMessage() + repr(custom_fields)
+    for secret in secrets:
+        assert secret not in emitted
+
+
+def test_logs_safe_timeout_observability(caplog: pytest.LogCaptureFixture) -> None:
+    from app.core.ai.openai_training_block import OpenAITrainingBlockProvider
+
+    raw_url = "https://example.test/authorization-secret"
+    error = openai.APITimeoutError(request=httpx.Request("POST", raw_url))
+    with caplog.at_level(logging.ERROR, logger="app.core.ai.openai_training_block"):
+        with pytest.raises(Exception, match="^generation_timeout$"):
+            OpenAITrainingBlockProvider(FakeClient(error=error)).generate(context())
+
+    record = provider_record(caplog, "kaito.openai_training_block.timeout")
+    assert record.exception_class == "APITimeoutError"  # type: ignore[attr-defined]
+    assert_safe_provider_record(
+        record,
+        event_name="kaito.openai_training_block.timeout",
+        outcome="timeout",
+        secrets=(raw_url, "authorization-secret"),
+    )
+
+
+def test_logs_safe_api_error_metadata(caplog: pytest.LogCaptureFixture) -> None:
+    from app.core.ai.openai_training_block import OpenAITrainingBlockProvider
+
+    raw_message = "provider-payload-secret"
+    error = openai.APIError(
+        raw_message,
+        request=httpx.Request("POST", "https://example.test"),
+        body={"api_key": "secret-key", "prompt": "private-prompt"},
+    )
+    error.status_code = 429  # type: ignore[attr-defined]
+    error.code = "rate_limit_exceeded"  # type: ignore[attr-defined]
+    with caplog.at_level(logging.ERROR, logger="app.core.ai.openai_training_block"):
+        with pytest.raises(Exception, match="^generation_provider_unavailable$"):
+            OpenAITrainingBlockProvider(FakeClient(error=error)).generate(context())
+
+    record = provider_record(caplog, "kaito.openai_training_block.api_error")
+    assert record.exception_class == "APIError"  # type: ignore[attr-defined]
+    assert record.http_status == 429  # type: ignore[attr-defined]
+    assert record.provider_error_code == "rate_limit_exceeded"  # type: ignore[attr-defined]
+    assert_safe_provider_record(
+        record,
+        event_name="kaito.openai_training_block.api_error",
+        outcome="api_error",
+        secrets=(raw_message, "secret-key", "private-prompt", "api_key"),
+    )
+
+
+def test_rejects_untrusted_provider_error_code_from_logs(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    from app.core.ai.openai_training_block import OpenAITrainingBlockProvider
+
+    secret_code = "sk-production-api-key-secret"
+    error = openai.APIError(
+        "upstream error",
+        request=httpx.Request("POST", "https://example.test"),
+        body=None,
+    )
+    error.code = secret_code  # type: ignore[attr-defined]
+    with caplog.at_level(logging.ERROR, logger="app.core.ai.openai_training_block"):
+        with pytest.raises(Exception, match="^generation_provider_unavailable$"):
+            OpenAITrainingBlockProvider(FakeClient(error=error)).generate(context())
+
+    record = provider_record(caplog, "kaito.openai_training_block.api_error")
+    assert not hasattr(record, "provider_error_code")
+    assert secret_code not in record.getMessage()
+
+
+def test_logs_safe_refusal_observability(caplog: pytest.LogCaptureFixture) -> None:
+    from app.core.ai.openai_training_block import OpenAITrainingBlockProvider
+
+    response = refusal_response()
+    response.prompt = "private-prompt"  # type: ignore[attr-defined]
+    with caplog.at_level(logging.WARNING, logger="app.core.ai.openai_training_block"):
+        with pytest.raises(Exception, match="^generation_refused$"):
+            OpenAITrainingBlockProvider(FakeClient(response)).generate(context())
+
+    record = provider_record(caplog, "kaito.openai_training_block.refusal")
+    assert_safe_provider_record(
+        record,
+        event_name="kaito.openai_training_block.refusal",
+        outcome="refusal",
+        secrets=("raw refusal details", "private-prompt", "max_output_tokens"),
+    )
+
+
+@pytest.mark.parametrize(
+    ("result", "error", "invalid_reason", "secret"),
+    [
+        (
+            SimpleNamespace(
+                status="incomplete",
+                incomplete_details=SimpleNamespace(reason="private-provider-reason"),
+                output=[],
+            ),
+            None,
+            "incomplete_status",
+            "private-provider-reason",
+        ),
+        (
+            None,
+            ValueError("raw-response-output-secret"),
+            "parse_error",
+            "raw-response-output-secret",
+        ),
+    ],
+)
+def test_logs_safe_invalid_response_observability(
+    caplog: pytest.LogCaptureFixture,
+    result: object,
+    error: Exception | None,
+    invalid_reason: str,
+    secret: str,
+) -> None:
+    from app.core.ai.openai_training_block import OpenAITrainingBlockProvider
+
+    with caplog.at_level(logging.ERROR, logger="app.core.ai.openai_training_block"):
+        with pytest.raises(Exception, match="^generation_invalid_response$"):
+            OpenAITrainingBlockProvider(FakeClient(result, error)).generate(context())
+
+    record = provider_record(caplog, "kaito.openai_training_block.invalid_response")
+    assert record.invalid_reason == invalid_reason  # type: ignore[attr-defined]
+    assert_safe_provider_record(
+        record,
+        event_name="kaito.openai_training_block.invalid_response",
+        outcome="invalid_response",
+        secrets=(secret,),
+    )
+
+
+def test_logs_safe_success_timing_without_generated_output(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    from app.core.ai.openai_training_block import OpenAITrainingBlockProvider
+
+    payload = valid_payload()
+    output_secret = "private-generated-coach-output"
+    payload["coach_advice"] = output_secret
+    block = GeneratedTrainingBlock.model_validate(payload)
+    with caplog.at_level(logging.INFO, logger="app.core.ai.openai_training_block"):
+        result = OpenAITrainingBlockProvider(
+            FakeClient(parsed_response(block))
+        ).generate(context())
+
+    assert result is block
+    record = provider_record(caplog, "kaito.openai_training_block.completed")
+    assert_safe_provider_record(
+        record,
+        event_name="kaito.openai_training_block.completed",
+        outcome="completed",
+        secrets=(output_secret, "Aerobic durability", "Develop endurance"),
+    )
+
+
+def test_local_diagnostic_captures_exact_provider_exchange_and_uses_private_files(
+    monkeypatch: pytest.MonkeyPatch, tmp_path,
+) -> None:
+    from openai.lib._parsing._responses import type_to_text_format_param
+
+    from app.core.ai.openai_training_block import OpenAITrainingBlockProvider
+    from app.observability.training_generation import (
+        DIAGNOSTIC_DIRECTORY_ENV,
+        training_generation_attempt,
+    )
+
+    diagnostic_dir = tmp_path / "diagnostics"
+    monkeypatch.setenv(DIAGNOSTIC_DIRECTORY_ENV, str(diagnostic_dir))
+    block = GeneratedTrainingBlock.model_validate(valid_payload())
+    client = FakeClient(DumpableResponse(block))
+
+    with training_generation_attempt(1):
+        assert OpenAITrainingBlockProvider(client).generate(context()) is block
+
+    artifacts = list(diagnostic_dir.glob("*.json"))
+    assert len(artifacts) == 1
+    artifact = json.loads(artifacts[0].read_text())
+    call = client.responses.calls[0]
+    assert artifact["prompt"] == call["input"]
+    assert artifact["structured_schema"] == type_to_text_format_param(
+        GeneratedTrainingBlock
+    )
+    assert artifact["raw_response"] == {
+        "id": "response_fake",
+        "status": "completed",
+        "private": "raw-output",
+    }
+    assert artifact["parsed_training_block"] == block.model_dump(mode="json")
+    assert artifact["correlation"]["attempt"] == 1
+    assert artifact["correlation"]["model"] == PINNED_OPENAI_MODEL
+    assert artifact["correlation"]["prompt_version"] == PROMPT_VERSION
+    assert artifact["outcome"] == "provider_completed"
+    assert artifact["accepted"] is None
+    assert artifact["violations"] == []
+    assert isinstance(artifact["timestamp"], str)
+    assert isinstance(artifact["elapsed_ms"], int)
+    if os.name == "posix":
+        assert artifacts[0].stat().st_mode & 0o777 == 0o600
+        assert diagnostic_dir.stat().st_mode & 0o777 == 0o700
+
+
+def test_local_diagnostic_is_disabled_by_default_and_rejects_relative_directory(
+    monkeypatch: pytest.MonkeyPatch, tmp_path,
+) -> None:
+    from app.core.ai.openai_training_block import OpenAITrainingBlockProvider
+    from app.observability.training_generation import DIAGNOSTIC_DIRECTORY_ENV
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv(DIAGNOSTIC_DIRECTORY_ENV, raising=False)
+    block = GeneratedTrainingBlock.model_validate(valid_payload())
+    OpenAITrainingBlockProvider(FakeClient(DumpableResponse(block))).generate(context())
+    assert list(tmp_path.iterdir()) == []
+
+    monkeypatch.setenv(DIAGNOSTIC_DIRECTORY_ENV, "relative-diagnostics")
+    OpenAITrainingBlockProvider(FakeClient(DumpableResponse(block))).generate(context())
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_local_diagnostic_provider_failures_are_sanitized_and_never_collide(
+    monkeypatch: pytest.MonkeyPatch, tmp_path,
+) -> None:
+    from app.core.ai.openai_training_block import OpenAITrainingBlockProvider
+    from app.observability.training_generation import (
+        DIAGNOSTIC_DIRECTORY_ENV,
+        training_generation_attempt,
+    )
+
+    diagnostic_dir = tmp_path / "diagnostics"
+    monkeypatch.setenv(DIAGNOSTIC_DIRECTORY_ENV, str(diagnostic_dir))
+    secret_message = "raw-provider-body-secret"
+    secret_url = "https://example.test/private-url-secret"
+    errors = []
+    for attempt in (1, 2):
+        error = openai.APIError(
+            secret_message,
+            request=httpx.Request("POST", secret_url),
+            body={"api_key": "secret-key", "body": "arbitrary-error-body"},
+        )
+        error.status_code = 503  # type: ignore[attr-defined]
+        error.code = "server_error"  # type: ignore[attr-defined]
+        errors.append(error)
+        with training_generation_attempt(attempt):
+            with pytest.raises(Exception, match="^generation_provider_unavailable$"):
+                OpenAITrainingBlockProvider(FakeClient(error=error)).generate(context())
+
+    artifacts = sorted(diagnostic_dir.glob("*.json"))
+    assert len(artifacts) == 2
+    assert artifacts[0].name != artifacts[1].name
+    assert all(path.stat().st_size > 0 for path in artifacts)
+    payloads = [json.loads(path.read_text()) for path in artifacts]
+    assert {payload["correlation"]["attempt"] for payload in payloads} == {1, 2}
+    for payload in payloads:
+        assert payload["failure"] == {
+            "category": "api_error",
+            "status": 503,
+            "code": "server_error",
+        }
+        assert payload["raw_response"] is None
+        serialized = json.dumps(payload)
+        for secret in (
+            secret_message,
+            secret_url,
+            "private-url-secret",
+            "secret-key",
+            "api_key",
+            "arbitrary-error-body",
+        ):
+            assert secret not in serialized
+
+
+def test_generated_contract_uses_openai_compatible_decimal_schema() -> None:
+    from openai.lib._parsing._responses import type_to_text_format_param
+
+    text_format = type_to_text_format_param(GeneratedTrainingBlock)
+    session_schema = text_format["schema"]["$defs"]["GeneratedTrainingSession"]
+    distance_schema = session_schema["properties"][
+        "planned_distance_kilometers"
+    ]
+
+    assert distance_schema["type"] == "string"
+    assert "anyOf" not in distance_schema
+    assert "pattern" not in distance_schema
+    assert "(?!" not in json.dumps(text_format["schema"])
 
 
 def test_generated_contract_is_compatible_with_sdk_structured_schema_and_parsing(

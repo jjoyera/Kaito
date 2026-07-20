@@ -1,3 +1,4 @@
+import json
 from contextlib import contextmanager
 from datetime import UTC, datetime
 
@@ -176,6 +177,76 @@ def test_semantically_invalid_then_valid_retries_once_with_identical_context():
     assert len(provider.contexts) == 2
     assert provider.contexts[0] is provider.contexts[1]
     assert violations_for(result, generate_context(provider.contexts[0])) == ()
+
+
+def test_diagnostics_append_each_attempts_semantic_violations_and_acceptance(
+    monkeypatch: pytest.MonkeyPatch, tmp_path,
+):
+    from app.observability.training_generation import (
+        DIAGNOSTIC_DIRECTORY_ENV,
+        capture_provider_attempt,
+    )
+
+    class DiagnosticProvider(Provider):
+        def generate(self, context):
+            result = super().generate(context)
+            capture_provider_attempt(
+                prompt_version="training_block.v1",
+                model="gpt-test",
+                prompt="exact rendered prompt",
+                structured_schema={"type": "json_schema"},
+                raw_response={"id": f"response-{len(self.contexts)}"},
+                parsed=result,
+                elapsed_ms=7,
+            )
+            return result
+
+    diagnostic_dir = tmp_path / "diagnostics"
+    monkeypatch.setenv(DIAGNOSTIC_DIRECTORY_ENV, str(diagnostic_dir))
+    repository = Repository()
+    transactions = Transactions(repository)
+    provider = DiagnosticProvider(
+        [candidate(approach="mode_z"), candidate()], transactions
+    )
+
+    result = generate_validated_training_block(
+        UserContext("verified-owner"),
+        transactions,
+        provider,
+        current_instant=lambda: datetime(2026, 7, 1, 10, tzinfo=UTC),
+    )
+
+    assert result.applied_approach == "kaio_path"
+    payloads = sorted(
+        (json.loads(path.read_text()) for path in diagnostic_dir.glob("*.json")),
+        key=lambda payload: payload["correlation"]["attempt"],
+    )
+    assert len(payloads) == 2
+    assert payloads[0]["accepted"] is False
+    assert payloads[0]["outcome"] == "rejected"
+    assert payloads[0]["violations"]
+    violation = payloads[0]["violations"][0]
+    assert violation["code"] == "applied_approach_mismatch"
+    assert set(violation) == {
+        "code",
+        "week_number",
+        "expected_week_number",
+        "session_index",
+        "actual_kilometers",
+        "expected_kilometers",
+        "scheduled_date",
+        "weekday",
+        "actual_minutes",
+        "expected_minutes",
+        "actual_count",
+        "expected_count",
+        "phase",
+        "expected_phase",
+    }
+    assert payloads[1]["accepted"] is True
+    assert payloads[1]["outcome"] == "accepted"
+    assert payloads[1]["violations"] == []
+    assert payloads[0]["diagnostic_id"] != payloads[1]["diagnostic_id"]
 
 
 def test_second_semantically_invalid_candidate_fails_safely_after_two_calls():

@@ -10,6 +10,7 @@ from pydantic import ValidationError
 
 from app.modules.auth.context import UserContext
 from app.modules.planning import repository as planning_repository
+from app.modules.planning.generated_block_policy import GENERATED_BLOCK_SPORTS_POLICY
 from app.modules.planning.generation_context import (
     GenerationContextSourceNotFound,
     GenerationWindowUnavailable,
@@ -335,54 +336,119 @@ def test_unrelated_safety_code_does_not_invent_horizon_load_block():
     assert result.provider_context.safety.load_increase_blocked_for_horizon is True
 
 
+def test_provider_rules_cover_every_model_influenceable_validator_family():
+    result, _, _ = assemble(date(2026, 7, 8))
+    rules = result.provider_context.rules
+
+    assert rules.exact_generated_week_count == len(result.provider_context.weeks)
+    assert rules.required_week_numbers == tuple(
+        week.week_number for week in result.provider_context.weeks
+    )
+    assert rules.applied_approach_must_equal_authorized is True
+    assert rules.session_dates_must_be_within_week_window is True
+    assert rules.session_dates_must_not_exceed_goal_date is True
+    assert rules.sessions_must_use_available_weekdays is True
+    assert rules.daily_session_minutes_are_aggregated is True
+    assert rules.daily_session_minutes_must_not_exceed_available_minutes is True
+    assert rules.weekly_running_distance_must_equal_target is True
+    assert rules.run_sessions_must_respect_longest_outing_limits is True
+    assert rules.load_increase_blocked_means_do_not_exceed_provided_targets is True
+    assert rules.target_rpe_min_must_not_exceed_max is True
+    assert rules.run_intensity_segments_required is True
+    assert rules.run_intensity_segment_minutes_must_equal_duration is True
+    assert rules.non_run_intensity_segments_must_be_empty is True
+    assert rules.kilometer_representation == "base_10_decimal_string"
+    assert rules.kilometer_floats_and_booleans_forbidden is True
+
+
+def test_provider_sports_rules_share_runtime_constants_and_resolve_not_feasible():
+    result, _, _ = assemble(date(2026, 7, 8))
+    rules = result.provider_context.rules.sports_policy
+    policy = GENERATED_BLOCK_SPORTS_POLICY
+
+    assert rules.minimum_low_percent == policy.minimum_low_percent
+    assert rules.maximum_high_percent == policy.maximum_high_percent
+    assert (
+        rules.maximum_threshold_and_high_percent
+        == policy.maximum_threshold_and_high_percent
+    )
+    assert rules.intensity_percentages_apply_across_entire_block is True
+    assert rules.minimum_strength_minutes == policy.minimum_strength_minutes
+    assert rules.minimum_strength_duration_applies_to_every_strength_session is True
+    assert (
+        rules.minimum_strength_sessions_when_required
+        == policy.minimum_strength_sessions_when_required
+    )
+    assert rules.maximum_strength_sessions_per_week == 1
+    assert set(rules.strength_minimum_removing_restriction_codes) == {
+        "no_demanding_sessions",
+        "favor_recovery_rest_or_gentle_activity",
+    }
+    assert rules.high_intensity_segment_is_demanding is True
+    assert rules.key_threshold_segment_is_demanding is True
+    assert rules.demanding_target_rpe_max_at_least == 8
+    assert rules.key_session_demanding_target_rpe_max_at_least == 7
+    assert rules.not_feasible_forbids_demanding_sessions is True
+    assert rules.recovery_weeks_forbid_demanding_sessions is True
+    assert rules.no_demanding_sessions_restriction_code == "no_demanding_sessions"
+    assert rules.reduced_demanding_restriction_code == (
+        "reduce_demanding_session_intensity_or_duration"
+    )
+    assert rules.reduced_limit_forbids_high_intensity is True
+    assert rules.reduced_limit_forbids_key_sessions is True
+    assert rules.reduced_limit_target_rpe_max_at_least == 8
+    assert rules.maximum_demanding_sessions_across_taper_weeks == 1
+    assert result.provider_context.readiness.status == "not_feasible"
+    assert all(
+        week.demanding_sessions_forbidden for week in result.provider_context.weeks
+    )
+
+
 def test_provider_dto_has_strict_stable_shape_and_decimal_string_serialization():
     result, _, _ = assemble(date(2026, 7, 8))
     payload = json.loads(result.provider_context.model_dump_json())
 
-    assert payload == {
-        "authorized_approach": "kaio_path",
-        "generation_window_start": "2026-07-06",
-        "goal_date": "2026-07-08",
-        "goal": {
-            "modality": "trail",
-            "target_distance_kilometers": "50.0",
-            "positive_elevation_meters": "2000",
-            "km_effort": "70.00",
-        },
-        "readiness": {
-            "status": "not_feasible",
-            "minimum_peak_weekly_minutes": 432,
-            "required_peak_loading_weeks": 5,
-            "reason_codes": [
-                "calendar_missing_required_peak_loading_weeks",
-                "weekly_availability_below_minimum_peak_minutes",
-                "current_load_below_target_with_no_build_weeks",
-            ],
-        },
-        "safety": {
-            "restriction_codes": [],
-            "load_increase_blocked_for_horizon": False,
-        },
-        "availability": [
-            {"weekday": "monday", "minutes": 75},
-            {"weekday": "tuesday", "minutes": 75},
-            {"weekday": "thursday", "minutes": 75},
-            {"weekday": "saturday", "minutes": 75},
-        ],
-        "weeks": [
-            {
-                "week_number": 1,
-                "window_start": "2026-07-06",
-                "window_end": "2026-07-08",
-                "phase": "taper",
-                "readiness_role": "taper",
-                "target_running_kilometers": "15.00",
-                "maximum_longest_outing_kilometers": "8.75",
-                "maximum_longest_outing_duration_minutes": 60,
-                "load_increase_blocked": False,
-            }
-        ],
+    assert set(payload) == {
+        "authorized_approach",
+        "generation_window_start",
+        "goal_date",
+        "goal",
+        "readiness",
+        "safety",
+        "availability",
+        "rules",
+        "weeks",
     }
+    assert payload["authorized_approach"] == "kaio_path"
+    assert payload["goal"] == {
+        "modality": "trail",
+        "target_distance_kilometers": "50.0",
+        "positive_elevation_meters": "2000",
+        "km_effort": "70.00",
+    }
+    assert payload["availability"] == [
+        {"weekday": "monday", "minutes": 75},
+        {"weekday": "tuesday", "minutes": 75},
+        {"weekday": "thursday", "minutes": 75},
+        {"weekday": "saturday", "minutes": 75},
+    ]
+    assert payload["weeks"] == [
+        {
+            "week_number": 1,
+            "window_start": "2026-07-06",
+            "window_end": "2026-07-08",
+            "phase": "taper",
+            "readiness_role": "taper",
+            "target_running_kilometers": "15.00",
+            "maximum_longest_outing_kilometers": "8.75",
+            "maximum_longest_outing_duration_minutes": 60,
+            "load_increase_blocked": False,
+            "strength_session_required": False,
+            "demanding_sessions_forbidden": True,
+            "reduced_demanding_limit_active": False,
+            "taper_demanding_session_limit_applies": True,
+        }
+    ]
 
 
 def test_internal_and_provider_contexts_are_immutable_and_forbid_extra_fields():
