@@ -1,5 +1,7 @@
 # Kaito - Product Vision
 
+> **Naturaleza del documento:** visión objetivo del producto. No describe por sí sola el estado entregado. El estado operativo canónico y las limitaciones del MVP están en [`../README.md`](../README.md).
+
 ## Visión del producto
 
 Kaito quiere ayudar a corredores de ultradistancia a entrenar con más claridad, continuidad y adaptación, reduciendo la dependencia de planes genéricos que no responden a la realidad diaria del atleta.
@@ -54,11 +56,11 @@ La primera experiencia de uso de Kaito se centrará en validar el flujo principa
 10. El usuario puede marcar entrenamientos como completados, fallidos o mal realizados.
 11. Kaito recalcula el plan si detecta desviaciones relevantes.
 
-## Alcance del MVP
+## Alcance objetivo del producto
 
-El MVP se centra en validar si un corredor puede crear, seguir y reajustar un plan de entrenamiento de forma comprensible dentro de una aplicación web.
+La visión del MVP se centra en validar si un corredor puede crear, seguir y, en una fase posterior, reajustar un plan de entrenamiento de forma comprensible dentro de una aplicación web.
 
-El alcance inicial incluye:
+La siguiente lista combina capacidades entregadas y objetivos futuros; la matriz de estado vigente se mantiene en el README raíz:
 
 - Registro y login con email y contraseña.
 - Onboarding pregunta a pregunta.
@@ -118,8 +120,8 @@ El MVP será exitoso si permite demostrar que:
 
 La primera versión de Kaito trabajará con usuarios registrados mediante email y contraseña, un objetivo principal por usuario y un plan activo.
 
-Además, el proyecto podrá incluir un usuario demo para facilitar que los profesores prueben el TFM sin tener que crear datos desde cero. Este usuario demo no sustituye al flujo real de registro/login, sino que sirve como apoyo para evaluación y demostración.
+La visión contempló incluir un usuario demo para facilitar la evaluación del TFM. **Ese usuario demo público no está entregado y no existen credenciales públicas funcionales.** Las cadenas usadas por fixtures automatizados tampoco son credenciales. Una futura cuenta demo deberá aprovisionarse de forma controlada y no sustituirá el flujo real de registro/login.
 
 El objetivo de esta decisión es validar el flujo principal del producto: onboarding, generación del plan, visualización en dashboard, seguimiento de entrenamientos y recálculo básico ante desviaciones.
 
-En el MVP, la adaptación del plan será básica y estará orientada a demostrar el comportamiento del sistema ante cambios simples de cumplimiento. No se plantea como una validación deportiva completa ni como sustituto profesional de un entrenador humano.
+En una fase futura, la adaptación del plan será básica y estará orientada a demostrar el comportamiento del sistema ante cambios simples de cumplimiento. Esta capacidad no está entregada y no se plantea como validación deportiva completa ni como sustituto profesional de un entrenador humano.

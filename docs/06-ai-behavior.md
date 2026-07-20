@@ -2,7 +2,7 @@
 
 ## 1) Propósito
 
-Este documento define cómo debe comportarse la IA de Kaito en el MVP para **generar, explicar y reajustar** planes de entrenamiento de corredores de larga distancia.
+Este documento define cómo debe comportarse la IA de Kaito al **generar** planes y conserva como objetivo futuro su participación en explicaciones adicionales y reajustes. La entrega actual no incluye logs ni reajuste de planes.
 
 La IA debe ayudar al usuario a mantener claridad y continuidad, dentro de límites de seguridad y alcance funcional del producto.
 
@@ -15,15 +15,11 @@ falla esa validación y persiste/activa el resultado de forma atómica. `GET
 /planning/active` devuelve el plan activo propio con orden estable y sin IDs ni metadata
 interna.
 
-Ambas rutas requieren autenticación y exponen outcomes seguros de las familias `401`,
-`404`, `409`, `422` y `503`. El dashboard autenticado `/plan` ya consume el plan activo y
-muestra únicamente datos planificados; la UI de generación y el E2E completo permanecen
-pendientes. Las pruebas usan dobles deterministas: no se ha realizado una llamada real a
-OpenAI ni demostrado un plan real generado en esta rama.
+Ambas rutas requieren autenticación y exponen outcomes seguros de las familias `401`, `404`, `409`, `422` y `503`. La web conecta `/plan/generating` con la generación síncrona y `/plan` con la lectura activa; el dashboard muestra únicamente datos planificados. Las pruebas usan dobles deterministas: no se ha documentado una llamada autenticada real a OpenAI ni preparación para producción.
 
 ## 2) Responsabilidades de la IA
 
-La IA en Kaito MVP debe:
+La generación inicial está entregada. Las responsabilidades de reajuste y mensajes basados en cumplimiento son objetivo futuro:
 
 1. Generar el plan inicial a partir del onboarding validado.
 2. Explicar el propósito de cada `TrainingSession` en lenguaje claro.
@@ -123,9 +119,9 @@ al dominio ni al frontend. FastAPI publica el contrato en `/docs`, `/redoc` y
 5. No compensar carga perdida de forma agresiva.
 6. Mantenerse dentro del alcance MVP (sin razonamiento clínico avanzado).
 
-## 8) Comportamiento de reajuste
+## 8) Comportamiento de reajuste (objetivo futuro)
 
-La IA debe aplicar la política de `03-plan-adjustment-policy.md` como fuente normativa.
+Cuando se implemente esta capacidad, la IA deberá aplicar la política de `03-plan-adjustment-policy.md` como fuente normativa. Actualmente no existen logs, detección de desvíos ni persistencia de reajustes.
 
 ### Qué sí puede cambiar
 
@@ -173,7 +169,7 @@ Este comportamiento se considera correctamente definido para MVP si:
 - No se observan invenciones de datos en outputs de IA.
 - El flujo interno valida antes de persistir y solo repite por un primer fallo de validación.
 - Un fallo de persistencia no deja un plan parcial ni sustituye el activo anterior.
-- La API de planes de entrenamiento está implementada, pero no se afirma disponibilidad UI, éxito E2E real con OpenAI ni preparación para producción antes de completar la experiencia web y el smoke test pendiente.
+- La API y la UI de generación/consulta están conectadas, pero no se afirma éxito con OpenAI real ni preparación para producción antes de completar el smoke test y la validación operativa pendientes.
 
 ## 12) Referencias
 
