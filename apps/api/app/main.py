@@ -85,7 +85,7 @@ if web_settings.allowed_origins:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=list(web_settings.allowed_origins),
-        allow_methods=["GET", "PUT"],
+        allow_methods=["GET", "POST", "PUT"],
         allow_headers=["authorization", "content-type"],
     )
 
