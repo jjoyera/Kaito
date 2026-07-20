@@ -4,7 +4,7 @@
 
 Este documento define el **modelo de datos conceptual/lógico** del MVP de Kaito.
 
-Su objetivo es alinear producto, journeys y requisitos funcionales sobre **qué información existe, cómo se relaciona y qué reglas debe respetar**, sin fijar todavía detalles de implementación (ORM, SQL concreto, índices, particiones o estructura física final).
+Su objetivo es alinear producto, journeys y requisitos funcionales sobre **qué información existe, cómo se relaciona y qué reglas debe respetar**. El modelo incluye conceptos objetivo todavía no persistidos; la sección siguiente separa explícitamente el esquema físico entregado.
 
 ## 2) Alcance
 
@@ -17,7 +17,19 @@ Su objetivo es alinear producto, journeys y requisitos funcionales sobre **qué 
 - Registro de ejecución real de cada sesión (cumplimiento + métricas simples).
 - Eventos de reajuste básico del plan.
 
-## 3) Entidades núcleo
+## 3) Persistencia física entregada
+
+Las migraciones de `supabase/migrations/` son la autoridad de esquema y RLS. La persistencia actual se concentra en:
+
+| Tabla | Estado |
+| --- | --- |
+| `onboarding_snapshots` | Entregada; snapshot JSONB owner-bound del onboarding. |
+| `training_plans` | Entregada; borrador y plan activo/archivado con enfoque y rango. |
+| `training_sessions` | Entregada; sesiones planificadas del bloque activo. |
+
+No existen tablas o módulos físicos entregados para `TrainingLog`, `TrainingLogHistory`, `PlanAdjustment`, `insights` ni un historial funcional de reajustes. Tampoco se usa Alembic. Las entidades correspondientes que aparecen debajo son **modelo conceptual futuro**, no afirmaciones de persistencia actual.
+
+## 4) Entidades núcleo
 
 | Entidad | Propósito | Cardinalidad clave |
 | --- | --- | --- |
@@ -32,7 +44,7 @@ Su objetivo es alinear producto, journeys y requisitos funcionales sobre **qué 
 | `PlanAdjustment` | Registro de reajuste aplicado al plan | 1 plan → N reajustes |
 
 
-## 4) Detalle de entidades
+## 5) Detalle de entidades
 
 ### `User`
 
@@ -113,7 +125,7 @@ Su objetivo es alinear producto, journeys y requisitos funcionales sobre **qué 
 - **Relaciones**: conecta el plan anterior con la nueva versión reajustada; opcionalmente referencia logs/sesiones detonantes (`sourceLogIds` o equivalente lógico).
 - **Notas**: no busca trazabilidad clínica; sí explicabilidad funcional del reajuste MVP. El usuario puede consultar qué cambió respecto al plan anterior, aunque en MVP no se plantea mantener dos planes activos a la vez.
 
-## 5) Resumen de relaciones
+## 6) Resumen de relaciones
 
 - `User` 1 — 1 `RunnerProfile`
 - `User` 1 — N `TrainingPlan`
@@ -125,7 +137,7 @@ Su objetivo es alinear producto, journeys y requisitos funcionales sobre **qué 
 - `User` 1 — N `PlanApproachEligibility`
 - `TrainingPlan` 1 — N `PlanAdjustment` como plan origen o plan generado
 
-## 6) Contratos calculados de la base de generación
+## 7) Contratos calculados de la base de generación
 
 Estos resultados tipados alimentan el flujo implementado de generación y persistencia. Las tablas canónicas almacenan el plan y las sesiones validadas, no los cálculos intermedios de readiness:
 
@@ -136,7 +148,7 @@ Estos resultados tipados alimentan el flujo implementado de generación y persis
 | `ReadinessCalendar` | Semanas ordenadas `build|peak|recovery|taper`, huecos de carga disponibles y déficit temporal de semanas pico. |
 | `ReadinessCapacityAssessment` | Estado inicial `on_track|constrained|not_feasible`, brecha en minutos y códigos de motivo estables. No demuestra que una progresión concreta sea segura. |
 
-## 7) Reglas de datos / invariantes
+## 8) Reglas de datos / invariantes
 
 1. **Un solo plan activo y un solo borrador por usuario**.
 2. **Un objetivo principal por plan activo**.
@@ -160,7 +172,7 @@ Estos resultados tipados alimentan el flujo implementado de generación y persis
 17. **RLS separa canales**: `authenticated` puede leer sus propias filas de plan, con independencia del estado, y solo las sesiones de su plan activo; las filas ajenas y las escrituras directas quedan denegadas. `kaito_api_login` mantiene lecturas y escrituras owner-bound bajo claims verificados; `anon` y `PUBLIC` quedan denegados.
 18. **La evolución de esquema es aditiva**: se aplica mediante el historial de migraciones de Supabase sin reescribir migraciones ya aplicadas ni editar SQL manualmente en un entorno.
 
-## 8) Simplificaciones explícitas del MVP
+## 9) Simplificaciones explícitas del MVP
 
 - Sin gestión avanzada multi-temporada.
 - Sin múltiples objetivos principales simultáneos.
@@ -168,14 +180,14 @@ Estos resultados tipados alimentan el flujo implementado de generación y persis
 - Sin modelo de diagnóstico médico.
 - Sin roles avanzados (admin/coach/athlete multi-tenant).
 
-## 9) Decisiones tomadas
+## 10) Decisiones objetivo
 
 1. **Versionado de reajustes**: cada reajuste crea una nueva versión de `TrainingPlan` basada en el plan anterior. El plan previo queda disponible como histórico y comparación.
 2. **Granularidad del dolor/sensaciones**: el MVP usará enums simples para reducir fricción y facilitar reglas de reajuste.
 3. **Registro por sesión**: cada sesión tiene un único `TrainingLog` actual, pero editable. Las modificaciones se guardan en `TrainingLogHistory`.
 4. **Bloqueo de enfoques de plan**: las opciones no elegibles se muestran bloqueadas con explicación y se registran en `PlanApproachEligibility`. El usuario puede desbloquear enfoques superiores si progresa, cumple el plan y demuestra preparación suficiente.
 
-## 10) Referencias
+## 11) Referencias
 
 - [`00-product-vision.md`](00-product-vision.md)
 - [`02-user-journeys.md`](02-user-journeys.md)

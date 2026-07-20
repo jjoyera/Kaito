@@ -19,7 +19,7 @@ Se centra en **cómo se organiza el sistema** (fronteras, responsabilidades, flu
 | Microservicios | No (MVP) | Reducir complejidad operativa y de despliegue en etapa inicial. |
 | Base de datos | PostgreSQL gestionado por Supabase | Robustez relacional para planes/versionado y operación simplificada para TFM. |
 | Auth | Supabase Auth | Registro/login/sesión resueltos con proveedor gestionado y JWT estándar. |
-| Contrato de validación | Zod en frontend + Pydantic en backend | Validación temprana de UX y validación autoritativa en frontera API. |
+| Contrato de validación | Reglas TypeScript puras en frontend + Pydantic en backend | Validación temprana de UX y validación autoritativa en frontera API. |
 | Persistencia de onboarding | API protegida + SQLAlchemy runtime + JSONB/RLS de Supabase | El propietario se deriva del JWT; Supabase CLI es la única autoridad de esquema y RLS. |
 | Elegibilidad de enfoque | Política pura determinista en `planning` | Mantiene umbrales, precedencia de seguridad y códigos estables fuera del endpoint, la UI, persistencia y prompts. |
 | Base de generación | Contratos y políticas puras en `planning` | Separa contexto, proyección, demanda, calendario, capacidad y validación del bloque respecto del proveedor IA. |
@@ -35,8 +35,8 @@ Usuario
   │
   ▼
 apps/web (Next.js)
-  - UI/UX, onboarding, dashboard, calendario, logs
-  - Validación de formularios con Zod
+  - UI/UX, onboarding, generación, dashboard y calendarios planificados
+  - Validación de formularios mediante reglas TypeScript puras
   - Gestión de sesión con Supabase Auth (SDK cliente)
   │
   │ HTTPS + JWT (Supabase)
@@ -65,20 +65,18 @@ La regla de organización es **Screaming Architecture**: la estructura comunica 
 
 ```text
 apps/web/
-├── app/                             # Solo rutas y orquestación Next.js
+├── app/                             # Rutas y orquestación Next.js
 │   ├── page.tsx                     # Redirige `/` a `/login`
 │   ├── (auth)/                      # Login y registro
-│   └── (private)/onboarding/        # Ruta privada y composición
+│   └── (private)/                   # Onboarding, generación y plan activo
 └── features/
-    ├── auth/                        # Componentes, dominio, adaptadores e infraestructura
-    └── onboarding/
-        ├── _components/             # Intro, wizard y pasos
-        ├── _domain/                 # Validación y reglas puras
-        ├── _adapters/               # Contrato con el API
-        └── _use-cases/              # Carga, guardado y finalización
+    ├── auth/                        # Identidad y sesión Supabase
+    ├── onboarding/                  # Wizard de siete pasos y borrador
+    ├── planning/                    # Generación, dashboard y calendarios
+    └── product-routing/             # Decisión según estado funcional
 ```
 
-Auth y onboarding son capacidades reales. En onboarding, los Pasos 1–6 usan el diseño visual del recorrido lineal de siete pasos. El Paso 4 mantiene el estado de interacción local y proyecta solo el mapa disperso de minutos exactos; el Paso 6 completa el onboarding con el estado físico requerido y un detalle opcional normalizado. No hay progreso clicable ni autosave.
+Auth, onboarding, planning y product-routing son capacidades reales. El onboarding implementa siete pasos: los seis primeros recopilan y persisten contexto; el séptimo consulta elegibilidad y guarda la selección del enfoque. El Paso 4 proyecta solo el mapa disperso de minutos exactos. No hay progreso clicable ni autosave continuo.
 
 ### Forma ilustrativa cuando existan consumidores reales
 
@@ -110,14 +108,11 @@ No se crean árboles vacíos a partir de este ejemplo.
 │       │   ├── modules/
 │       │   │   ├── auth/            # Identidad y autenticación
 │       │   │   ├── runner_profile/  # Perfil deportivo del corredor
-│       │   │   ├── planning/        # Elegibilidad, generación, sesiones y reajuste/versionado
-│       │   │   ├── training_log/    # Registro real de entrenamientos
-│       │   │   ├── insights/        # KPIs, cumplimiento y cálculos de progreso
-│       │   └── shared/              # Código común muy controlado
-│       ├── tests/
-│       └── alembic/
+│       │   │   └── planning/        # Elegibilidad, generación y sesiones planificadas
+│       │   └── shared/              # Código común controlado
+│       └── tests/                    # Tests rápidos e integración Supabase local
 ├── packages/
-│   └── api-client/                  # Cliente generado desde OpenAPI
+│   └── api-client/                  # Placeholder reservado sin exports; integración generada futura
 ├── docs/                            # Documentación del TFM
 ├── openspec/                        # Artefactos SDD / especificaciones de cambios
 ├── docker/                          # Infraestructura local
@@ -132,18 +127,18 @@ Principio: separar por **frontera de aplicación** primero (`web` vs `api`) y po
 
 ### Responsabilidad
 
-`apps/web` resuelve experiencia de usuario: registro/login, onboarding, dashboard, detalle de sesión, carga de logs y visualización de KPIs.
+`apps/web` resuelve registro/login, onboarding, generación síncrona, dashboard del plan activo, próxima sesión y calendarios de sesiones planificadas. No carga logs ni calcula telemetría de entrenamientos realizados.
 
 ### Decisión y reglas de ownership
 
 - `apps/web/app/` contiene exclusivamente routing y orquestación de Next.js: rutas, layouts, `loading`/`error`, metadata y cableado de políticas de ruta. No contiene lógica de producto.
-- `apps/web/features/<capability>/` posee cada capacidad real. Auth y onboarding usan `_components/`, `_adapters/`, `_use-cases/` y, cuando hay reglas/tipos puros, `_domain/`.
+- `apps/web/features/<capability>/` posee cada capacidad real. Auth, onboarding, planning y product-routing usan las capas que justifican sus responsabilidades; no se crean carpetas mecánicamente.
 - `<feature>.container.tsx` es opcional y solo existe para orquestación genuina de múltiples concerns; nunca se añade mecánicamente.
 - `_infrastructure/` identifica plumbing de proveedores. En el alcance actual, los clientes Supabase pertenecen a `features/auth/_infrastructure/supabase/` y el fetch autenticado a `features/auth/_adapters/`.
 - `apps/web/shared/` solo recibe código consumido por **al menos dos features reales distintas**; auth y onboarding ya comparten únicamente las fronteras justificadas.
 - Se prohíben abstracciones compartidas especulativas, carpetas vacías de features futuras y cajones genéricos `utils`/`helpers`.
-- `app/(auth)/login/page.tsx`, `app/(auth)/register/page.tsx` y `app/(private)/onboarding/page.tsx` permanecen como orquestación de ruta e importan sus features.
-- `features/auth/_components/` contiene los formularios de acceso; `features/onboarding/` contiene componentes, dominio, adaptador API y casos de uso del flujo privado.
+- Las páginas de login, registro, onboarding, generación y plan permanecen como orquestación de ruta e importan sus features.
+- `features/auth` contiene acceso; `features/onboarding` el wizard; `features/planning` generación/dashboard; y `features/product-routing` la política de destinos.
 
 ### Reglas funcionales
 
@@ -159,13 +154,15 @@ Principio: separar por **frontera de aplicación** primero (`web` vs `api`) y po
 
 `apps/api` es dueño de los casos de uso de Kaito y de las reglas de dominio del MVP.
 
-### Modularidad por dominios (conceptual)
+### Modularidad por dominios
+
+Módulos entregados:
 
 - `auth`: validación de identidad y contexto de usuario.
 - `runner_profile`: onboarding y estado inicial del corredor.
-- `planning`: casos de uso de elegibilidad, generación inicial, sesiones y reajuste/versionado.
-- `training_log`: registro de cumplimiento y métricas simples.
-- `insights`: cálculo de KPIs, cumplimiento y progreso para dashboard.
+- `planning`: elegibilidad, borrador, generación, persistencia y lectura de sesiones planificadas.
+
+`training_log`, `insights`, reajuste/versionado y Alembic no existen en la implementación actual; permanecen como posibles capacidades futuras.
 
 La frontera IA implementada reparte el puerto neutral en `modules/planning` y el
 adaptador OpenAI y su prompt versionado en `core/ai`; no introduce un módulo de
@@ -268,7 +265,7 @@ repite como máximo una vez solo por ese tipo de rechazo y persiste/activa el re
 en una transacción. La API lo expone mediante `POST /planning/generate` y ofrece la
 lectura owner-bound ordenada en `GET /planning/active`. Los outcomes públicos se acotan a
 `401`, `404`, `409`, `422` y `503`; FastAPI publica `/docs`, `/redoc` y `/openapi.json`.
-El dashboard protegido `/plan` ya consume la lectura activa; la pantalla de generación y el E2E completo siguen pendientes.
+El dashboard protegido `/plan` consume la lectura activa y `/plan/generating` ejecuta la generación síncrona. Permanece pendiente una demostración reproducible con Supabase/OpenAI reales.
 
 ### Contexto controlado y fuentes
 
@@ -285,7 +282,7 @@ La IA solo usa contexto trazable del dominio MVP y reglas de:
 - La suma de distancia de carrera debe igualar exactamente la proyección autorizada de cada semana; las fechas deben pertenecer a su ventana y no superar el objetivo.
 - Cada sesión `run` debe respetar simultáneamente los máximos independientes de distancia y duración de su semana; esos máximos no se aplican a categorías no running.
 - Elegibilidad, demanda, calendario, capacidad y trayectoria son valores calculados por backend y quedan fuera de la salida del proveedor.
-- El rechazo posterior al proveedor, el segundo intento condicionado, la persistencia atómica y la exposición HTTP autenticada ya están implementados; la publicación en UI sigue pendiente.
+- El rechazo posterior al proveedor, el segundo intento condicionado, la persistencia atómica, la exposición HTTP autenticada y la UI de generación/consulta están implementados.
 
 ---
 
@@ -335,8 +332,8 @@ Capacidades entregadas:
 
 Pendiente:
 
-1. Conectar `/plan/generating` y las pruebas E2E del recorrido completo en la web.
-2. Un smoke test autenticado debe demostrar una generación real con OpenAI; las pruebas actuales usan dobles deterministas y no realizan llamadas al proveedor.
+1. Un smoke test autenticado debe demostrar una generación real con OpenAI; las pruebas actuales usan dobles deterministas y no realizan llamadas al proveedor.
+2. Documentar y validar el recorrido integral sobre Supabase y base de datos reales en un entorno reproducible.
 
 La configuración backend requiere `OPENAI_API_KEY`, fija
 `OPENAI_MODEL=gpt-5.5-2026-04-23` y usa `OPENAI_TIMEOUT_SECONDS=60` por defecto; acepta
@@ -344,7 +341,7 @@ cualquier timeout positivo y finito. La API síncrona no añade workers, colas, 
 ni infraestructura durable de reintentos, y su estado actual no acredita preparación
 para producción.
 
-### 10.4 Registro de entrenamiento + KPIs
+### 10.4 Registro de entrenamiento + KPIs (objetivo futuro no entregado)
 
 1. Usuario registra `TrainingLog` en `web`.
 2. `api` valida y persiste log/histórico.
@@ -354,7 +351,7 @@ para producción.
    - `weeklyLoad = SUM(sessionLoad)` por semana.
 4. `web` refresca estado de progreso.
 
-### 10.5 Reajuste y versionado de plan
+### 10.5 Reajuste y versionado de plan (objetivo futuro no entregado)
 
 1. `api` detecta desvío relevante según política.
 2. Si aplica, genera propuesta de ajuste con IA bajo guardrails.
@@ -377,7 +374,7 @@ para producción.
 
 ### Frontend (`apps/web`)
 
-- Pruebas de UI/flujo y validaciones de formularios (Zod + capa de presentación), incluidas las reglas locales del registro.
+- Pruebas de UI/flujo y reglas TypeScript de validación, incluidas las reglas locales del registro.
 - E2E con Playwright sobre login y registro: validación, overlay accesible, resultados Supabase normalizados, handoff a onboarding/login, bridge de confirmación de un solo uso, privacidad y cooldown.
 
 ### IA
@@ -396,9 +393,9 @@ para producción.
 
 ## 13) CI/CD y controles de seguridad (OWASP)
 
-### Pipeline (GitHub Actions)
+### Pipeline objetivo (GitHub Actions)
 
-En cada cambio relevante:
+Como objetivo de hardening, cada cambio relevante debería cubrir:
 
 1. Lint/format/check estático.
 2. Tests automatizados (backend, frontend, E2E críticos según rama/entorno).
@@ -417,7 +414,7 @@ En cada cambio relevante:
 
 - Docker como estrategia de estandarización de entorno para `web`, `api` y servicios necesarios.
 - Objetivo: paridad razonable local/CI/entornos de despliegue.
-- Los `Dockerfile` locales y `compose.yaml` ya definen los servicios `web` y `api`; no constituyen configuración de despliegue ni CD.
+- Los `Dockerfile` locales y `compose.yaml` definen solo `web` y `api`; no incluyen base de datos ni inyectan la configuración runtime requerida. Compose no constituye por sí solo un entorno local completo, despliegue ni CD.
 - La entrega hasta el Paso 6 coordina API y web sobre un estado limpio: las cinco respuestas retiradas no se traducen ni se conservan, `profile.restrictions` sigue eliminándose y no se reutiliza para el estado físico. No hay migración ni almacenamiento de duración base.
 
 ---
@@ -431,7 +428,7 @@ forman parte de la arquitectura implementada ni de la generación autenticada de
 
 ## 16) No-objetivos explícitos de la fase actual
 
-- No conectar todavía `/plan/generating` ni el E2E completo de generación y redirección.
+- No añadir ejecución asíncrona o durable a `/plan/generating`; la generación entregada permanece síncrona.
 - No introducir workers, colas, ejecución durable ni reintentos persistentes.
 - No añadir edición/versionado manual de planes, recálculo por `TrainingLog` ni reajuste automático.
 - No ampliar las validaciones deterministas hasta presentarlas como garantías deportivas avanzadas.

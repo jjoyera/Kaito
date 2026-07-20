@@ -1,6 +1,6 @@
 # Base de conocimiento de entrenamiento (MVP)
 
-Esta base resume el conocimiento operativo que Kaito usa para **generar, explicar y reajustar** planes de entrenamiento en trail, ultra-trail, backyard ultra y OCR. Prioriza decisiones accionables para producto MVP, con trazabilidad de fuentes y niveles de confianza.
+Esta base resume conocimiento y políticas para Trail y Ultra Trail en la generación entregada, y conserva Backyard Ultra, OCR, seguimiento y reajuste como líneas objetivo futuras. Prioriza decisiones accionables con trazabilidad de fuentes y niveles de confianza.
 
 ## 1) Propósito
 
@@ -107,10 +107,7 @@ Aplicación en Kaito:
 
 ### 6.1 Planificación determinista y adaptador OpenAI
 
-La capacidad implementada incluye contexto determinista, puerto neutral, adaptador
-OpenAI, orquestación, validación con una única repetición condicionada,
-persistencia/activación atómica y API autenticada de generación y lectura. La entrega UI,
-el dashboard, el E2E y el smoke test con OpenAI real siguen pendientes.
+La capacidad implementada incluye contexto determinista, puerto neutral, adaptador OpenAI, orquestación, validación con una única repetición condicionada, persistencia/activación atómica, API autenticada y UI conectada de generación/lectura. El smoke test autenticado con OpenAI real y la validación operativa reproducible siguen pendientes.
 
 #### Contrato neutral de bloque
 
@@ -241,15 +238,14 @@ Checklist mínimo de validación:
 4. **Datos trazables**: no hay campos inventados ni supuestos ocultos.
 5. **Estructura MVP**: sesiones con propósito, intensidad e instrucciones accionables.
 6. **Backyard/OCR específicos**: Backyard por vueltas/horas; OCR con componente de obstáculos/agarre.
-7. **Carga semanal actual (MVP)**: usar sRPE con `sessionLoad = actualDurationMin × rpe` y `weeklyLoad` como suma semanal de `sessionLoad`; mantener `feeling` como señal cualitativa complementaria.
+7. **Carga semanal real (futuro)**: cuando existan logs, usar sRPE con `sessionLoad = actualDurationMin × rpe` y `weeklyLoad` como suma semanal; el MVP entregado solo presenta métricas planificadas.
 8. **Envolvente y fechas del bloque**: igualdad exacta de kilómetros de carrera por semana, sesiones dentro de su ventana y ninguna posterior al objetivo.
 9. **Trayectoria de sesión**: cada sesión `run` cumple a la vez los topes independientes de distancia y duración suministrados por backend; las categorías no running no heredan esos topes.
 10. **Autoridad de readiness**: la salida generada no contiene valores de readiness calculados por el proveedor.
 11. **Distribución del bloque**: cumple los límites canónicos de intensidad, fuerza y sesiones demandantes de la sección 7.
 12. **Desnivel**: no se afirma una garantía de seguridad basada en control conjunto de elevación y carga.
 
-Si falla cualquier punto, el bloque debe rechazarse. Una ampliación futura de la
-validación posterior al proveedor y su reparación todavía no está orquestada.
+La generación entregada valida la salida del proveedor y rechaza cualquier bloque que incumpla estos puntos. Permite un segundo intento condicionado únicamente cuando falla esa validación. Quedan como trabajo futuro mecanismos más ricos de reparación posterior, replanificación o recuperación.
 
 ## 9) Fuentes consultadas (resumen para uso en Kaito)
 

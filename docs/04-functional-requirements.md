@@ -1,5 +1,17 @@
 # Requisitos funcionales
 
+> **Lectura de estado:** este documento conserva requisitos entregados y objetivos futuros. El estado operativo canónico está en [`../README.md`](../README.md).
+
+| Grupo | Estado entregado |
+| --- | --- |
+| RF-01–02 | Registro y login con Supabase entregados. |
+| RF-03 | No entregado: no existe usuario demo público funcional. |
+| RF-04–07 | Enrutamiento, onboarding de siete pasos, elegibilidad, generación web síncrona y plan activo entregados para Trail/Ultra Trail. |
+| RF-08 | Entregado solo con métricas planificadas y calendarios de sesiones. |
+| RF-09 | El dashboard presenta el detalle de la próxima sesión; no existe navegación independiente de detalle por sesión. |
+| RF-10–13 | No entregados: sin logs, métricas reales, detección de desvíos ni reajustes/historial. |
+| RF-14–15 | Límites y estados seguros cubiertos parcialmente en los flujos entregados. |
+
 ## Propósito
 
 Este documento define los requisitos funcionales del MVP de Kaito.
@@ -10,10 +22,10 @@ El objetivo es traducir la visión de producto y los user journeys en capacidade
 
 El MVP de Kaito debe permitir que un corredor pueda registrarse, completar un onboarding inicial, obtener un plan de entrenamiento personalizado, consultar su progreso, entender sus entrenamientos, registrar su cumplimiento y recibir reajustes básicos cuando existan desviaciones relevantes.
 
-El MVP incluye:
+El alcance objetivo incluye:
 
 - Registro y login con email y contraseña.
-- Usuario demo para evaluación del TFM.
+- Usuario demo para evaluación del TFM (**objetivo no entregado**).
 - Onboarding inicial del corredor.
 - Evaluación y selección del enfoque del plan (Camino Kaio, Modo Z, Kaioken).
 - Generación del plan inicial.
@@ -93,7 +105,7 @@ El sistema debe permitir que un usuario registrado acceda a Kaito con su email y
 
 El usuario puede acceder a Kaito y continuar desde el estado asociado a su cuenta.
 
-## RF-03 Usuario demo
+## RF-03 Usuario demo (no entregado)
 
 ### Descripción
 
@@ -106,9 +118,13 @@ El sistema debe permitir el acceso a un usuario demo para facilitar la evaluaci�
 - El usuario demo no debe sustituir al flujo real de registro y login.
 - El usuario demo debe estar claramente orientado a evaluación y demostración.
 
-### Resultado esperado
+### Estado de implementación
 
-Los profesores pueden probar Kaito con rapidez y entender el comportamiento principal del MVP.
+No existe una cuenta demo pública funcional ni credenciales públicas. Los strings usados en fixtures automatizados no son credenciales válidas.
+
+### Resultado esperado futuro
+
+Los profesores podrán probar Kaito con rapidez cuando se aprovisione una cuenta de evaluación controlada.
 
 ## RF-04 Estado inicial del usuario
 
@@ -205,7 +221,7 @@ El sistema debe evaluar la elegibilidad de enfoques de plan, permitir la selecci
 - Los usuarios autenticados pueden leer sus propias filas de plan, con independencia del estado, y solo las sesiones de su plan activo; las filas ajenas y las escrituras directas quedan denegadas. El backend mantiene lecturas y escrituras owner-bound con `kaito_api_login` bajo claims verificados, mientras `anon` y `PUBLIC` quedan denegados.
 - `POST /planning/generate` expone este flujo con autenticación y devuelve el plan público activado; `GET /planning/active` devuelve el activo propio con orden estable, sin IDs ni metadata interna.
 - Los outcomes públicos se limitan a las familias seguras `401`, `404`, `409`, `422` y `503`.
-- El dashboard autenticado `/plan` consume el plan activo y presenta únicamente métricas planificadas derivadas de ese contrato; la pantalla intermedia y el E2E completo aún deben conectarse.
+- El dashboard autenticado `/plan` consume el plan activo y presenta únicamente métricas planificadas derivadas de ese contrato; `/plan/generating` también está conectado a la generación síncrona y redirige al plan al completar.
 - El sistema debe usar explícitamente los datos de objetivo específicos de la modalidad al generar la planificación.
 - El sistema debe generar una planificación inicial asociada al usuario.
 - El sistema debe generar la planificación respetando `TrainingPlan.planApproach`.
@@ -224,7 +240,8 @@ El sistema debe evaluar la elegibilidad de enfoques de plan, permitir la selecci
 | Aislamiento por propietario | Entregado: lectura autenticada propia y CRUD backend owner-scoped mediante RLS. |
 | API de planes de entrenamiento | Implementada sin aprobación formal de Gentle: generación y lectura autenticadas con respuestas públicas acotadas. |
 | Dashboard del plan activo | Implementado: ruta protegida `/plan`, lectura autenticada, estados de carga/vacío/error y presentación responsive del bloque y sus sesiones. |
-| Generación desde la web y E2E | Pendientes: conectar la pantalla intermedia y demostrar el recorrido completo. |
+| Generación desde la web | Entregada: pantalla intermedia, llamada síncrona, reintento seguro y redirección al plan activo. |
+| Evidencia con servicios reales | Pendiente: smoke test autenticado contra OpenAI real y demostración operativa integral. |
 
 Las pruebas de la API de planes de entrenamiento usan dobles deterministas y no llaman a
 OpenAI. El smoke test con el proveedor real permanece pendiente; no se afirma éxito E2E
@@ -232,7 +249,7 @@ real ni preparación para producción.
 
 ### Resultado esperado
 
-El dashboard ya permite consultar un plan activo vinculado a la cuenta. Cuando se completen la pantalla de generación y el E2E, el usuario podrá recorrer desde la elección del enfoque hasta ese dashboard sin intervención manual.
+El usuario puede recorrer desde la elección del enfoque hasta el dashboard mediante la pantalla de generación. Queda pendiente demostrar el recorrido contra Supabase/OpenAI reales en un entorno reproducible.
 
 ## RF-08 Dashboard del plan activo
 
@@ -243,12 +260,12 @@ El sistema debe mostrar al usuario una visión resumida del estado actual de su 
 ### Requisitos
 
 - El sistema debe mostrar el plan activo del usuario.
-- El sistema debe mostrar los días restantes hasta el objetivo.
-- El sistema debe mostrar entrenamientos totales, completados y pendientes.
+- El sistema debe mostrar los días restantes del bloque activo.
+- El sistema debe mostrar sesiones y kilómetros planificados; completados y pendientes requieren logs y quedan como objetivo futuro.
 - El sistema debe mostrar una vista semanal o calendario básico.
 - El sistema debe destacar el próximo entrenamiento.
 - El sistema debe mostrar KPIs simples que ayuden a entender el progreso.
-- En MVP, el KPI `carga semanal actual` debe poder calcularse como suma semanal de carga por sesión basada en sRPE (`actualDurationMin × RPE`).
+- La carga semanal real basada en sRPE (`actualDurationMin × RPE`) queda como objetivo futuro; el MVP entregado no persiste duración real ni RPE.
 
 ### Resultado esperado
 
@@ -272,7 +289,7 @@ El sistema debe permitir consultar el detalle de cada entrenamiento del plan.
 
 El usuario entiende qué debe hacer y por qué esa sesión existe dentro de la planificación.
 
-## RF-10 Registro de cumplimiento
+## RF-10 Registro de cumplimiento (no entregado)
 
 ### Descripción
 
@@ -290,7 +307,7 @@ El sistema debe permitir que el usuario registre cómo fue un entrenamiento plan
 
 El plan deja de ser una planificación ideal y empieza a reflejar la ejecución real del usuario.
 
-## RF-11 Registro de métricas simples
+## RF-11 Registro de métricas simples (no entregado)
 
 ### Descripción
 
@@ -312,7 +329,7 @@ El sistema debe recoger métricas simples después de cada entrenamiento para pe
 
 Kaito dispone de señales básicas para entender la diferencia entre lo planificado y lo realizado.
 
-## RF-12 Detección de desviaciones relevantes
+## RF-12 Detección de desviaciones relevantes (no entregado)
 
 ### Descripción
 
@@ -332,7 +349,7 @@ El sistema debe detectar cuándo una desviación puede requerir un reajuste bás
 
 Kaito identifica desviaciones relevantes sin reajustar por cualquier diferencia menor.
 
-## RF-13 Reajuste básico del plan
+## RF-13 Reajuste básico del plan (no entregado)
 
 ### Descripción
 
@@ -391,15 +408,15 @@ El sistema debe manejar errores básicos y estados incompletos sin dejar al usua
 
 El usuario entiende qué ha ocurrido y cuál es la siguiente acción posible.
 
-## Criterios de aceptación del MVP
+## Criterios de aceptación objetivo
 
-El MVP estará correctamente cubierto si:
+La lista siguiente conserva la visión funcional completa. La entrega actual no cubre usuario demo, logs, métricas realizadas, desviaciones ni reajustes:
 
 - El usuario puede registrarse con email, contraseña y repetición de contraseña.
 - El registro valida formato de email, fortaleza y coincidencia de contraseñas, y muestra feedback local comprensible.
 - El resultado de Supabase determina si existe sesión inmediata o si el usuario debe continuar por la confirmación desde login, sin afirmar que se haya enviado un correo cuando el proveedor lo oculta.
 - El usuario puede iniciar sesión con email y contraseña.
-- Los profesores pueden acceder a un usuario demo para probar el TFM.
+- Los profesores pueden acceder a un usuario demo para probar el TFM (**pendiente**).
 - Kaito identifica si el usuario necesita onboarding, generación de plan o dashboard.
 - El usuario puede completar un onboarding inicial sin fricción excesiva.
 - Kaito valida que tiene información suficiente antes de generar el plan.
@@ -407,7 +424,7 @@ El MVP estará correctamente cubierto si:
 - Kaito muestra los tres enfoques sin recomendación visual, exige una elección explícita entre opciones elegibles y muestra las bloqueadas con todos sus motivos.
 - Kaito persiste elegibilidad/bloqueos y enfoque elegido para usarlo en la generación del plan.
 - La base de planificación determinista valida un bloque estructurado de 1–4 semanas contra enfoque, proyección semanal, ventanas de fecha, fecha objetivo y guardrails deportivos, sin atribuir readiness al proveedor.
-- La generación autenticada aporta validación, persistencia/activación atómica, lectura pública ordenada y aislamiento owner-bound; la UI y el E2E siguen pendientes.
+- La generación autenticada aporta validación, persistencia/activación atómica, lectura pública ordenada, aislamiento owner-bound y UI conectada; la evidencia con proveedor real sigue pendiente.
 - El usuario puede consultar un dashboard con estado general, KPIs básicos y próximo entrenamiento.
 - El usuario puede abrir un entrenamiento y entender su propósito.
 - El usuario puede registrar cumplimiento y métricas simples.

@@ -1,62 +1,85 @@
 # Kaito web
 
-## Current routes and flow
+Aplicación Next.js del MVP de Kaito. Esta guía describe la web; el estado operativo canónico, los requisitos y los comandos globales están en el [`README.md` de la raíz](../../README.md).
 
-- `/` redirects to `/login`; `/login` and `/register` implement Supabase sign-up, sign-in, and session resolution.
-- A valid session hands off to `/onboarding`, a private route protected by the proxy and a server-side check.
-- Onboarding starts with a value-proposition introduction and the `Crear mi plan` CTA.
-- Step 1 displays `Paso 1 de 7` and `14%`, offers only Trail or Ultra, and asks for distance, positive elevation, and target date. It has no technicality, maximum-altitude, or back controls.
-- Steps 1–6 use the linear seven-step visual design. Step 4 displays `Paso 4 de 7` and `57%`, uses compact accessible weekday controls, presets 45/60/120, and exact 15–300 minute overrides. `Varía por día` is derived UI state; the payload contains only the sparse `profile.availability.minutes_by_day` map.
-- Step 4 requires at least three days and 150 weekly minutes. Back keeps mounted local edits without a request; Continue saves before Step 5, blocks duplicate requests, preserves answers for retry, and reloads the last successful exact map. Progress is not clickable and there is no autosave.
-- Step 5 displays `Paso 5 de 7` and `71%` and requires explicit choices for mountain/trail access, gym access, and planning preference. The payload stores only the documented enums under `profile.training_preferences`; no answers are defaulted.
-- Step 6 displays `Paso 6 de 7` and `86%`, requires one physical-status choice, and always shows an optional 500-character pain/limitation detail. Continue completes onboarding; the detail is trimmed, omitted when blank, and never receives placeholder text as data. Legacy `profile.restrictions` data is removed during API normalization.
+## Recorrido entregado
 
-## Contribution and ownership
+| Ruta/capacidad | Comportamiento actual |
+| --- | --- |
+| `/login`, `/register` | Login y alta con Supabase, validación local, resolución de sesión y feedback seguro. |
+| `/onboarding` | Ruta protegida con introducción y wizard persistente de siete pasos. |
+| Paso 7 | Consulta elegibilidad, muestra Camino Kaio/Modo Z/Kaioken, exige una elección válida y guarda un único borrador. |
+| `/plan/generating` | Lanza automáticamente la generación síncrona, presenta progreso/error, permite reintentar y redirige a `/plan` al completar. |
+| `/plan` | Consume el plan activo de la API y muestra dashboard, próxima sesión, métricas planificadas y calendarios. |
+| Enrutamiento de producto | Decide entre onboarding y plan según onboarding completado y presencia del plan activo, además de proteger sesión y handoffs canónicos. |
 
-- Keep `app/` limited to Next.js routes, layouts, loading/error, metadata, and route-policy wiring. Route pages import product features.
-- Put real capabilities in `features/<capability>/`. Auth uses `_components/`, `_adapters/`, `_use-cases/`, `_infrastructure/`, and `_domain/` only for warranted pure rules/types.
-- Add a feature container only for genuine multi-concern orchestration.
-- Promote code to `shared/` only after two distinct real features consume it; multiple auth callers still count as one feature. Do not add speculative abstractions, generic utils/helpers, or empty feature folders.
-- Supabase construction is owned by `features/auth/_infrastructure/supabase/`, and authenticated fetch is owned by `features/auth/_adapters/`. The underscore ownership move is complete.
+El dashboard ofrece una vista semanal y un calendario completo de sesiones. Todas sus métricas son **planificadas** (kilómetros, sesiones, días restantes y progreso temporal del bloque); no representan entrenamientos completados ni telemetría real.
 
-See `docs/08-architecture.md` for the authoritative architecture.
+## Onboarding
 
-## Supabase SSR cookie security
+1. Objetivo Trail o Ultra Trail: distancia, desnivel positivo y fecha.
+2. Línea base reciente.
+3. Historial previo.
+4. Disponibilidad: días y minutos exactos, con mínimo de tres días y 150 minutos semanales.
+5. Preferencias de acceso y planificación.
+6. Estado físico, dolor/limitación e impacto condicional.
+7. Elegibilidad y selección explícita del enfoque antes de guardar el borrador.
 
-Supabase SSR owns session-cookie storage and rotation. Do not independently force `HttpOnly`, because supported browser flows may require browser-readable cookies. The root `proxy.ts` applies route policy only to `/login` and `/onboarding`; it refreshes the session, preserves refresh cookies, and forces `Secure` on response session cookies in production. Deploy production behind HTTPS. Refresh/provider failures emit only the stable `auth_session_resolution_failed` telemetry event, without provider details, tokens, or cookie values. CSP, output encoding, dependency hygiene, and XSS prevention remain required defenses.
+El estado se guarda mediante la API protegida. No hay autosave continuo: cada avance persiste el paso correspondiente y conserva respuestas para reintentar errores.
 
-Configure these public browser variables:
+## Arquitectura y ownership
+
+- `app/` contiene rutas, layouts, estados Next.js y cableado de políticas.
+- `features/auth/` posee Supabase y los casos de uso de identidad.
+- `features/onboarding/` posee el wizard, contratos, elegibilidad y guardado del borrador.
+- `features/planning/` posee generación, lectura del plan y dashboard/calendario.
+- `features/product-routing/` resuelve el destino según el estado funcional del usuario.
+- `shared/` solo contiene fronteras compartidas por capacidades reales.
+
+Consulta [`../../docs/08-architecture.md`](../../docs/08-architecture.md) para las fronteras completas.
+
+## Configuración
+
+Usa [`apps/web/.env.example`](.env.example) como inventario y crea un archivo local no versionado. Variables principales:
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - `NEXT_PUBLIC_KAITO_API_URL`
 
-They are public configuration, not service-role credentials. Never expose access or refresh tokens, JWT secrets, `SUPABASE_SERVICE_ROLE_KEY`, or other secrets in the web app.
+Las variables Sentry son opcionales. La web solo debe recibir configuración pública; nunca expongas claves service-role, tokens, secretos JWT ni `OPENAI_API_KEY`.
 
-## Frontend observability (Sentry)
+## Adaptador de autenticación para tests
 
-Sentry is optional for the Next.js frontend. When `NEXT_PUBLIC_SENTRY_DSN` is unset or empty, Sentry initialization is skipped in the client, server, and edge runtimes; the app should render normally and no Sentry ingestion requests should be made. The frontend integration does not add Next.js test pages or `app/api` routes; the production backend API remains the FastAPI app.
+Los tests E2E habilitan un adaptador de autenticación controlado mediante variables específicas del runner. Este adaptador:
 
-Optional variables are documented in `.env.example`:
+- solo se permite en entorno de prueba/no producción y exige un secreto efímero coordinado;
+- simula estados para Playwright y evita depender de cuentas Supabase reales;
+- no crea usuarios públicos ni credenciales reutilizables;
+- no es un modo demo de la aplicación.
 
-- `NEXT_PUBLIC_SENTRY_DSN` enables capture.
-- `NEXT_PUBLIC_SENTRY_ENVIRONMENT` labels events.
-- `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE` controls low-rate performance sampling.
-- `SENTRY_ORG`, `SENTRY_PROJECT`, and `SENTRY_AUTH_TOKEN` enable source-map upload only when all three are present.
+Por tanto, cadenas de fixtures como `runner@example.com` y `trail-password` no son credenciales válidas.
 
-The integration captures errors and basic performance only. It does not enable replay, profiling, analytics, or user identity enrichment. Shared `beforeSend` and `beforeSendTransaction` hooks redact secrets, auth tokens, PII, Strava/Supabase values, GPS coordinates, and training/activity payloads before telemetry can leave the app.
+## Comandos
 
-Validation commands:
+Desde la raíz:
 
 ```bash
+pnpm dev:web
+pnpm test:web-auth
 pnpm test:web-onboarding
 pnpm lint:web
 pnpm build:web
 pnpm test:web-e2e
 ```
 
-If Docker Compose starts an older web image or reports a missing copied file such as `apps/web/instrumentation.ts`, rebuild the local web image before starting it:
+Antes del primer E2E:
 
 ```bash
-docker compose up --build web
+pnpm --filter web exec playwright install chromium
 ```
+
+Los tests rápidos de auth/onboarding usan dobles locales. `pnpm test:web-e2e` ejecuta Playwright en configuración de desarrollo y producción; tampoco prueba una cuenta Supabase pública ni una llamada real a OpenAI.
+
+## Límites
+
+No están disponibles recuperación de contraseña, magic/social auth, registro de cumplimiento, ajuste/historial de planes, OCR/Backyard en la UI, Strava o RAG. La preparación para producción y los límites de Compose se detallan en el README raíz.

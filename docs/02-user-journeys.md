@@ -1,5 +1,7 @@
 # User Journeys
 
+> **Lectura de estado:** los journeys 1–4 están entregados dentro de los límites indicados. Los journeys 5–7 conservan la experiencia objetivo y no forman parte del MVP implementado. El estado operativo canónico está en [`../README.md`](../README.md).
+
 ## Propósito
 
 Este documento describe los recorridos principales que debe poder completar un corredor dentro de Kaito.
@@ -67,12 +69,7 @@ El usuario necesita introducir su información sin sentirse abrumado y entender 
 
 ### Estado de implementación actual
 
-> `/onboarding` entrega una introducción de valor, el CTA `Crear mi plan` y los
-> Pasos 1–6 del recorrido visual lineal de siete pasos. El Paso 4 permite elegir
-> días y usar los atajos 45, 60 o 120 minutos, con ajustes exactos por día; exige
-> al menos tres días y 150 minutos semanales. El Paso 5 recoge preferencias y el
-> Paso 6 recoge el estado físico y un detalle opcional antes de completar. `Varía
-> por día` solo describe el estado visual de valores mixtos y no se persiste.
+> `/onboarding` entrega una introducción de valor y un recorrido persistente de siete pasos. Los Pasos 1–6 recogen objetivo, base, historial, disponibilidad, preferencias y estado físico. El Paso 7 consulta la elegibilidad determinista, exige seleccionar un enfoque permitido y guarda el borrador antes de navegar a generación. La UI operativa admite Trail y Ultra Trail; OCR y Backyard quedan fuera de este recorrido entregado.
 
 ### Recorrido principal
 
@@ -120,11 +117,7 @@ El usuario necesita confianza durante la espera y una transición clara hacia el
 
 ### Estado actual
 
-La API autenticada ya genera, valida, persiste y activa el plan mediante `POST
-/planning/generate`, y permite leer el activo propio mediante `GET /planning/active`.
-Las pruebas usan dobles deterministas; la generación real con OpenAI aún no se ha
-verificado. El dashboard y la experiencia UI/E2E siguen pendientes; por ahora
-`/plan/generating` es un destino estático y este recorrido describe el objetivo MVP.
+El recorrido web está conectado: `/plan/generating` ejecuta `POST /planning/generate`, muestra progreso o error, permite reintentar y redirige a `/plan` tras activar el bloque. El dashboard consume `GET /planning/active`. Las pruebas automatizadas usan dobles deterministas; no se ha documentado un smoke test autenticado con OpenAI real ni preparación para producción.
 
 ### Recorrido principal
 
@@ -147,19 +140,22 @@ El usuario entra en Kaito para saber qué tiene que hacer y cómo va su preparac
 
 El usuario necesita una visión rápida del estado actual del plan sin interpretar datos complejos.
 
-### Recorrido principal
+### Estado actual
 
-1. El usuario accede al dashboard.
-2. Kaito muestra KPIs básicos del plan.
-3. El usuario revisa los días hasta el objetivo, entrenamientos completados y entrenamientos pendientes.
-4. El usuario consulta el calendario semanal.
-5. El usuario identifica su próximo entrenamiento.
+El dashboard protegido está entregado. Presenta métricas del bloque planificado, la próxima sesión, calendario semanal y calendario completo de sesiones. No existen logs de cumplimiento: no muestra entrenamientos completados ni telemetría real.
+
+### Recorrido principal entregado
+
+1. El usuario accede al dashboard del plan activo.
+2. Kaito muestra kilómetros y sesiones planificadas de la semana, días restantes y progreso temporal del bloque.
+3. El usuario consulta el calendario semanal o el calendario completo.
+4. El usuario identifica su próxima sesión y revisa propósito, instrucciones, duración, distancia, desnivel e intensidad planificados.
 
 ### Resultado esperado
 
 El usuario sabe cuál es su situación actual y cuál es el siguiente paso de entrenamiento.
 
-## Journey 5: Detalle del entrenamiento
+## Journey 5: Detalle del entrenamiento (objetivo futuro)
 
 ### Situación
 
@@ -181,7 +177,7 @@ El usuario necesita saber qué debe hacer, con qué intensidad y qué propósito
 
 El entrenamiento deja de ser una tarea aislada y se entiende como parte de una progresión.
 
-## Journey 6: Registro de cumplimiento
+## Journey 6: Registro de cumplimiento (no entregado)
 
 ### Situación
 
@@ -213,7 +209,7 @@ El registro del entrenamiento debería recoger, de forma simple:
 
 El plan refleja la ejecución real del usuario y no únicamente la planificación ideal. Esto permite que los reajustes posteriores tengan más contexto que una simple marca de completado o fallido.
 
-## Journey 7: Reajuste básico del plan
+## Journey 7: Reajuste básico del plan (no entregado)
 
 ### Situación
 
@@ -243,9 +239,9 @@ El reajuste del plan en el MVP será básico. No pretende validar decisiones dep
 
 La interacción conversacional con Kaito para resolver dudas concretas sobre un entrenamiento queda como mejora futura. En el MVP, la IA debe centrarse principalmente en generar y reajustar bien el plan según las métricas establecidas.
 
-## Criterios de aceptación de los journeys
+## Criterios de aceptación de la visión
 
-Los journeys estarán correctamente cubiertos si el MVP permite demostrar que:
+Esta lista conserva la cobertura objetivo. En la entrega actual se cumplen el acceso, onboarding, selección, generación y consulta planificada; el detalle navegable independiente, los logs y el reajuste permanecen pendientes:
 
 - El usuario que accede a `/` llega a `/login` y puede elegir entre iniciar sesión o ir a `/register`.
 - El registro solicita email, contraseña y repetición, muestra feedback local para datos inválidos y procesa un único intento mediante Supabase.
