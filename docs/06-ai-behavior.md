@@ -16,7 +16,8 @@ falla esa validación y persiste/activa el resultado de forma atómica. `GET
 interna.
 
 Ambas rutas requieren autenticación y exponen outcomes seguros de las familias `401`,
-`404`, `409`, `422` y `503`. La UI de generación, el dashboard y el E2E permanecen
+`404`, `409`, `422` y `503`. El dashboard autenticado `/plan` ya consume el plan activo y
+muestra únicamente datos planificados; la UI de generación y el E2E completo permanecen
 pendientes. Las pruebas usan dobles deterministas: no se ha realizado una llamada real a
 OpenAI ni demostrado un plan real generado en esta rama.
 
