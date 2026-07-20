@@ -1,4 +1,4 @@
-FROM node:24.18-bookworm-slim AS dependencies
+FROM node:24.18.0-bookworm-slim AS dependencies
 
 ENV HUSKY=0
 WORKDIR /workspace
@@ -31,7 +31,7 @@ COPY apps/web apps/web
 COPY packages/api-client packages/api-client
 RUN pnpm --filter web build
 
-FROM node:24.18-bookworm-slim AS runtime
+FROM node:24.18.0-bookworm-slim AS runtime
 
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
