@@ -105,11 +105,12 @@ Aplicación en Kaito:
 | Backyard loop simulation | Ritmo por bucle + transición + descanso | Backyard |
 | OCR brick / obstáculos / grip / carries | Transferencia específica de carrera OCR | OCR |
 
-### 6.1 Base determinista y proveedor M1
+### 6.1 Planificación determinista y adaptador OpenAI
 
-T1.1–T1.3 preparan y validan el contexto determinista de generación. M1 añade el
-puerto neutral y el adaptador OpenAI interno, pero todavía no existen orquestación,
-reparación, persistencia, endpoints ni entrega UI de un plan generado.
+La capacidad implementada incluye contexto determinista, puerto neutral, adaptador
+OpenAI, orquestación, validación con una única repetición condicionada,
+persistencia/activación atómica y API autenticada de generación y lectura. La entrega UI,
+el dashboard, el E2E y el smoke test con OpenAI real siguen pendientes.
 
 #### Contrato neutral de bloque
 
@@ -247,8 +248,8 @@ Checklist mínimo de validación:
 11. **Distribución del bloque**: cumple los límites canónicos de intensidad, fuerza y sesiones demandantes de la sección 7.
 12. **Desnivel**: no se afirma una garantía de seguridad basada en control conjunto de elevación y carga.
 
-Si falla cualquier punto, el bloque debe rechazarse. La validación posterior al
-proveedor y una reparación pertenecen a M2 y todavía no están orquestadas.
+Si falla cualquier punto, el bloque debe rechazarse. Una ampliación futura de la
+validación posterior al proveedor y su reparación todavía no está orquestada.
 
 ## 9) Fuentes consultadas (resumen para uso en Kaito)
 
