@@ -1,10 +1,12 @@
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, replace
 from datetime import date, timedelta
 
 import pytest
 
+from app.modules.planning import generated_block_policy as policy_module
 from app.modules.planning.generated_block_policy import (
     ELEVATION_POLICY_OUTSIDE_MVP,
+    GENERATED_BLOCK_SPORTS_POLICY,
     GeneratedBlockPolicyContext,
     GeneratedBlockPolicyWeekContext,
     validate_generated_block_policy,
@@ -90,6 +92,28 @@ def context(
 
 def codes(result) -> tuple[str, ...]:
     return tuple(violation.code for violation in result.violations)
+
+
+def test_runtime_policy_uses_the_public_provider_policy_source(monkeypatch):
+    monkeypatch.setattr(
+        policy_module,
+        "GENERATED_BLOCK_SPORTS_POLICY",
+        replace(GENERATED_BLOCK_SPORTS_POLICY, minimum_low_percent=76),
+    )
+    candidate = block(
+        [
+            session(
+                0,
+                duration=100,
+                segments=(("low", 75), ("threshold", 15), ("high", 10)),
+            ),
+            session(1, category="strength"),
+        ]
+    )
+
+    assert "intensity_low_share_below_minimum" in codes(
+        validate_generated_block_policy(candidate, context("build"))
+    )
 
 
 @pytest.mark.parametrize(

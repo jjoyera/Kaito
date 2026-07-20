@@ -1259,6 +1259,25 @@ p {
 	content: "";
 }
 
+.plan-generating-retry {
+	min-width: 9rem;
+	padding: 0.8rem 1.4rem;
+	border: 1px solid rgb(248 243 233 / 45%);
+	border-radius: 999px;
+	background: #f39446;
+	color: #173d35;
+	font: inherit;
+	font-weight: 750;
+	cursor: pointer;
+}
+
+.plan-generating-retry:hover,
+.plan-generating-retry:focus-visible {
+	background: #f8b06f;
+	outline: 3px solid rgb(248 243 233 / 35%);
+	outline-offset: 3px;
+}
+
 @keyframes plan-loader-spin {
 	to { transform: rotate(1turn); }
 }

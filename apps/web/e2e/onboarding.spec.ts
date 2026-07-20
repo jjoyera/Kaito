@@ -404,6 +404,10 @@ async function startAtPreferencesStep(
 			});
 			return;
 		}
+		if (pathname === "/planning/generate") {
+			await route.fulfill({ status: 503, body: "provider unavailable" });
+			return;
+		}
 		if (route.request().method() === "GET") {
 			await route.fulfill({
 				status: 200,
@@ -544,9 +548,14 @@ test.describe("onboarding Step 6 physical status", () => {
 		const generate = page.getByRole("button", { name: /Generar mi plan/ });
 		await expect(generate).toBeDisabled();
 		await page.getByRole("radio", { name: /Modo Z/ }).check();
+		const generationRequest = page.waitForRequest(
+			(request) =>
+				request.method() === "POST" &&
+				new URL(request.url()).pathname === "/planning/generate",
+		);
 		await generate.click();
+		await generationRequest;
 		await expect(page).toHaveURL(/\/plan\/generating\?plan_id=9dd180d0-058d-4ee5-b8cf-3e93867a4041$/);
-		await expect(page.getByRole("heading", { name: "Kaito está trazando tu ruta" })).toBeVisible();
 	});
 
 	test("omits blank optional detail instead of storing the placeholder", async ({ page }) => {
@@ -976,10 +985,17 @@ test.describe("completed onboarding approach choice", () => {
 				await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(eligibility) });
 				return;
 			}
-			draftCalls += 1;
-			await route.fulfill(draftCalls === 1
-				? { status: 500, body: "private detail" }
-				: { status: 200, contentType: "application/json", body: JSON.stringify({ plan_id: "9dd180d0-058d-4ee5-b8cf-3e93867a4041", status: "draft", plan_approach: "kaio_path" }) });
+			if (
+				pathname === "/planning/training-plan-draft" &&
+				route.request().method() === "PUT"
+			) {
+				draftCalls += 1;
+				await route.fulfill(draftCalls === 1
+					? { status: 500, body: "private detail" }
+					: { status: 200, contentType: "application/json", body: JSON.stringify({ plan_id: "9dd180d0-058d-4ee5-b8cf-3e93867a4041", status: "draft", plan_approach: "kaio_path" }) });
+				return;
+			}
+			await route.fulfill({ status: 503, body: "provider unavailable" });
 		});
 		await page.goto("/onboarding");
 		await page.getByRole("button", { name: "Crear mi plan" }).click();

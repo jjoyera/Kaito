@@ -168,6 +168,18 @@ describe("privateFetch", () => {
 		);
 		assert.equal(notFoundResponse.status, 404);
 
+		const unavailableResponse = await privateFetch(
+			"/planning/generate",
+			{},
+			{
+				getAccessToken: async () => "token",
+				fetcher: async () => response(503),
+				apiBaseUrl: "https://api.kaito.test",
+			},
+			{ passthroughStatuses: [503] },
+		);
+		assert.equal(unavailableResponse.status, 503);
+
 		await assert.rejects(
 			() =>
 				privateFetch(

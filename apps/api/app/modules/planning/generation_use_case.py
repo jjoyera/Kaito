@@ -30,6 +30,10 @@ from app.modules.planning.use_cases import (
     TrainingPlanTransactionFactory,
     persist_and_activate_training_plan,
 )
+from app.observability.training_generation import (
+    record_validation,
+    training_generation_attempt,
+)
 
 
 class GeneratedTrainingBlockRejected(Exception):
@@ -114,10 +118,14 @@ def _generate_validated_training_bundle(
     context = assemble_training_generation_context(
         user, transactions, current_instant=current_instant
     )
-    for _ in range(2):
-        candidate = _generate_candidate(provider, context)
-        if not _validation_violations(candidate, context):
-            return GeneratedTrainingBundle(context, candidate)
+    for attempt in range(1, 3):
+        with training_generation_attempt(attempt):
+            candidate = _generate_candidate(provider, context)
+            violations = _validation_violations(candidate, context)
+            accepted = not violations
+            record_validation(violations, accepted=accepted)
+            if accepted:
+                return GeneratedTrainingBundle(context, candidate)
     raise GeneratedTrainingBlockRejected()
 
 

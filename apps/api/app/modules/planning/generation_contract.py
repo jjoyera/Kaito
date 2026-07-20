@@ -14,6 +14,7 @@ from pydantic import (
     Field,
     StrictBool,
     StringConstraints,
+    WithJsonSchema,
     field_serializer,
     field_validator,
     model_validator,
@@ -28,7 +29,18 @@ TargetRpe = Annotated[int, Field(strict=True, ge=1, le=10)]
 SessionCategory = Literal["run", "strength", "recovery", "cross_training"]
 IntensityBand = Literal["low", "threshold", "high"]
 NonNegativeKilometers = Annotated[
-    Decimal, Field(ge=Decimal("0"), allow_inf_nan=False)
+    Decimal,
+    Field(ge=Decimal("0"), allow_inf_nan=False),
+    WithJsonSchema(
+        {
+            "type": "string",
+            "description": (
+                "Non-negative kilometers encoded as a base-10 decimal string; "
+                "floats and booleans are forbidden."
+            ),
+        },
+        mode="validation",
+    ),
 ]
 
 
@@ -39,23 +51,61 @@ class _GeneratedContractModel(BaseModel):
 class GeneratedIntensitySegment(_GeneratedContractModel):
     """One explicitly timed running intensity segment."""
 
-    duration_minutes: PositiveInteger
-    intensity_band: IntensityBand
+    duration_minutes: Annotated[
+        int, Field(strict=True, gt=0, description="Exact minutes in this segment.")
+    ]
+    intensity_band: Annotated[
+        IntensityBand,
+        Field(description="Structured intensity used by whole-block sports policy."),
+    ]
 
 
 class GeneratedTrainingSession(_GeneratedContractModel):
-    """One AI-generated session in the bounded training block."""
+    """One generated session.
 
-    scheduled_date: date
+    target_rpe_min <= target_rpe_max. Run sessions require at least one intensity
+    segment whose minutes are exactly equal planned_duration_minutes. Non-run
+    sessions require intensity_segments to be empty.
+    """
+
+    scheduled_date: Annotated[
+        date,
+        Field(description="Date inside the corresponding provider week window."),
+    ]
     session_type: NonEmptyText
     session_category: SessionCategory
-    planned_duration_minutes: PositiveInteger
+    planned_duration_minutes: Annotated[
+        int,
+        Field(
+            strict=True,
+            gt=0,
+            description="Positive duration within the date's availability budget.",
+        ),
+    ]
     planned_distance_kilometers: NonNegativeKilometers
     planned_elevation_meters: NonNegativeInteger
     intensity_description: NonEmptyText
-    intensity_segments: list[GeneratedIntensitySegment]
-    target_rpe_min: TargetRpe
-    target_rpe_max: TargetRpe
+    intensity_segments: Annotated[
+        list[GeneratedIntensitySegment],
+        Field(
+            description=(
+                "Required and non-empty for runs, with total minutes equal to the "
+                "planned duration; empty for every non-run session."
+            )
+        ),
+    ]
+    target_rpe_min: Annotated[
+        int, Field(strict=True, ge=1, le=10, description="Lower inclusive RPE bound.")
+    ]
+    target_rpe_max: Annotated[
+        int,
+        Field(
+            strict=True,
+            ge=1,
+            le=10,
+            description="Upper inclusive RPE bound, never below target_rpe_min.",
+        ),
+    ]
     is_key_session: StrictBool
     purpose: NonEmptyText
     instructions: NonEmptyText
