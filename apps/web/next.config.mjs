@@ -1,8 +1,18 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { withSentryConfig } from "@sentry/nextjs";
+
+const monorepoRoot = path.resolve(
+	path.dirname(fileURLToPath(import.meta.url)),
+	"../..",
+);
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
 	allowedDevOrigins: ["127.0.0.1"],
+	output: "standalone",
+	outputFileTracingRoot: monorepoRoot,
 };
 
 const sentryOrg = process.env.SENTRY_ORG?.trim();

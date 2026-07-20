@@ -49,6 +49,9 @@ jobs:
       - name: Test web auth contracts
         run: pnpm test:web-auth
 
+      - name: Test web health contract
+        run: pnpm --filter web test:health
+
       - name: Test web onboarding contracts
         run: pnpm test:web-onboarding
 
@@ -57,6 +60,15 @@ jobs:
 
       - name: Build Docker web image
         run: pnpm test:web-docker-build
+
+      - name: Build Railway web image
+        run: >-
+          docker build
+          --file docker/web.railway.Dockerfile
+          --build-arg NEXT_PUBLIC_SUPABASE_URL=https://ci-project.supabase.co
+          --build-arg NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_ci_only
+          --build-arg NEXT_PUBLIC_KAITO_API_URL=https://api.invalid
+          --tag kaito-web-railway:ci .
 
       - name: Install Playwright Chromium
         run: pnpm --filter web exec playwright install --with-deps chromium
@@ -113,6 +125,12 @@ jobs:
       - name: Smoke-load FastAPI app
         working-directory: apps/api
         run: uv run python -c "from app.main import app; print(app.title)"
+
+      - name: Build Railway API image
+        run: >-
+          docker build
+          --file docker/api.railway.Dockerfile
+          --tag kaito-api-railway:ci .
 
       - name: Validate health contract
         working-directory: apps/api

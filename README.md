@@ -77,11 +77,14 @@ pnpm dev:web
 | Plan activo | Dashboard responsive, próxima sesión, métricas planificadas, calendario semanal y calendario completo de sesiones. | Las métricas describen lo **planificado**, no telemetría de entrenamientos completados. |
 | Persistencia | `onboarding_snapshots`, `training_plans` y `training_sessions`, con ownership y RLS definidos por migraciones Supabase. | Sin `training_log`, historial de planes/reajustes ni módulos de insights persistentes. |
 
-### Usuario y contraseña de prueba
 
-**No existe una cuenta demo pública funcional ni credenciales públicas de prueba.** Para evaluar el flujo real hay que crear una cuenta en el proyecto Supabase configurado o preparar datos en un entorno controlado por el evaluador.
+## Despliegue en Railway
 
-Cadenas presentes en fixtures automatizados, como `runner@example.com` o `trail-password`, son datos inertes de prueba y **no son credenciales válidas**. No se deben publicar, reutilizar ni interpretar como secretos.
+El despliegue de producción mantiene Supabase Cloud como autoridad de Auth y
+PostgreSQL, y publica únicamente dos servicios Railway: Web y API. Seguí el orden,
+las variables y las verificaciones de la
+[guía de despliegue en Railway](docs/deployment-railway.md). Los Dockerfiles locales
+y `compose.yaml` siguen reservados para desarrollo.
 
 ## Flujo principal
 
@@ -178,13 +181,13 @@ apps/
     app/modules/            auth, runner_profile, planning y shared.
     tests/                  Tests rápidos e integración local Supabase.
 packages/
-  api-client/               Paquete reservado; todavía sin cliente generado funcional.
-supabase/
-  migrations/               Autoridad del esquema físico y RLS.
-docs/                       Documentación de producto, políticas y arquitectura.
-openspec/                   Especificaciones y artefactos de cambios.
-docker/                     Dockerfiles de desarrollo local.
-compose.yaml                Servicios web/api incompletos sin base de datos/configuración.
+  api-client/           Paquete reservado; todavía no exporta un cliente real.
+docker/                 Dockerfiles locales y de producción Railway para web y API.
+railway.*.toml          Configuración Railway independiente por servicio.
+.github/workflows/     Validación básica de CI.
+docs/                  Documentación de producto, arquitectura y marca.
+openspec/              Artefactos SDD/OpenSpec.
+
 ```
 
 ## Documentación relacionada
