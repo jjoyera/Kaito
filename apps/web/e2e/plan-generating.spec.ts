@@ -118,7 +118,7 @@ test.describe("plan generation flow", () => {
 		).toBeVisible();
 		await expect(page).toHaveURL(/\/plan$/);
 		await expect(
-			page.getByRole("heading", { name: "Construir constancia en montaña" }),
+			page.getByRole("heading", { name: "Tu plan de entrenamiento personalizado" }),
 		).toBeVisible();
 		expect(generationCalls).toBe(1);
 	});
@@ -277,7 +277,7 @@ test.describe("plan generation flow", () => {
 
 		await expect(page).toHaveURL(/\/plan$/);
 		await expect(
-			page.getByRole("heading", { name: "Construir constancia en montaña" }),
+			page.getByRole("heading", { name: "Tu plan de entrenamiento personalizado" }),
 		).toBeVisible();
 		expect(requests.filter((request) => request === "PUT /planning/training-plan-draft")).toHaveLength(1);
 		expect(requests.filter((request) => request === "POST /planning/generate")).toHaveLength(1);

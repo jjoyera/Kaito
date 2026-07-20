@@ -3,10 +3,13 @@ import { test } from "node:test";
 
 import { PrivateApiError } from "../../../shared/adapters/private-fetch";
 import {
+	activeBlockMetrics,
+	currentPlanWeek,
 	fetchActiveTrainingPlan,
 	parseActiveTrainingPlan,
 	planCalendarDate,
 	remainingBlockDays,
+	temporalBlockProgress,
 } from "./active-plan-api";
 
 const validPlan = {
@@ -112,6 +115,46 @@ test("remaining block days exclude pre-start waiting and clamp after expiry", ()
 		remainingBlockDays("2026-07-20", "2026-07-06", "2026-07-19"),
 		0,
 	);
+	assert.equal(remainingBlockDays("2026-07-06", "2026-07-06", "2026-07-06"), 1);
+});
+
+test("temporal progress clamps before and after a block and handles one-day blocks", () => {
+	assert.equal(temporalBlockProgress("2026-07-05", "2026-07-06", "2026-07-19"), 0);
+	assert.equal(temporalBlockProgress("2026-07-06", "2026-07-06", "2026-07-19"), 7);
+	assert.equal(temporalBlockProgress("2026-07-20", "2026-07-06", "2026-07-19"), 100);
+	assert.equal(temporalBlockProgress("2026-07-06", "2026-07-06", "2026-07-06"), 100);
+});
+
+test("current week includes Monday through Sunday and keeps sessions in backend order", () => {
+	const sessions = [
+		{ ...validPlan.weeks[0].sessions[0], scheduled_date: "2026-07-06", session_type: "Primera" },
+		{ ...validPlan.weeks[0].sessions[0], scheduled_date: "2026-07-06", session_type: "Segunda" },
+		{ ...validPlan.weeks[0].sessions[0], scheduled_date: "2026-07-12", session_type: "Recuperación" },
+		{ ...validPlan.weeks[0].sessions[0], scheduled_date: "2026-07-13", session_type: "Fuera" },
+	];
+	const week = currentPlanWeek("2026-07-08", sessions);
+
+	assert.deepEqual(week.map((day) => day.date), [
+		"2026-07-06", "2026-07-07", "2026-07-08", "2026-07-09",
+		"2026-07-10", "2026-07-11", "2026-07-12",
+	]);
+	assert.deepEqual(week[0]?.sessions.map((session) => session.session_type), ["Primera", "Segunda"]);
+	assert.equal(week[6]?.sessions[0]?.session_type, "Recuperación");
+});
+
+test("active block metrics count and sum only the current Monday-Sunday week", () => {
+	const sessions = [
+		{ ...validPlan.weeks[0].sessions[0], scheduled_date: "2026-07-06", planned_distance_kilometers: "5.25" },
+		{ ...validPlan.weeks[0].sessions[0], scheduled_date: "2026-07-12", planned_distance_kilometers: "7.50" },
+		{ ...validPlan.weeks[0].sessions[0], scheduled_date: "2026-07-13", planned_distance_kilometers: "99.00" },
+	];
+
+	assert.deepEqual(activeBlockMetrics("2026-07-08", "2026-07-06", "2026-07-19", sessions), {
+		plannedKilometers: 12.75,
+		plannedSessionCount: 2,
+		remainingDays: 12,
+		temporalProgress: 21,
+	});
 });
 
 test("adapter maps 404 to empty and parses a successful response", async () => {
