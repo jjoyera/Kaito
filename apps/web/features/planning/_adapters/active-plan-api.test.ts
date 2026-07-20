@@ -5,6 +5,7 @@ import { PrivateApiError } from "../../../shared/adapters/private-fetch";
 import {
 	fetchActiveTrainingPlan,
 	parseActiveTrainingPlan,
+	planCalendarDate,
 	remainingBlockDays,
 } from "./active-plan-api";
 
@@ -77,6 +78,25 @@ test("parser rejects missing, extra, wrongly typed, and private fields", () => {
 			/invalid_active_plan_response/,
 		);
 	}
+});
+
+test("parser rejects a plan whose start date is after its end date", () => {
+	assert.throws(
+		() =>
+			parseActiveTrainingPlan({
+				...validPlan,
+				start_date: "2026-07-20",
+				end_date: "2026-07-19",
+			}),
+		/invalid_active_plan_response/,
+	);
+});
+
+test("plan calendar date uses Europe/Madrid at a UTC date boundary", () => {
+	assert.equal(
+		planCalendarDate(new Date("2026-07-05T22:30:00Z")),
+		"2026-07-06",
+	);
 });
 
 test("remaining block days exclude pre-start waiting and clamp after expiry", () => {

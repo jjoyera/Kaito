@@ -71,6 +71,19 @@ export async function fetchActiveTrainingPlan(
 	}
 }
 
+export function planCalendarDate(now = new Date()): string {
+	const parts = new Intl.DateTimeFormat("en-GB", {
+		timeZone: "Europe/Madrid",
+		year: "numeric",
+		month: "2-digit",
+		day: "2-digit",
+	}).formatToParts(now);
+	const dateParts = Object.fromEntries(
+		parts.map(({ type, value }) => [type, value]),
+	);
+	return `${dateParts.year}-${dateParts.month}-${dateParts.day}`;
+}
+
 export function remainingBlockDays(
 	today: string,
 	startDate: string,
@@ -93,6 +106,7 @@ export function parseActiveTrainingPlan(value: unknown): ActiveTrainingPlan {
 		!APPROACHES.includes(value.plan_approach as never) ||
 		!isDate(value.start_date) ||
 		!isDate(value.end_date) ||
+		value.start_date > value.end_date ||
 		!isNonEmptyText(value.block_focus) ||
 		!Array.isArray(value.weeks) ||
 		value.weeks.length < 1 ||

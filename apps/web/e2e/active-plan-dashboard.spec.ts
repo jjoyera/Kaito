@@ -132,17 +132,23 @@ test.describe("active plan dashboard", () => {
 		await interceptActivePlan(page, 404);
 		await page.goto("/plan");
 
+		const emptyStatus = page.getByRole("status");
 		await expect(
-			page.getByRole("heading", {
+			emptyStatus.getByRole("heading", {
 				name: "Todavía no tienes un plan activo",
 			}),
 		).toBeVisible();
+		await expect(emptyStatus).not.toHaveAttribute("aria-live");
 
 		await interceptActivePlan(page, 200, { ...plan, plan_id: "private" });
 		await page.reload();
+		const errorAlert = page.locator(".plan-state-card[role='alert']");
 		await expect(
-			page.getByRole("heading", { name: "No hemos podido cargar tu plan" }),
+			errorAlert.getByRole("heading", {
+				name: "No hemos podido cargar tu plan",
+			}),
 		).toBeVisible();
+		await expect(errorAlert).not.toHaveAttribute("aria-live");
 
 		await interceptActivePlan(page, 500, {
 			detail: "private provider detail",

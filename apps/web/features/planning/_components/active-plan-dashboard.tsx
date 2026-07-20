@@ -10,6 +10,7 @@ import { PrivateApiError } from "../../../shared/adapters/private-fetch";
 import { isTestAuthAdapterEnabledInBrowser } from "../../../shared/testing/test-auth-adapter";
 import {
 	fetchActiveTrainingPlan,
+	planCalendarDate,
 	remainingBlockDays,
 	type ActiveTrainingPlan,
 	type ActiveTrainingSession,
@@ -121,8 +122,7 @@ function DashboardStatus({
 		<main className="plan-dashboard-state">
 			<section
 				className="plan-state-card"
-				role={state === "loading" ? "status" : "alert"}
-				aria-live="polite"
+				role={state === "error" ? "alert" : "status"}
 			>
 				<span className="plan-logo" aria-hidden="true">
 					▲
@@ -145,7 +145,7 @@ function Plan({ plan }: { plan: ActiveTrainingPlan }) {
 		.sort((left, right) =>
 			left.scheduled_date.localeCompare(right.scheduled_date),
 		);
-	const today = localDate();
+	const today = planCalendarDate();
 	const nextSession = sessions.find(
 		(session) => session.scheduled_date >= today,
 	);
@@ -354,14 +354,6 @@ function Stat({ label, value }: { label: string; value: string }) {
 			<dd>{value}</dd>
 		</div>
 	);
-}
-
-function localDate() {
-	const now = new Date();
-	const year = now.getFullYear();
-	const month = String(now.getMonth() + 1).padStart(2, "0");
-	const day = String(now.getDate()).padStart(2, "0");
-	return `${year}-${month}-${day}`;
 }
 
 function formatDate(value: string) {
