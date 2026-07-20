@@ -121,6 +121,20 @@ export function nextPlanSession(
 	}, undefined);
 }
 
+export function chronologicalPlanSessions(
+	sessions: readonly ActiveTrainingSession[],
+): ActiveTrainingSession[] {
+	return sessions
+		.map((session, backendOrder) => ({ session, backendOrder }))
+		.sort(
+			(left, right) =>
+				left.session.scheduled_date.localeCompare(
+					right.session.scheduled_date,
+				) || left.backendOrder - right.backendOrder,
+		)
+		.map(({ session }) => session);
+}
+
 export function currentPlanWeek(
 	today: string,
 	sessions: readonly ActiveTrainingSession[],

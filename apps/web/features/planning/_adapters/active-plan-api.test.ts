@@ -4,6 +4,7 @@ import { test } from "node:test";
 import { PrivateApiError } from "../../../shared/adapters/private-fetch";
 import {
 	activeBlockMetrics,
+	chronologicalPlanSessions,
 	currentPlanWeek,
 	fetchActiveTrainingPlan,
 	parseActiveTrainingPlan,
@@ -123,6 +124,21 @@ test("temporal progress clamps before and after a block and handles one-day bloc
 	assert.equal(temporalBlockProgress("2026-07-06", "2026-07-06", "2026-07-19"), 7);
 	assert.equal(temporalBlockProgress("2026-07-20", "2026-07-06", "2026-07-19"), 100);
 	assert.equal(temporalBlockProgress("2026-07-06", "2026-07-06", "2026-07-06"), 100);
+});
+
+test("calendar sessions are chronological and preserve backend order on the same date", () => {
+	const sessions = [
+		{ ...validPlan.weeks[0].sessions[0], scheduled_date: "2026-07-12", session_type: "Última" },
+		{ ...validPlan.weeks[0].sessions[0], scheduled_date: "2026-07-06", session_type: "Primera" },
+		{ ...validPlan.weeks[0].sessions[0], scheduled_date: "2026-07-06", session_type: "Segunda" },
+		{ ...validPlan.weeks[0].sessions[0], scheduled_date: "2026-07-08", session_type: "Intermedia" },
+	];
+
+	assert.deepEqual(
+		chronologicalPlanSessions(sessions).map((session) => session.session_type),
+		["Primera", "Segunda", "Intermedia", "Última"],
+	);
+	assert.equal(sessions[0]?.session_type, "Última");
 });
 
 test("current week includes Monday through Sunday and keeps sessions in backend order", () => {

@@ -1429,28 +1429,33 @@ p {
 	color: #f3b454;
 }
 
-.plan-sidebar nav {
+.plan-sidebar nav,
+.plan-sidebar [role="tablist"] {
 	display: grid;
 	gap: 0.5rem;
 }
 
-.plan-sidebar a {
-	border-radius: 0.75rem;
-	color: rgb(255 255 255 / 75%);
-	font-weight: 700;
-	padding: 0.8rem 1rem;
-	text-decoration: none;
-}
-
-.plan-sidebar a[aria-current="page"] {
+.plan-sidebar button {
 	display: flex;
 	align-items: center;
 	gap: 0.65rem;
+	border: 0;
+	border-radius: 0.75rem;
+	background: transparent;
+	color: rgb(255 255 255 / 75%);
+	cursor: pointer;
+	font: inherit;
+	font-weight: 700;
+	padding: 0.8rem 1rem;
+	text-align: left;
+}
+
+.plan-sidebar button[aria-selected="true"] {
 	background: rgb(255 255 255 / 12%);
 	color: white;
 }
 
-.plan-sidebar a svg {
+.plan-sidebar button svg {
 	width: 1.15rem;
 	height: 1.15rem;
 	fill: none;
@@ -1458,8 +1463,8 @@ p {
 	stroke-width: 1.8;
 }
 
-.plan-sidebar a:hover,
-.plan-sidebar a:focus-visible {
+.plan-sidebar button:hover,
+.plan-sidebar button:focus-visible {
 	background: rgb(255 255 255 / 14%);
 	color: white;
 	outline: 2px solid #f3b454;
@@ -1655,6 +1660,54 @@ p {
 	font-size: 0.7rem;
 }
 
+.plan-calendar-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 1rem;
+	margin-top: 2rem;
+}
+
+.plan-workout-card {
+	border: 1px solid rgb(31 70 60 / 8%);
+	border-radius: 1.25rem;
+	background: #fffdf9;
+	box-shadow: 0 0.5rem 2rem rgb(31 43 36 / 5%);
+	padding: clamp(1.25rem, 3vw, 1.75rem);
+}
+
+.plan-workout-card time {
+	color: #dc7733;
+	font-size: 0.76rem;
+	font-weight: 800;
+	text-transform: capitalize;
+}
+
+.plan-workout-card h2 {
+	margin: 0.55rem 0 1.25rem;
+	font-size: clamp(1.25rem, 2.5vw, 1.65rem);
+}
+
+.plan-workout-card dl {
+	display: flex;
+	gap: 2.5rem;
+	margin: 0;
+}
+
+.plan-workout-card dl div {
+	display: grid;
+	gap: 0.25rem;
+}
+
+.plan-workout-card dt {
+	color: #837b70;
+	font-size: 0.75rem;
+}
+
+.plan-workout-card dd {
+	margin: 0;
+	font-weight: 800;
+}
+
 .plan-dashboard-state {
 	min-height: 100svh;
 	background: #f4efe5;
@@ -1713,8 +1766,11 @@ p {
 	}
 
 	.plan-sidebar nav {
-		display: flex;
 		margin-left: auto;
+	}
+
+	.plan-sidebar [role="tablist"] {
+		display: flex;
 	}
 
 	.plan-sidebar small {
@@ -1736,8 +1792,13 @@ p {
 		margin: 0.5rem 0 0;
 	}
 
-	.plan-sidebar a {
+	.plan-sidebar [role="tablist"] {
+		width: 100%;
+	}
+
+	.plan-sidebar button {
 		flex: 1;
+		justify-content: center;
 		text-align: center;
 	}
 
@@ -1755,7 +1816,8 @@ p {
 		padding: 1rem;
 	}
 
-	.plan-week-grid {
+	.plan-week-grid,
+	.plan-calendar-grid {
 		grid-template-columns: 1fr;
 	}
 
