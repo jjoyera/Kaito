@@ -7,7 +7,7 @@ ENV UV_COMPILE_BYTECODE=1 \
 WORKDIR /workspace/apps/api
 
 COPY apps/api/pyproject.toml apps/api/uv.lock ./
-RUN uv sync --frozen --no-dev --no-install-project
+RUN uv sync --frozen --no-dev --no-install-project --no-build
 
 FROM python:3.12-slim AS runtime
 
