@@ -205,7 +205,7 @@ El sistema debe evaluar la elegibilidad de enfoques de plan, permitir la selecci
 - Los usuarios autenticados pueden leer sus propias filas de plan, con independencia del estado, y solo las sesiones de su plan activo; las filas ajenas y las escrituras directas quedan denegadas. El backend mantiene lecturas y escrituras owner-bound con `kaito_api_login` bajo claims verificados, mientras `anon` y `PUBLIC` quedan denegados.
 - `POST /planning/generate` expone este flujo con autenticación y devuelve el plan público activado; `GET /planning/active` devuelve el activo propio con orden estable, sin IDs ni metadata interna.
 - Los outcomes públicos se limitan a las familias seguras `401`, `404`, `409`, `422` y `503`.
-- La pantalla intermedia, el dashboard y el E2E aún deben conectarse; la interfaz deberá comunicar que usa objetivo, disponibilidad, experiencia y enfoque elegido.
+- El dashboard autenticado `/plan` consume el plan activo y presenta únicamente métricas planificadas derivadas de ese contrato; la pantalla intermedia y el E2E completo aún deben conectarse.
 - El sistema debe usar explícitamente los datos de objetivo específicos de la modalidad al generar la planificación.
 - El sistema debe generar una planificación inicial asociada al usuario.
 - El sistema debe generar la planificación respetando `TrainingPlan.planApproach`.
@@ -223,7 +223,8 @@ El sistema debe evaluar la elegibilidad de enfoques de plan, permitir la selecci
 | Persistencia del plan activo | Entregada: persistencia/activación atómica y lectura owner-bound ordenada. |
 | Aislamiento por propietario | Entregado: lectura autenticada propia y CRUD backend owner-scoped mediante RLS. |
 | API de planes de entrenamiento | Implementada sin aprobación formal de Gentle: generación y lectura autenticadas con respuestas públicas acotadas. |
-| Experiencia web del plan | Pendiente: pantalla de generación conectada, dashboard y E2E. |
+| Dashboard del plan activo | Implementado: ruta protegida `/plan`, lectura autenticada, estados de carga/vacío/error y presentación responsive del bloque y sus sesiones. |
+| Generación desde la web y E2E | Pendientes: conectar la pantalla intermedia y demostrar el recorrido completo. |
 
 Las pruebas de la API de planes de entrenamiento usan dobles deterministas y no llaman a
 OpenAI. El smoke test con el proveedor real permanece pendiente; no se afirma éxito E2E
@@ -231,7 +232,7 @@ real ni preparación para producción.
 
 ### Resultado esperado
 
-Cuando se completen la pantalla de generación, el dashboard y el E2E, el usuario recibirá un plan inicial vinculado a su cuenta, con enfoque explícito y trazabilidad de opciones elegibles/bloqueadas.
+El dashboard ya permite consultar un plan activo vinculado a la cuenta. Cuando se completen la pantalla de generación y el E2E, el usuario podrá recorrer desde la elección del enfoque hasta ese dashboard sin intervención manual.
 
 ## RF-08 Dashboard del plan activo
 

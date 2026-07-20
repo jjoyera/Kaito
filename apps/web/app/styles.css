@@ -1372,3 +1372,350 @@ p {
 		opacity: 1;
 	}
 }
+
+.plan-dashboard {
+	display: block;
+	min-height: 100svh;
+	padding: 0 0 0 15.5rem;
+	background: #f4efe5;
+}
+
+.plan-sidebar {
+	position: fixed;
+	inset: 0 auto 0 0;
+	display: flex;
+	width: 15.5rem;
+	flex-direction: column;
+	gap: 2rem;
+	background: #1f463c;
+	color: #f9f5eb;
+	padding: 2rem 1.25rem;
+}
+
+.plan-sidebar strong {
+	display: flex;
+	gap: 0.7rem;
+	align-items: center;
+	font-size: 1.35rem;
+}
+
+.plan-sidebar strong span,
+.plan-logo {
+	display: grid;
+	width: 2.5rem;
+	aspect-ratio: 1;
+	place-items: center;
+	border-radius: 0.75rem;
+	background: #326759;
+	color: #f3b454;
+}
+
+.plan-sidebar nav {
+	display: grid;
+	gap: 0.5rem;
+}
+
+.plan-sidebar a {
+	border-radius: 0.75rem;
+	color: rgb(255 255 255 / 75%);
+	font-weight: 700;
+	padding: 0.8rem 1rem;
+	text-decoration: none;
+}
+
+.plan-sidebar a:hover,
+.plan-sidebar a:focus-visible {
+	background: rgb(255 255 255 / 14%);
+	color: white;
+	outline: 2px solid #f3b454;
+	outline-offset: 2px;
+}
+
+.plan-sidebar small {
+	margin-top: auto;
+	border-radius: 0.8rem;
+	background: rgb(255 255 255 / 9%);
+	line-height: 1.6;
+	padding: 1rem;
+}
+
+.plan-content {
+	width: min(100%, 75rem);
+	margin-inline: auto;
+	padding: clamp(2rem, 4vw, 4rem);
+}
+
+.plan-header p,
+.plan-header span {
+	color: #857d72;
+	font-size: 0.9rem;
+}
+
+.plan-header h1 {
+	max-width: 48rem;
+	margin: 0.4rem 0 0.65rem;
+	font-size: clamp(2rem, 4vw, 3.2rem);
+	line-height: 1.05;
+}
+
+.plan-metrics {
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 1rem;
+	margin: 2rem 0 1.25rem;
+}
+
+.plan-metrics article,
+.plan-next,
+.plan-schedule {
+	border: 1px solid rgb(31 70 60 / 8%);
+	border-radius: 1.25rem;
+	background: #fffdf9;
+	box-shadow: 0 0.5rem 2rem rgb(31 43 36 / 5%);
+}
+
+.plan-metrics article {
+	display: grid;
+	gap: 0.7rem;
+	min-height: 8.5rem;
+	align-content: center;
+	padding: 1.25rem;
+}
+
+.plan-metrics span {
+	color: #837b70;
+	font-size: 0.8rem;
+}
+
+.plan-metrics strong {
+	color: #244d42;
+	font-size: clamp(1.5rem, 3vw, 2.3rem);
+}
+
+.plan-next {
+	margin-bottom: 1.25rem;
+	padding: clamp(1.4rem, 3vw, 2rem);
+}
+
+.plan-kicker {
+	color: #dc7733;
+	font-size: 0.76rem;
+	font-weight: 800;
+	letter-spacing: 0.08em;
+}
+
+.plan-next h2,
+.plan-schedule h2 {
+	margin: 0.5rem 0;
+	font-size: clamp(1.5rem, 3vw, 2rem);
+}
+
+.plan-next h3 {
+	margin: 1.5rem 0 0.25rem;
+	font-size: 1rem;
+}
+
+.plan-next > p,
+.plan-schedule p {
+	font-size: 0.95rem;
+}
+
+.plan-next dl {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 1rem 2.5rem;
+	margin: 1.5rem 0 0;
+}
+
+.plan-next dl div {
+	display: grid;
+	gap: 0.25rem;
+}
+
+.plan-next dt {
+	color: #837b70;
+	font-size: 0.75rem;
+}
+
+.plan-next dd {
+	margin: 0;
+	font-weight: 800;
+}
+
+.plan-schedule {
+	padding: clamp(1.4rem, 3vw, 2rem);
+	scroll-margin-top: 1rem;
+}
+
+.plan-schedule article {
+	margin-top: 1.5rem;
+}
+
+.plan-schedule h3 {
+	margin: 0 0 0.75rem;
+}
+
+.plan-schedule ul {
+	display: grid;
+	gap: 0.65rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.plan-schedule li {
+	display: grid;
+	grid-template-columns: 8rem 1fr;
+	gap: 1rem;
+	border-top: 1px solid #e8e1d6;
+	padding: 1rem 0 0.35rem;
+}
+
+.plan-schedule time {
+	color: #b66331;
+	font-size: 0.85rem;
+	font-weight: 750;
+}
+
+.plan-schedule li p {
+	margin: 0.25rem 0;
+}
+
+.plan-schedule small {
+	color: #71695f;
+}
+
+.plan-schedule details {
+	margin-top: 0.65rem;
+}
+
+.plan-schedule summary {
+	width: fit-content;
+	color: #2f5d50;
+	cursor: pointer;
+	font-weight: 700;
+}
+
+.plan-schedule summary:focus-visible {
+	outline: 3px solid rgb(232 137 58 / 45%);
+	outline-offset: 3px;
+}
+
+.plan-dashboard-state {
+	min-height: 100svh;
+	background: #f4efe5;
+	padding: 1.5rem;
+}
+
+.plan-state-card {
+	display: grid;
+	width: min(100%, 32rem);
+	gap: 1rem;
+	justify-items: center;
+	border-radius: 1.5rem;
+	background: #fffdf9;
+	padding: clamp(2rem, 6vw, 4rem);
+	box-shadow: 0 1rem 3rem rgb(31 43 36 / 8%);
+	text-align: center;
+}
+
+.plan-state-card h1 {
+	margin: 0;
+	font-size: clamp(1.6rem, 5vw, 2.2rem);
+}
+
+.plan-state-card p {
+	font-size: 1rem;
+}
+
+.plan-state-card button {
+	min-height: 2.8rem;
+	border: 0;
+	border-radius: 0.7rem;
+	background: #2f5d50;
+	color: white;
+	cursor: pointer;
+	font: inherit;
+	font-weight: 750;
+	padding: 0.7rem 1.2rem;
+}
+
+.plan-state-card button:focus-visible {
+	outline: 3px solid #e8893a;
+	outline-offset: 3px;
+}
+
+@media (max-width: 62rem) {
+	.plan-dashboard {
+		padding: 0;
+	}
+
+	.plan-sidebar {
+		position: static;
+		width: 100%;
+		flex-flow: row wrap;
+		align-items: center;
+		padding: 1rem 1.25rem;
+	}
+
+	.plan-sidebar nav {
+		display: flex;
+		margin-left: auto;
+	}
+
+	.plan-sidebar small {
+		display: none;
+	}
+
+	.plan-metrics {
+		grid-template-columns: repeat(2, 1fr);
+	}
+}
+
+@media (max-width: 38rem) {
+	.plan-sidebar {
+		gap: 0.5rem;
+	}
+
+	.plan-sidebar nav {
+		width: 100%;
+		margin: 0.5rem 0 0;
+	}
+
+	.plan-sidebar a {
+		flex: 1;
+		text-align: center;
+	}
+
+	.plan-content {
+		padding: 1.5rem 1rem 2.5rem;
+	}
+
+	.plan-metrics {
+		grid-template-columns: 1fr 1fr;
+		gap: 0.65rem;
+	}
+
+	.plan-metrics article {
+		min-height: 7rem;
+		padding: 1rem;
+	}
+
+	.plan-schedule li {
+		grid-template-columns: 1fr;
+		gap: 0.35rem;
+	}
+
+	.plan-next dl {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.plan-dashboard *,
+	.plan-dashboard-state * {
+		scroll-behavior: auto;
+		transition: none;
+	}
+}

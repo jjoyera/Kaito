@@ -268,7 +268,7 @@ repite como máximo una vez solo por ese tipo de rechazo y persiste/activa el re
 en una transacción. La API lo expone mediante `POST /planning/generate` y ofrece la
 lectura owner-bound ordenada en `GET /planning/active`. Los outcomes públicos se acotan a
 `401`, `404`, `409`, `422` y `503`; FastAPI publica `/docs`, `/redoc` y `/openapi.json`.
-La conexión de la UI y el E2E sigue pendiente.
+El dashboard protegido `/plan` ya consume la lectura activa; la pantalla de generación y el E2E completo siguen pendientes.
 
 ### Contexto controlado y fuentes
 
@@ -331,10 +331,11 @@ Capacidades entregadas:
 5. El repositorio inserta candidato y sesiones, archiva el activo anterior y activa el nuevo plan en una transacción; después puede leer el activo propio con orden estable.
 6. `POST /planning/generate` compone el adaptador OpenAI configurado en el entorno y ejecuta el flujo completo dentro de la petición síncrona; `GET /planning/active` devuelve semanas y sesiones ordenadas sin IDs ni metadata interna.
 7. RLS limita lectura y escritura según propietario y rol, sin acceso para `anon`/`PUBLIC`.
+8. La ruta web protegida `/plan` consume el plan activo mediante el transporte autenticado, valida el contrato de forma estricta y presenta bloque, métricas planificadas derivadas, próxima sesión y calendario semanal con estados seguros.
 
 Pendiente:
 
-1. Conectar `/plan/generating`, el dashboard y las pruebas E2E en la web.
+1. Conectar `/plan/generating` y las pruebas E2E del recorrido completo en la web.
 2. Un smoke test autenticado debe demostrar una generación real con OpenAI; las pruebas actuales usan dobles deterministas y no realizan llamadas al proveedor.
 
 La configuración backend requiere `OPENAI_API_KEY`, fija
@@ -430,7 +431,7 @@ forman parte de la arquitectura implementada ni de la generación autenticada de
 
 ## 16) No-objetivos explícitos de la fase actual
 
-- No conectar todavía `/plan/generating`, el consumo del dashboard ni el E2E completo.
+- No conectar todavía `/plan/generating` ni el E2E completo de generación y redirección.
 - No introducir workers, colas, ejecución durable ni reintentos persistentes.
 - No añadir edición/versionado manual de planes, recálculo por `TrainingLog` ni reajuste automático.
 - No ampliar las validaciones deterministas hasta presentarlas como garantías deportivas avanzadas.
