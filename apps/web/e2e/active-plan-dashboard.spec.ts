@@ -50,6 +50,15 @@ async function setSession(page: Page, value = "authenticated") {
 			value,
 			url: "http://127.0.0.1:3000",
 		},
+		...(value === "authenticated"
+			? [
+					{
+						name: "kaito-e2e-product-state",
+						value: "completed",
+						url: "http://127.0.0.1:3000",
+					},
+				]
+			: []),
 	]);
 }
 

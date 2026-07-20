@@ -39,6 +39,19 @@ async function setSession(page: Page, value: string) {
 	]);
 }
 
+async function setProductState(
+	page: Page,
+	value: "completed" | "incomplete-none",
+) {
+	await page.context().addCookies([
+		{
+			name: "kaito-e2e-product-state",
+			value,
+			url: "http://127.0.0.1:3000",
+		},
+	]);
+}
+
 async function fulfillJson(route: Route, status: number, body?: unknown) {
 	await route.fulfill({
 		status,
@@ -92,6 +105,7 @@ test.describe("plan generation flow", () => {
 			expect(apiRoute.request().method()).toBe("POST");
 			expect(apiRoute.request().headers().authorization).toBe("Bearer test-access-token");
 			await new Promise((resolve) => setTimeout(resolve, 250));
+			await setProductState(page, "completed");
 			await fulfillJson(apiRoute, 200, plan);
 		});
 		await page.route(`${API_ORIGIN}/planning/active`, (apiRoute) =>
@@ -138,6 +152,7 @@ test.describe("plan generation flow", () => {
 				return;
 			}
 			await new Promise((resolve) => setTimeout(resolve, 200));
+			await setProductState(page, "completed");
 			await fulfillJson(apiRoute, 200, plan);
 		});
 		await page.route(`${API_ORIGIN}/planning/active`, (apiRoute) =>
@@ -216,6 +231,7 @@ test.describe("plan generation flow", () => {
 
 	test("continues deterministically from completed onboarding to the active dashboard", async ({ page }) => {
 		await setSession(page, "authenticated");
+		await setProductState(page, "incomplete-none");
 		const requests: string[] = [];
 		await page.route(`${API_ORIGIN}/**`, async (apiRoute) => {
 			const request = apiRoute.request();
@@ -247,6 +263,9 @@ test.describe("plan generation flow", () => {
 					plan_approach: "kaio_path",
 				});
 				return;
+			}
+			if (pathname === "/planning/generate") {
+				await setProductState(page, "completed");
 			}
 			await fulfillJson(apiRoute, 200, plan);
 		});
