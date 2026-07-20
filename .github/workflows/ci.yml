@@ -65,7 +65,7 @@ jobs:
         run: pnpm test:web-e2e
 
   api:
-    name: API scaffold validation
+    name: API
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -92,7 +92,7 @@ jobs:
         working-directory: apps/api
         run: uv sync --frozen
 
-      - name: Lint API scaffold
+      - name: Lint API
         working-directory: apps/api
         run: uv run ruff check .
 
